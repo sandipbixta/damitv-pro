@@ -5,7 +5,7 @@ import { generateCompetitorTitle, generateCompetitorDescription } from '../utils
 import CompetitorSEOContent from '../components/CompetitorSEOContent';
 import ChannelsGrid from '../components/ChannelsGrid';
 import Advertisement from '../components/Advertisement';
-import NewsSection from '../components/NewsSection';
+
 import { useIsMobile } from '../hooks/use-mobile';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -197,10 +197,6 @@ const Channels = () => {
           </div>
         </section>
         
-        {/* Sports News section */}
-        <div className="mt-8">
-          <NewsSection />
-        </div>
         
         {/* Video Advertisement - moved to bottom */}
         <div className="mt-6">
