@@ -48,7 +48,7 @@ const BlogPreviewSection: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {posts.map((post) => (
           <Link key={post.id} to={`/blog/${post.slug}`}>
-            <Card className="h-full overflow-hidden group hover:border-primary/50 transition-all duration-300 bg-card border-border">
+            <Card className="h-full overflow-hidden group hover:border-primary/50 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 bg-card border-border">
               {post.featured_image && (
                 <div className="aspect-[16/10] overflow-hidden">
                   <img
