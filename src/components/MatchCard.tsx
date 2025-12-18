@@ -407,7 +407,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   const cardContent = (
     <div ref={cardRef} className="group cursor-pointer h-full">
-      <div className="relative overflow-hidden rounded-xl bg-card transition-all duration-300 hover:opacity-90 h-full flex flex-col">
+      <div className="relative overflow-hidden rounded-xl bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/20 h-full flex flex-col">
         {/* Banner Image Section - 16:9 aspect ratio */}
         <div className="relative aspect-video overflow-hidden rounded-t-xl flex-shrink-0">
           {generateThumbnail()}
