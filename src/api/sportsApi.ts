@@ -133,11 +133,21 @@ export const fetchSports = async (): Promise<Sport[]> => {
     
     let sports: Sport[] = [];
     
+    // Sports to exclude from the list
+    const EXCLUDED_SPORTS = ['tennis', 'golf', 'hockey', 'ice hockey', 'nhl', 'darts', 'billiards', 'snooker', 'pool', 'other'];
+    
     if (Array.isArray(data)) {
-      sports = data.map((sport: any) => ({
-        id: sport.id || sport.name?.toLowerCase().replace(/\s+/g, '-'),
-        name: sport.name || sport.id
-      }));
+      sports = data
+        .map((sport: any) => ({
+          id: sport.id || sport.name?.toLowerCase().replace(/\s+/g, '-'),
+          name: sport.name || sport.id
+        }))
+        .filter((sport: Sport) => 
+          !EXCLUDED_SPORTS.some(excluded => 
+            sport.id.toLowerCase().includes(excluded) || 
+            sport.name.toLowerCase().includes(excluded)
+          )
+        );
     }
     
     // Sort alphabetically but keep Football first

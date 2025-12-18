@@ -319,8 +319,8 @@ const Index = () => {
                     <ul className="text-muted-foreground space-y-1 text-sm">
                       <li>• Live Football Streaming (Premier League, Champions League, La Liga)</li>
                       <li>• Basketball Games (NBA, EuroLeague)</li>
-                      <li>• Tennis Tournaments (ATP, WTA, Grand Slams)</li>
-                      <li>• Boxing and MMA Events</li>
+                      <li>• Boxing and MMA Events (UFC, WWE)</li>
+                      <li>• American Football (NFL, College Football)</li>
                       <li>• Motor Sports (Formula 1, MotoGP)</li>
                     </ul>
                   </div>
