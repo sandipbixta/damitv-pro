@@ -45,12 +45,12 @@ const BlogPreviewSection: React.FC = () => {
     <div className="mb-8">
       <SectionHeader title="Latest Articles" seeAllLink="/blog" seeAllText="VIEW ALL" />
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {posts.map((post) => (
           <Link key={post.id} to={`/blog/${post.slug}`}>
             <Card className="h-full overflow-hidden group hover:border-primary/50 transition-all duration-300 bg-card border-border">
               {post.featured_image && (
-                <div className="aspect-video overflow-hidden">
+                <div className="aspect-[16/10] overflow-hidden">
                   <img
                     src={post.featured_image}
                     alt={post.title}
@@ -58,23 +58,16 @@ const BlogPreviewSection: React.FC = () => {
                   />
                 </div>
               )}
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2">
+              <CardContent className="p-2.5">
+                <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-1.5">
                   {post.title}
                 </h3>
-                {post.excerpt && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {post.excerpt}
-                  </p>
-                )}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {post.published_at && format(new Date(post.published_at), 'MMM d, yyyy')}
+                    {post.published_at && format(new Date(post.published_at), 'MMM d')}
                   </span>
-                  <span className="text-primary flex items-center gap-1">
-                    Read more <ArrowRight className="w-3 h-3" />
-                  </span>
+                  <ArrowRight className="w-3 h-3 text-primary" />
                 </div>
               </CardContent>
             </Card>
