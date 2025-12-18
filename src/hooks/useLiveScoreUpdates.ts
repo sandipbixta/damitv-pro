@@ -22,9 +22,6 @@ const sportApiMap: Record<string, string> = {
   'soccer': 'soccer',
   'basketball': 'basketball',
   'nba': 'basketball',
-  'hockey': 'hockey',
-  'ice hockey': 'hockey',
-  'nhl': 'hockey',
   'nfl': 'nfl',
   'american football': 'nfl',
   'baseball': 'baseball',
@@ -34,7 +31,6 @@ const sportApiMap: Record<string, string> = {
   'ufc': 'fighting',
   'boxing': 'fighting',
   'cricket': 'cricket',
-  'tennis': 'tennis',
 };
 
 // Normalize team name for matching
@@ -65,7 +61,7 @@ export const useLiveScoreUpdates = (refreshInterval: number = 30000) => {
     lastFetchTime = Date.now();
     
     // Fetch scores for all major sports from TheSportsDB
-    const sports = ['soccer', 'basketball', 'hockey', 'nfl', 'baseball', 'rugby', 'fighting', 'cricket'];
+    const sports = ['soccer', 'basketball', 'nfl', 'baseball', 'rugby', 'fighting', 'cricket'];
     
     try {
       const results = await Promise.all(

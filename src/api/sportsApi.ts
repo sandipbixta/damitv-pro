@@ -156,9 +156,7 @@ export const fetchSports = async (): Promise<Sport[]> => {
     const fallbackSports: Sport[] = [
       { id: 'football', name: 'Football' },
       { id: 'basketball', name: 'Basketball' },
-      { id: 'tennis', name: 'Tennis' },
-      { id: 'cricket', name: 'Cricket' },
-      { id: 'hockey', name: 'Hockey' }
+      { id: 'cricket', name: 'Cricket' }
     ];
     return fallbackSports;
   }
