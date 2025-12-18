@@ -119,11 +119,6 @@
   status = 301
   force = true
 
-[[redirects]]
-  from = "/news/"
-  to = "/news"
-  status = 301
-  force = true
 
 [[redirects]]
   from = "/dmca/"
@@ -213,11 +208,6 @@
     Link = "<https://damitv.pro/live>; rel=\"canonical\""
     X-Robots-Tag = "index, follow, max-image-preview:large"
 
-[[headers]]
-  for = "/news"
-  [headers.values]
-    Link = "<https://damitv.pro/news>; rel=\"canonical\""
-    X-Robots-Tag = "index, follow, max-snippet:-1, max-image-preview:large"
 
 [[headers]]
   for = "/schedule"
