@@ -25,7 +25,7 @@ const HomepageContent = lazy(() => import('../components/HomepageContent'));
 const EmailSubscription = lazy(() => import('../components/EmailSubscription'));
 const PopularMatchesSection = lazy(() => import('../components/PopularMatchesSection'));
 const LiveScoresTicker = lazy(() => import('../components/LiveScoresTicker'));
-const WeStreamLogos = lazy(() => import('../components/WeStreamLogos'));
+
 const BlogPreviewSection = lazy(() => import('../components/BlogPreviewSection'));
 const CompetitorSEOContent = lazy(() => import('../components/CompetitorSEOContent'));
 
@@ -264,11 +264,6 @@ const Index = () => {
             </>}
         </div>
             
-        <div className="mb-8">
-          <Suspense fallback={<LoadingPlaceholder height="h-16" />}>
-            <WeStreamLogos />
-          </Suspense>
-        </div>
         
         {/* Blog Preview Section */}
         <Suspense fallback={<LoadingPlaceholder height="h-64" />}>
