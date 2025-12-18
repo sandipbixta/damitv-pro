@@ -172,12 +172,28 @@ export const fetchSports = async (): Promise<Sport[]> => {
   }
 };
 
+// Sports to exclude from matches
+const EXCLUDED_MATCH_SPORTS = ['tennis', 'golf', 'hockey', 'ice hockey', 'nhl', 'darts', 'billiards', 'snooker', 'pool', 'other'];
+
+const isExcludedSport = (match: Match): boolean => {
+  const sportId = (match.sportId || '').toLowerCase();
+  const category = (match.category || '').toLowerCase();
+  const title = (match.title || '').toLowerCase();
+  
+  return EXCLUDED_MATCH_SPORTS.some(excluded => 
+    sportId.includes(excluded) || 
+    category.includes(excluded) ||
+    (excluded === 'hockey' && (sportId.includes('nhl') || category.includes('nhl'))) ||
+    (excluded === 'tennis' && (sportId.includes('atp') || sportId.includes('wta') || category.includes('atp') || category.includes('wta')))
+  );
+};
+
 export const fetchLiveMatches = async (): Promise<Match[]> => {
   const cacheKey = 'westream-live-matches';
   const cached = getCachedData(cacheKey);
   if (cached) {
     // Still enhance with live scores even if cached
-    return cached.map(enhanceMatchWithLiveScore);
+    return cached.filter(m => !isExcludedSport(m)).map(enhanceMatchWithLiveScore);
   }
 
   try {
@@ -189,6 +205,9 @@ export const fetchLiveMatches = async (): Promise<Match[]> => {
     const data = await response.json();
     
     let matches = Array.isArray(data) ? data.map(transformWeStreamMatch) : [];
+    
+    // Filter out excluded sports
+    matches = matches.filter(m => !isExcludedSport(m));
     
     // Enhance matches with team logos from TheSportsDB
     matches = await enhanceMatchesWithLogos(matches);
@@ -209,8 +228,8 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'westream-all-matches';
   const cached = getCachedData(cacheKey);
   if (cached) {
-    // Still enhance with live scores even if cached
-    return cached.map(enhanceMatchWithLiveScore);
+    // Still enhance with live scores even if cached, and filter excluded sports
+    return cached.filter(m => !isExcludedSport(m)).map(enhanceMatchWithLiveScore);
   }
 
   try {
@@ -222,6 +241,9 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
     const data = await response.json();
     
     let matches = Array.isArray(data) ? data.map(transformWeStreamMatch) : [];
+    
+    // Filter out excluded sports
+    matches = matches.filter(m => !isExcludedSport(m));
     
     // Sort by date (most recent first) and filter out old finished matches
     matches = matches
@@ -250,11 +272,16 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
 };
 
 export const fetchMatches = async (sportId: string): Promise<Match[]> => {
+  // Don't fetch matches for excluded sports
+  if (EXCLUDED_MATCH_SPORTS.some(excluded => sportId.toLowerCase().includes(excluded))) {
+    return [];
+  }
+  
   const cacheKey = `westream-matches-${sportId}`;
   const cached = getCachedData(cacheKey);
   if (cached) {
     // Still enhance with live scores even if cached
-    return cached.map(enhanceMatchWithLiveScore);
+    return cached.filter(m => !isExcludedSport(m)).map(enhanceMatchWithLiveScore);
   }
 
   try {
@@ -266,6 +293,9 @@ export const fetchMatches = async (sportId: string): Promise<Match[]> => {
     const data = await response.json();
     
     let matches = Array.isArray(data) ? data.map(transformWeStreamMatch) : [];
+    
+    // Filter out excluded sports
+    matches = matches.filter(m => !isExcludedSport(m));
     
     // Enhance matches with team logos from TheSportsDB
     matches = await enhanceMatchesWithLogos(matches);
