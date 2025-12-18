@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Clock, Play, Users, Calendar, Tv, Globe } from 'lucide-react';
@@ -13,6 +13,7 @@ import { LiveViewerCount } from './LiveViewerCount';
 import TeamLogo from './TeamLogo';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMatchScore } from '../hooks/useLiveScoreUpdates';
+import { preloadOnHover, cancelPreload } from '../utils/streamPreloader';
 import fallbackBg from '@/assets/match-card-fallback-bg.jpg';
 
 // Calculate real-time minutes based on match start time and current period
@@ -109,6 +110,17 @@ const MatchCard: React.FC<MatchCardProps> = ({
   const homeScore = liveScore?.home ?? match.score?.home;
   const awayScore = liveScore?.away ?? match.score?.away;
   const matchProgress = liveScore?.progress || match.progress;
+
+  // Preload streams on hover for faster playback
+  const handleMouseEnter = useCallback(() => {
+    if (match.sources && match.sources.length > 0) {
+      preloadOnHover(match);
+    }
+  }, [match]);
+
+  const handleMouseLeave = useCallback(() => {
+    cancelPreload();
+  }, []);
 
   // Lazy load - only fetch poster when card is visible
   useEffect(() => {
@@ -513,7 +525,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   if (preventNavigation || onClick) {
     return (
-      <div className={className} onClick={onClick}>
+      <div 
+        className={className} 
+        onClick={onClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {cardContent}
       </div>
     );
@@ -521,7 +538,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   if (hasStream) {
     return (
-      <Link to={`/match/${sportId || match.sportId || match.category}/${match.id}`} className={`block ${className}`}>
+      <Link 
+        to={`/match/${sportId || match.sportId || match.category}/${match.id}`} 
+        className={`block ${className}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {cardContent}
       </Link>
     );
