@@ -54,11 +54,8 @@ const MatchesTabContent: React.FC<MatchesTabContentProps> = ({
     const sportMappings: Record<string, string> = {
       '1': 'Football',
       '2': 'Basketball',
-      '3': 'Ice Hockey',
-      '4': 'Tennis',
       'football': 'Football',
-      'basketball': 'Basketball',
-      'hockey': 'Ice Hockey'
+      'basketball': 'Basketball'
     };
     
     return sportMappings[sportId] || 'Other Sports';

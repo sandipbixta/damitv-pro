@@ -165,7 +165,7 @@ export const useLiveMatches = () => {
       console.log('✅ Football matches loaded:', initialProcessed.live.length, 'live');
       
       // Fetch remaining sports in background
-      const otherSports = ['basketball', 'tennis', 'cricket', 'hockey', 'fight', 'baseball', 'rugby'];
+      const otherSports = ['basketball', 'cricket', 'fight', 'baseball', 'rugby'];
       
       const allSportPromises = otherSports.map(async (sportId) => {
         try {
