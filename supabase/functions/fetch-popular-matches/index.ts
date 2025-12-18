@@ -53,6 +53,9 @@ const TOP_LEAGUES = [
   "bundesliga", "premier league", "la liga", "serie a", "ligue 1"
 ];
 
+// Sports to EXCLUDE from results
+const EXCLUDED_SPORTS = ['tennis', 'golf', 'hockey', 'ice hockey', 'nhl', 'darts', 'billiards', 'snooker', 'pool', 'other'];
+
 // Sport category normalization
 function normalizeSportCategory(category: string): string {
   const cat = category?.toLowerCase().replace(/[^a-z]/g, '') || '';
@@ -63,12 +66,16 @@ function normalizeSportCategory(category: string): string {
   if (cat.includes('american') || cat.includes('nfl')) return 'nfl';
   if (cat.includes('mma') || cat.includes('ufc') || cat.includes('fight') || cat.includes('boxing')) return 'fighting';
   if (cat.includes('motor') || cat.includes('f1') || cat.includes('racing') || cat.includes('motogp')) return 'motorsport';
-  if (cat.includes('hockey') || cat.includes('nhl')) return 'hockey';
-  if (cat.includes('tennis')) return 'tennis';
   if (cat.includes('baseball') || cat.includes('mlb')) return 'baseball';
   if (cat.includes('rugby')) return 'rugby';
   
   return cat;
+}
+
+// Check if sport should be excluded
+function isExcludedSport(category: string): boolean {
+  const cat = category?.toLowerCase() || '';
+  return EXCLUDED_SPORTS.some(excluded => cat.includes(excluded));
 }
 
 // Check if sport is in priority list
@@ -357,6 +364,11 @@ serve(async (req) => {
       // FILTER 2: Must have valid team names
       if (!hasValidTeamNames(wsMatch)) {
         console.log(`Skipping match without valid team names: ${wsMatch.title}`);
+        continue;
+      }
+      
+      // FILTER 2.5: Skip excluded sports (tennis, golf, hockey, darts, billiards, other)
+      if (isExcludedSport(wsMatch.category)) {
         continue;
       }
       

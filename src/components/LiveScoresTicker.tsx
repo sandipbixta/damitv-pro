@@ -30,9 +30,19 @@ const LiveScoresTicker: React.FC = () => {
         }
 
         if (data?.matches) {
+          // Sports to exclude
+          const EXCLUDED_SPORTS = ['tennis', 'golf', 'hockey', 'ice hockey', 'nhl', 'darts', 'billiards', 'snooker', 'pool', 'other'];
+          
           // Get ALL live matches, then try to enrich with scores from live score store
           const live = data.matches
-            .filter((m: any) => m.isLive)
+            .filter((m: any) => {
+              if (!m.isLive) return false;
+              const sportId = (m.sportId || '').toLowerCase();
+              const category = (m.category || m.tournament || '').toLowerCase();
+              return !EXCLUDED_SPORTS.some(excluded => 
+                sportId.includes(excluded) || category.includes(excluded)
+              );
+            })
             .map((m: any) => {
               const homeTeam = m.teams?.home?.name || m.homeTeam || 'Home';
               const awayTeam = m.teams?.away?.name || m.awayTeam || 'Away';
