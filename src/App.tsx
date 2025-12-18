@@ -49,10 +49,6 @@ const Sport365Live = lazy(() => import("./pages/Sport365Live"));
 const WatchPremierLeague = lazy(() => import("./pages/WatchPremierLeague"));
 const NbaStreaming = lazy(() => import("./pages/NbaStreaming"));
 const UfcStreaming = lazy(() => import("./pages/UfcStreaming"));
-const Leagues = lazy(() => import("./pages/Leagues"));
-const LeagueDetail = lazy(() => import("./pages/LeagueDetail"));
-const FootballLeagues = lazy(() => import("./pages/FootballLeagues"));
-const FootballLeagueDetail = lazy(() => import("./pages/FootballLeagueDetail"));
 const SelectedMatchPlayer = lazy(() => import("./pages/SelectedMatchPlayer"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogPost = lazy(() => import("./pages/BlogPost"));
@@ -123,21 +119,6 @@ const App: React.FC = () => {
               <Route path="/channel/:country/:channelId" element={
                 <SEOPageTracker contentType="channels">
                   <Suspense fallback={<PageLoader />}><ChannelPlayer /></Suspense>
-                </SEOPageTracker>
-              } />
-              <Route path="/leagues" element={
-                <SEOPageTracker pageTitle="Football Leagues & Competitions" contentType="home">
-                  <Suspense fallback={<PageLoader />}><FootballLeagues /></Suspense>
-                </SEOPageTracker>
-              } />
-              <Route path="/league/:leagueId" element={
-                <SEOPageTracker contentType="home">
-                  <Suspense fallback={<PageLoader />}><LeagueDetail /></Suspense>
-                </SEOPageTracker>
-              } />
-              <Route path="/football-league/:competitionId" element={
-                <SEOPageTracker contentType="home">
-                  <Suspense fallback={<PageLoader />}><FootballLeagueDetail /></Suspense>
                 </SEOPageTracker>
               } />
               <Route path="/selected-match/:matchId" element={

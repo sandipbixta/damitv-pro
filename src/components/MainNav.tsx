@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Home, CalendarDays, Tv2, Radio, Trophy, Download } from "lucide-react";
+import { Home, CalendarDays, Tv2, Radio, Download } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useNavigate } from "react-router-dom";
 import Clock from "./Clock";
@@ -17,8 +17,7 @@ const MainNav = () => {
     { title: "HOME", icon: Home, path: "/" },
     { title: "SCHEDULE", icon: CalendarDays, path: "/schedule" },
     { title: "LIVE", icon: Tv2, path: "/live" },
-    { title: "CHANNELS", icon: Radio, path: "/channels" },
-    { title: "LEAGUES", icon: Trophy, path: "/leagues" }
+    { title: "CHANNELS", icon: Radio, path: "/channels" }
   ];
 
   const handleNavigate = (path: string) => {
