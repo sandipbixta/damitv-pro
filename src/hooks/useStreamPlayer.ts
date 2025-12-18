@@ -3,6 +3,7 @@ import { useToast } from './use-toast';
 import { Match, Stream, Source } from '../types/sports';
 import { fetchSimpleStream, fetchAllMatchStreams } from '../api/sportsApi';
 import { trackMatchSelect, trackSourceChange } from '@/utils/videoAnalytics';
+import { getPreloadedStreams } from '@/utils/streamPreloader';
 
 const STREAM_CACHE_KEY = 'damitv_stream_cache';
 const STREAM_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
@@ -16,6 +17,18 @@ const getCachedStreams = (matchId: string): { streams: Record<string, Stream[]>;
       if (Date.now() - parsed.timestamp < STREAM_CACHE_DURATION) {
         return { streams: parsed.streams, firstStream: parsed.firstStream };
       }
+    }
+    
+    // Check preloaded streams as fallback
+    const preloaded = getPreloadedStreams(matchId);
+    if (preloaded && preloaded.length > 0) {
+      const streams: Record<string, Stream[]> = {};
+      preloaded.forEach(stream => {
+        const sourceKey = `${stream.source}/${stream.id}`;
+        if (!streams[sourceKey]) streams[sourceKey] = [];
+        streams[sourceKey].push(stream);
+      });
+      return { streams, firstStream: preloaded[0] };
     }
   } catch (e) {
     console.error('Error reading stream cache:', e);
