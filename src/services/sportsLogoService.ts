@@ -1,11 +1,8 @@
 // ============================================
-// THESPORTSDB PREMIUM API SERVICE
-// API Key: 751945 (Premium - 100 req/min)
+// THESPORTSDB API SERVICE (via Edge Function)
 // ============================================
 
-const SPORTSDB_API_V1 = 'https://www.thesportsdb.com/api/v1/json/751945';
-const SPORTSDB_API_V2 = 'https://www.thesportsdb.com/api/v2/json';
-const API_KEY = '751945';
+import { supabase } from '@/integrations/supabase/client';
 
 // In-memory cache
 const logoCache = new Map<string, string | null>();
@@ -62,6 +59,28 @@ const normalizeTeamName = (name: string): string => {
 };
 
 // ============================================
+// EDGE FUNCTION CALLER
+// ============================================
+
+const callSportsDbProxy = async (body: Record<string, any>): Promise<any> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('sportsdb-proxy', {
+      body
+    });
+    
+    if (error) {
+      console.error('SportsDB proxy error:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Failed to call sportsdb-proxy:', error);
+    return null;
+  }
+};
+
+// ============================================
 // SEARCH TEAM - Get logo/badge
 // ============================================
 
@@ -89,19 +108,9 @@ export const searchTeam = async (teamName: string): Promise<{
   }
 
   try {
-    const response = await fetch(
-      `${SPORTSDB_API_V1}/searchteams.php?t=${encodeURIComponent(teamName)}`,
-      { signal: AbortSignal.timeout(5000) }
-    );
+    const data = await callSportsDbProxy({ action: 'searchTeam', teamName });
 
-    if (!response.ok) {
-      console.warn('TheSportsDB API error:', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-
-    if (data.teams && data.teams.length > 0) {
+    if (data?.teams && data.teams.length > 0) {
       const team = data.teams[0];
       const result = {
         badge: team.strBadge || null,
@@ -189,16 +198,9 @@ export const searchEvent = async (
   }
 
   try {
-    const response = await fetch(
-      `${SPORTSDB_API_V1}/searchevents.php?e=${encodeURIComponent(eventName)}`,
-      { signal: AbortSignal.timeout(5000) }
-    );
+    const data = await callSportsDbProxy({ action: 'searchEvent', eventName });
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    if (data.event && data.event.length > 0) {
+    if (data?.event && data.event.length > 0) {
       const event = data.event[0];
       const result = {
         thumb: event.strThumb || null,
@@ -236,16 +238,9 @@ export const getLeagueInfo = async (leagueId: number): Promise<{
   }
 
   try {
-    const response = await fetch(
-      `${SPORTSDB_API_V1}/lookupleague.php?id=${leagueId}`,
-      { signal: AbortSignal.timeout(5000) }
-    );
+    const data = await callSportsDbProxy({ action: 'lookupLeague', leagueId });
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    if (data.leagues && data.leagues.length > 0) {
+    if (data?.leagues && data.leagues.length > 0) {
       const league = data.leagues[0];
       const result = {
         badge: league.strBadge || null,
@@ -283,16 +278,9 @@ export const searchPlayer = async (playerName: string): Promise<{
   }
 
   try {
-    const response = await fetch(
-      `${SPORTSDB_API_V1}/searchplayers.php?p=${encodeURIComponent(playerName)}`,
-      { signal: AbortSignal.timeout(5000) }
-    );
+    const data = await callSportsDbProxy({ action: 'searchPlayer', playerName });
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    if (data.player && data.player.length > 0) {
+    if (data?.player && data.player.length > 0) {
       const player = data.player[0];
       const result = {
         thumb: player.strThumb || null,
@@ -318,27 +306,17 @@ export const searchPlayer = async (playerName: string): Promise<{
 
 export const getLivescores = async (sport: string = 'soccer'): Promise<any[]> => {
   try {
-    const response = await fetch(
-      'https://wxvsteaayxgygihpshoz.supabase.co/functions/v1/fetch-livescores',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4dnN0ZWFheXhneWdpaHBzaG96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg3NzMzNDMsImV4cCI6MjA2NDM0OTM0M30.L2OVGuYiiynekERIwZceuH42iKVAD_YPJL25HXV6ing'
-        },
-        body: JSON.stringify({ sport }),
-        signal: AbortSignal.timeout(10000)
-      }
-    );
+    const { data, error } = await supabase.functions.invoke('fetch-livescores', {
+      body: { sport }
+    });
 
-    if (!response.ok) {
-      console.error('Livescores API error:', response.status);
+    if (error) {
+      console.error('Livescores API error:', error);
       return [];
     }
 
-    const data = await response.json();
-    console.log(`✅ Fetched ${data.livescores?.length || 0} live scores for ${sport}`);
-    return data.livescores || [];
+    console.log(`✅ Fetched ${data?.livescores?.length || 0} live scores for ${sport}`);
+    return data?.livescores || [];
   } catch (error) {
     console.error('Failed to get livescores:', error);
     return [];
@@ -353,15 +331,8 @@ export const getHighlights = async (date?: string): Promise<any[]> => {
   const d = date || new Date().toISOString().split('T')[0];
   
   try {
-    const response = await fetch(
-      `${SPORTSDB_API_V1}/eventshighlights.php?d=${d}`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    return data.tvhighlights || [];
+    const data = await callSportsDbProxy({ action: 'getHighlights', date: d });
+    return data?.tvhighlights || [];
   } catch (error) {
     console.error('Failed to get highlights:', error);
     return [];
@@ -498,57 +469,76 @@ export const enhanceMatchWithLogos = async (match: any): Promise<any> => {
 
 export const enhanceMatchesWithLogos = async (matches: any[]): Promise<any[]> => {
   // Process in batches of 5 to respect rate limits
-  const batchSize = 5;
   const results: any[] = [];
+  const batchSize = 5;
 
   for (let i = 0; i < matches.length; i += batchSize) {
     const batch = matches.slice(i, i + batchSize);
     const enhanced = await Promise.all(batch.map(enhanceMatchWithLogos));
     results.push(...enhanced);
-    
-    // Small delay between batches to avoid rate limits
-    if (i + batchSize < matches.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
   }
 
   return results;
 };
 
 // ============================================
-// PRELOAD POPULAR TEAMS (Optional optimization)
+// LOGO URL HELPERS (for components)
 // ============================================
 
-export const preloadPopularTeams = async () => {
-  const popularTeams = [
-    // Football
-    'Manchester United', 'Manchester City', 'Liverpool', 'Arsenal', 'Chelsea',
-    'Real Madrid', 'Barcelona', 'Bayern Munich', 'PSG', 'Juventus',
-    // NBA
-    'Los Angeles Lakers', 'Golden State Warriors', 'Boston Celtics', 'Chicago Bulls',
-    // NFL
-    'Kansas City Chiefs', 'Dallas Cowboys', 'New England Patriots',
-    // F1
-    'Red Bull Racing', 'Ferrari', 'Mercedes', 'McLaren',
-    // UFC
-    'UFC', 'Conor McGregor', 'Jon Jones',
-  ];
+// Get logo URL from cache or return placeholder
+export const getLogoUrl = (teamName: string, _sport?: string): string | null => {
+  if (!teamName) return null;
+  return getTeamLogoSync(teamName);
+};
 
-  console.log('Preloading popular team logos...');
+// Async version that fetches if not cached
+export const getLogoAsync = async (teamName: string, _sport?: string): Promise<string | null> => {
+  if (!teamName) return null;
   
-  for (let i = 0; i < popularTeams.length; i += 5) {
-    const batch = popularTeams.slice(i, i + 5);
-    await Promise.all(batch.map(team => searchTeam(team)));
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  // Try cache first
+  const cached = getTeamLogoSync(teamName);
+  if (cached) return cached;
   
-  console.log('Preloading complete!');
+  // Fetch and cache
+  return await getTeamLogo(teamName);
 };
 
 // ============================================
-// BACKWARD COMPATIBILITY ALIASES
+// PRELOAD POPULAR TEAMS
 // ============================================
 
-export const getLogoUrl = getTeamLogoSync;
-export const getLogoAsync = getTeamLogo;
-export const getTeamLogoUrl = getTeamLogoSync;
+const POPULAR_TEAMS = [
+  'Manchester United', 'Manchester City', 'Liverpool', 'Chelsea', 'Arsenal',
+  'Tottenham', 'Real Madrid', 'Barcelona', 'Bayern Munich', 'Juventus',
+  'PSG', 'Inter Milan', 'AC Milan', 'Borussia Dortmund', 'Atletico Madrid',
+  'Los Angeles Lakers', 'Golden State Warriors', 'Boston Celtics',
+  'New England Patriots', 'Dallas Cowboys', 'Green Bay Packers'
+];
+
+export const preloadPopularTeams = async (): Promise<void> => {
+  console.log('Preloading popular team logos...');
+  
+  // Check which teams need to be fetched
+  const teamsToFetch = POPULAR_TEAMS.filter(team => {
+    const cacheKey = `team_${normalizeTeamName(team)}`;
+    return !logoCache.has(cacheKey) && !getFromLocalStorage(cacheKey);
+  });
+
+  if (teamsToFetch.length === 0) {
+    console.log('All popular teams already cached');
+    return;
+  }
+
+  // Fetch in batches of 5
+  for (let i = 0; i < teamsToFetch.length; i += 5) {
+    const batch = teamsToFetch.slice(i, i + 5);
+    await Promise.all(batch.map(team => searchTeam(team)));
+    
+    // Small delay between batches
+    if (i + 5 < teamsToFetch.length) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
+  console.log(`Preloaded ${teamsToFetch.length} team logos`);
+};
