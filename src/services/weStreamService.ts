@@ -145,10 +145,19 @@ export const getMatchesBySport = async (sport: string): Promise<WeStreamMatch[]>
   return matches.map(enhanceWithLiveScore);
 };
 
-// Get all sports categories
+// Get all sports categories (filtered)
+const EXCLUDED_SPORTS = ['tennis', 'golf', 'hockey', 'ice hockey', 'nhl', 'darts', 'billiards', 'snooker', 'pool', 'other'];
+
 export const getSports = async (): Promise<Sport[]> => {
   const data = await fetchApi<Sport[]>('/sports');
-  return data || [];
+  if (!data) return [];
+  // Filter out excluded sports
+  return data.filter(sport => 
+    !EXCLUDED_SPORTS.some(excluded => 
+      sport.id.toLowerCase().includes(excluded) || 
+      sport.name.toLowerCase().includes(excluded)
+    )
+  );
 };
 
 // Get stream info

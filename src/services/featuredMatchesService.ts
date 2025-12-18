@@ -38,10 +38,6 @@ const POPULAR_LEAGUES: Record<string, number> = {
   'nfl': 200,
   'super bowl': 300,
   
-  // Hockey
-  'nhl': 180,
-  'stanley cup': 250,
-  
   // Baseball
   'mlb': 150,
   
@@ -56,18 +52,9 @@ const POPULAR_LEAGUES: Record<string, number> = {
   'f1': 200,
   'motogp': 150,
   
-  // Tennis
-  'wimbledon': 200,
-  'us open': 180,
-  'atp': 120,
-  
   // Cricket
   'ipl': 180,
   'big bash': 120,
-  
-  // Golf
-  'pga': 150,
-  'dp world': 120,
 };
 
 // ============================================

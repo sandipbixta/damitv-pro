@@ -302,7 +302,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
     return () => clearInterval(interval);
   }, [liveMatches.length, popularScores]);
 
-  // Define preferred sport order with tennis at the end (excluded: golf, hockey, billiards)
+  // Define preferred sport order (excluded: tennis, golf, hockey, darts, billiards)
   const getSportPriority = (sportId: string): number => {
     const sportOrder: { [key: string]: number } = {
       'football': 1,
@@ -313,9 +313,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       'fight': 6,
       'rugby': 7,
       'cricket': 8,
-      'afl': 9,
-      'other': 10,
-      'tennis': 12  // Tennis moved to last position
+      'afl': 9
     };
     
     const normalizedSportId = sportId.toLowerCase();

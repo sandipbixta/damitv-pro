@@ -180,8 +180,8 @@ const HomepageContent = () => {
             <h3 className="text-lg font-bold mb-2">What sports can I watch on DamiTV?</h3>
             <p className="text-sm leading-relaxed">
               We offer a wide variety of sports including football (Premier League, Champions League, La Liga), 
-              basketball (NBA), tennis (Grand Slams), American football (NFL), baseball (MLB), cricket, 
-              rugby, ice hockey (NHL), combat sports (UFC, boxing), and motorsports (Formula 1, MotoGP). 
+              basketball (NBA), American football (NFL), baseball (MLB), cricket, 
+              rugby, combat sports (UFC, boxing), and motorsports (Formula 1, MotoGP). 
               Our coverage includes both live matches and sports news.
             </p>
           </div>
