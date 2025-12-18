@@ -5,7 +5,7 @@ import SectionHeader from './SectionHeader';
 import { format } from 'date-fns';
 import TeamLogo from './TeamLogo';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { searchTeam, searchEvent } from '@/services/sportsLogoService';
+import { searchTeam } from '@/services/sportsLogoService';
 
 // Calculate real-time minutes based on match start time and current period
 const calculateLiveMinutes = (progress: string, matchStartTime?: number): string => {
@@ -149,7 +149,7 @@ const useCountdown = (timestamp: string) => {
 const PopularMatchCard: React.FC<{ 
   match: PopularMatch; 
   onClick: () => void;
-}> = ({ match, onClick }) => {
+}> = React.memo(({ match, onClick }) => {
   const [imgError, setImgError] = useState({ home: false, away: false, poster: false });
   const [fetchedPoster, setFetchedPoster] = useState<string | null>(null);
   const [fetchedBadges, setFetchedBadges] = useState<{ home: string | null; away: string | null }>({ home: null, away: null });
@@ -194,46 +194,43 @@ const PopularMatchCard: React.FC<{
   // Check for streams - support both new format (sources) and old format (channels)
   const hasStream = (match.sources?.length || 0) > 0 || (match.channels?.length || 0) > 0;
 
-  // Fetch poster and badges if not provided
+  // Only fetch images if badges are missing from match data
   useEffect(() => {
+    // Skip if we already have badges from the API
+    if ((match.poster || homeBadgeFromMatch) && awayBadgeFromMatch) return;
+    
+    let isMounted = true;
     const fetchImages = async () => {
-      // Try to get event poster first
-      if (!match.poster && homeTeam && awayTeam) {
-        try {
-          const eventData = await searchEvent(homeTeam, awayTeam);
-          if (eventData?.poster || eventData?.thumb) {
-            setFetchedPoster(eventData.poster || eventData.thumb);
-          }
-        } catch (e) {
-          console.log('Could not fetch event poster');
-        }
-      }
-
-      // Fetch team badges if not provided
-      if (!homeBadgeFromMatch && homeTeam) {
+      // Only fetch team badges if not provided
+      if (!homeBadgeFromMatch && homeTeam && homeTeam !== 'TBD') {
         try {
           const homeTeamData = await searchTeam(homeTeam);
-          if (homeTeamData?.badge) {
+          if (isMounted && homeTeamData?.badge) {
             setFetchedBadges(prev => ({ ...prev, home: homeTeamData.badge }));
           }
         } catch (e) {
-          console.log('Could not fetch home team badge');
+          // Silent fail
         }
       }
 
-      if (!awayBadgeFromMatch && awayTeam) {
+      if (!awayBadgeFromMatch && awayTeam && awayTeam !== 'TBD') {
         try {
           const awayTeamData = await searchTeam(awayTeam);
-          if (awayTeamData?.badge) {
+          if (isMounted && awayTeamData?.badge) {
             setFetchedBadges(prev => ({ ...prev, away: awayTeamData.badge }));
           }
         } catch (e) {
-          console.log('Could not fetch away team badge');
+          // Silent fail
         }
       }
     };
 
-    fetchImages();
+    // Delay image fetching to prevent blocking initial render
+    const timeoutId = setTimeout(fetchImages, 500);
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [homeTeam, awayTeam, match.poster, homeBadgeFromMatch, awayBadgeFromMatch]);
 
   const posterToUse = match.poster || fetchedPoster;
@@ -418,7 +415,7 @@ const PopularMatchCard: React.FC<{
       </div>
     </div>
   );
-};
+});
 
 // Skeleton Component
 const MatchCardSkeleton: React.FC = () => (
@@ -434,7 +431,7 @@ const MatchCardSkeleton: React.FC = () => (
 );
 
 const CACHE_KEY = 'damitv_popular_matches';
-const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
 
 const getCachedMatches = (): { matches: PopularMatch[]; timestamp: number } | null => {
   try {

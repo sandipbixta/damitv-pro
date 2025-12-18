@@ -188,8 +188,8 @@ export const useMatchScore = (homeTeam: string, awayTeam: string, isLive: boolea
     
     checkScore();
     
-    // Check every 5 seconds for updates from the global store
-    const intervalId = setInterval(checkScore, 5000);
+    // Check every 15 seconds for updates from the global store
+    const intervalId = setInterval(checkScore, 15000);
     
     return () => clearInterval(intervalId);
   }, [homeTeam, awayTeam, isLive]);

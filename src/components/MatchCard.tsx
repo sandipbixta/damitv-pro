@@ -530,4 +530,4 @@ const MatchCard: React.FC<MatchCardProps> = ({
   return <div className={className}>{cardContent}</div>;
 };
 
-export default MatchCard;
+export default React.memo(MatchCard);
