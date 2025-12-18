@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Match } from '@/types/sports';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 // Smooth counter animation
@@ -78,42 +77,11 @@ export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
   };
 
   useEffect(() => {
-    const fetchCount = async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_viewer_count', {
-          match_id_param: match.id
-        });
-        
-        if (error) {
-          console.error('Error fetching viewer count:', error);
-          return;
-        }
-        
-        const count = data || 0;
-        
-        // Update trend based on previous count
-        if (previousCountRef.current > 0) {
-          if (count > previousCountRef.current) {
-            setTrend('up');
-          } else if (count < previousCountRef.current) {
-            setTrend('down');
-          } else {
-            setTrend('neutral');
-          }
-        }
-        
-        previousCountRef.current = count;
-        setViewerCount(count);
-      } catch (error) {
-        console.error('Error fetching viewer count:', error);
-      }
-    };
-
-    fetchCount();
-    const interval = setInterval(fetchCount, 15000);
-    
-    return () => clearInterval(interval);
-  }, [match.id]);
+    // Use viewer count from match data instead of RPC call
+    if (match.viewerCount && match.viewerCount > 0) {
+      setViewerCount(match.viewerCount);
+    }
+  }, [match.viewerCount]);
 
   const formatCount = (count: number) => {
     if (rounded) {

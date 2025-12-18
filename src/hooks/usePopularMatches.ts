@@ -95,9 +95,9 @@ export const usePopularMatches = (enabled: boolean = true) => {
     queryKey: QUERY_KEYS.POPULAR_MATCHES,
     queryFn: fetchPopularMatches,
     enabled,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 15 * 60 * 1000, // 15 minutes
+    refetchInterval: 3 * 60 * 1000, // Refresh every 3 minutes
     refetchOnWindowFocus: false,
     // Return cached data immediately while fetching
     initialData: cachedMatches || undefined,
