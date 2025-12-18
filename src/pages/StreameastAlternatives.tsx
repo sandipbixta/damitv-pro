@@ -377,7 +377,6 @@ const StreameastAlternatives = () => {
                       <li>• NFL Football</li>
                       <li>• NBA Basketball</li>
                       <li>• MLB Baseball</li>
-                      <li>• NHL Hockey</li>
                       <li>• NCAA College Sports</li>
                     </ul>
                   </CardContent>
@@ -412,15 +411,14 @@ const StreameastAlternatives = () => {
                 </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Other Sports</CardTitle>
+                    <CardTitle className="text-lg">More Sports</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2 text-muted-foreground text-sm">
-                      <li>• Tennis Grand Slams</li>
                       <li>• Formula 1 Racing</li>
-                      <li>• Golf Majors</li>
                       <li>• Cricket</li>
                       <li>• Rugby</li>
+                      <li>• Motorsports</li>
                     </ul>
                   </CardContent>
                 </Card>
