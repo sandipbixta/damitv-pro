@@ -96,7 +96,7 @@ const LiveScoresTicker: React.FC = () => {
             ref={tickerRef}
             className="flex animate-ticker whitespace-nowrap group-hover:[animation-play-state:paused]"
             style={{
-              animationDuration: `${duplicatedMatches.length * 2}s`
+              animationDuration: `${duplicatedMatches.length * 0.8}s`
             }}
           >
             {duplicatedMatches.map((match, index) => (
