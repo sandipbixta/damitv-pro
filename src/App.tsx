@@ -13,7 +13,7 @@ import AdsterraSocialBar from "./components/AdsterraSocialBar";
 import SEOPageTracker from "./components/SEOPageTracker";
 import MonetizationTracker from "./components/MonetizationTracker";
 import { queryClient } from "./lib/queryClient";
-import GoogleAnalytics from "./components/GoogleAnalytics";
+
 import RequireAdmin from "./components/admin/RequireAdmin";
 
 // Only NotFound and Match are critical - other pages lazy loaded
@@ -78,7 +78,7 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <BrowserRouter>
-          <GoogleAnalytics />
+          
           <MonetizationTracker>
             <TooltipProvider>
               <PopupAd />
