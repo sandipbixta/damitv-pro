@@ -81,23 +81,7 @@ const StreamIframe: React.FC<StreamIframeProps> = ({ src, onLoad, onError, video
 
   return (
     <div className="absolute inset-0 w-full h-full bg-black">
-      {/* Loading State */}
-      {!loaded && !loadError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted z-10">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-          <p className="text-foreground font-medium mb-1">Loading stream...</p>
-          <p className="text-muted-foreground text-sm mb-2">
-            {loadingTime > 0 && `${loadingTime}s`}
-          </p>
-          {showSlowWarning && (
-            <p className="text-muted-foreground text-xs text-center max-w-xs animate-pulse">
-              Taking longer than usual. Please wait or try another source.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Error State */}
+      {/* Error State Only */}
       {loadError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted z-10">
           <AlertCircle className="w-12 h-12 text-destructive mb-4" />
@@ -119,7 +103,7 @@ const StreamIframe: React.FC<StreamIframeProps> = ({ src, onLoad, onError, video
       <iframe 
         ref={videoRef}
         src={src}
-        className={`w-full h-full transition-opacity duration-300 ${loaded && !loadError ? 'opacity-100' : 'opacity-0'}`}
+        className="w-full h-full"
         allowFullScreen
         title="Live Sports Stream - DAMITV"
         onLoad={handleLoad}
