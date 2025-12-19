@@ -43,6 +43,7 @@ export interface Match {
   };
   progress?: string;       // Match progress (e.g., "45'", "HT", "2nd Quarter")
   status?: string;         // Match status
+  priority?: number;       // Priority score for sorting (higher = more important)
 }
 
 export interface MatchChannel {

@@ -143,7 +143,7 @@ interface EnrichedMatch {
 // Cache for WeStream and SportsDB data
 let weStreamCache: { data: WeStreamMatch[]; timestamp: number } | null = null;
 let sportsDbCache: { data: SportsDbLiveMatch[]; timestamp: number } | null = null;
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+const CACHE_DURATION = 60 * 1000; // 1 minute cache for faster responses
 
 // Fetch all matches from WeStream API (PRIMARY SOURCE)
 async function fetchWeStreamMatches(): Promise<WeStreamMatch[]> {
@@ -432,8 +432,8 @@ serve(async (req) => {
       return a.date - b.date;
     });
 
-    // Limit to top 20 matches
-    const topMatches = enrichedMatches.slice(0, 20);
+    // Return more matches for a complete experience
+    const topMatches = enrichedMatches.slice(0, 50);
     
     // Cache result
     responseCache = { data: topMatches, timestamp: Date.now() };
