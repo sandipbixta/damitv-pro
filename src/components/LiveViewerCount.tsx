@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Match } from '@/types/sports';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 // Smooth counter animation
 const useCounterAnimation = (targetValue: number, duration: number = 500) => {
@@ -77,11 +78,47 @@ export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
   };
 
   useEffect(() => {
-    // Use viewer count from match data instead of RPC call
-    if (match.viewerCount && match.viewerCount > 0) {
-      setViewerCount(match.viewerCount);
-    }
-  }, [match.viewerCount]);
+    if (!match.id) return;
+
+    let mounted = true;
+
+    // Fetch real viewer count from database
+    const fetchViewerCount = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_viewer_count', {
+          match_id_param: match.id
+        });
+        
+        if (!error && data !== null && mounted) {
+          // Update trend based on previous count
+          if (previousCountRef.current > 0) {
+            if (data > previousCountRef.current) {
+              setTrend('up');
+            } else if (data < previousCountRef.current) {
+              setTrend('down');
+            } else {
+              setTrend('neutral');
+            }
+          }
+          previousCountRef.current = data;
+          setViewerCount(data);
+        }
+      } catch (error) {
+        console.error('Error fetching viewer count:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchViewerCount();
+
+    // Refresh every 30 seconds for live matches
+    const interval = setInterval(fetchViewerCount, 30000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [match.id]);
 
   const formatCount = (count: number) => {
     if (rounded) {
