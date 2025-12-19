@@ -272,54 +272,6 @@ export type Database = {
         }
         Relationships: []
       }
-      match_predictions: {
-        Row: {
-          confidence_level: string | null
-          created_at: string
-          display_name: string
-          id: string
-          is_correct: boolean | null
-          match_id: string
-          match_start_time: string
-          points_earned: number | null
-          predicted_score_away: number | null
-          predicted_score_home: number | null
-          predicted_winner: string
-          session_id: string
-          user_id: string | null
-        }
-        Insert: {
-          confidence_level?: string | null
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_correct?: boolean | null
-          match_id: string
-          match_start_time: string
-          points_earned?: number | null
-          predicted_score_away?: number | null
-          predicted_score_home?: number | null
-          predicted_winner: string
-          session_id: string
-          user_id?: string | null
-        }
-        Update: {
-          confidence_level?: string | null
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_correct?: boolean | null
-          match_id?: string
-          match_start_time?: string
-          points_earned?: number | null
-          predicted_score_away?: number | null
-          predicted_score_home?: number | null
-          predicted_winner?: string
-          session_id?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       page_views: {
         Row: {
           created_at: string
@@ -556,18 +508,7 @@ export type Database = {
       }
     }
     Views: {
-      prediction_leaderboard: {
-        Row: {
-          accuracy_percentage: number | null
-          correct_predictions: number | null
-          display_name: string | null
-          session_id: string | null
-          total_points: number | null
-          total_predictions: number | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       cleanup_stale_viewer_sessions: { Args: never; Returns: undefined }
