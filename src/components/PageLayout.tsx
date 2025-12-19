@@ -78,6 +78,22 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         </div>
       </header>
 
+      {/* Adsterra Referral Banner */}
+      <div className="w-full bg-background py-2 flex justify-center">
+        <a 
+          href="https://www.adsterra.com" 
+          rel="nofollow noopener noreferrer" 
+          target="_blank"
+          className="block w-full max-w-[700px] px-2"
+        >
+          <img 
+            alt="Adsterra banner" 
+            src="https://landings-cdn.adsterratech.com/referralBanners/png/700%20x%2090%20px.png"
+            className="w-full h-auto object-contain"
+            loading="lazy"
+          />
+        </a>
+      </div>
 
       <main id="main-content" className="container mx-auto py-4 px-2 pb-16 md:pb-4" role="main">
         {children}
