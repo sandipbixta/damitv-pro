@@ -14,7 +14,6 @@ import { teamLogoService } from '@/services/teamLogoService';
 import TelegramBanner from '@/components/TelegramBanner';
 import SEOMetaTags from '@/components/SEOMetaTags';
 import SocialShare from '@/components/SocialShare';
-import FavoriteButton from '@/components/FavoriteButton';
 import MatchHeader from '@/components/match/MatchHeader';
 import StreamTab from '@/components/match/StreamTab';
 import StreamViewerDisplay from '@/components/StreamViewerDisplay';
@@ -281,20 +280,12 @@ const Match = () => {
         match={match} 
         streamAvailable={!!stream && stream.id !== "error"}
         socialShare={
-          <div className="flex items-center gap-2">
-            <FavoriteButton
-              type="match"
-              id={matchId || ''}
-              name={matchTitle}
-              variant="outline"
-            />
-            <SocialShare 
-              title={matchTitle}
-              description={matchDescription}
-              image={matchPosterUrl}
-              url={`https://damitv.pro/match/${sportId}/${matchId}`}
-            />
-          </div>
+          <SocialShare 
+            title={matchTitle}
+            description={matchDescription}
+            image={matchPosterUrl}
+            url={`https://damitv.pro/match/${sportId}/${matchId}`}
+          />
         }
       />
       
