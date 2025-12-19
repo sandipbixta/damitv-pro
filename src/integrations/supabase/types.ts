@@ -368,36 +368,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_favorites: {
-        Row: {
-          created_at: string
-          favorite_id: string
-          favorite_name: string
-          favorite_type: string
-          id: string
-          session_id: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          favorite_id: string
-          favorite_name: string
-          favorite_type: string
-          id?: string
-          session_id: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          favorite_id?: string
-          favorite_name?: string
-          favorite_type?: string
-          id?: string
-          session_id?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string
