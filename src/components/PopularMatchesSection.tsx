@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import SectionHeader from './SectionHeader';
 import { format } from 'date-fns';
 import TeamLogo from './TeamLogo';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { searchTeam } from '@/services/sportsLogoService';
+import cardBackground from '@/assets/card-background.webp';
 
 // Calculate real-time minutes based on match start time and current period
 const calculateLiveMinutes = (progress: string, matchStartTime?: number): string => {
@@ -88,6 +89,7 @@ interface PopularMatch {
   score?: { home?: string; away?: string };
   progress?: string;
   priority: number;
+  viewerCount?: number;
   // Legacy fields for backward compatibility
   homeTeam?: string;
   awayTeam?: string;
@@ -241,7 +243,7 @@ const PopularMatchCard: React.FC<{
     // Priority 1: Use poster/thumb image
     if (posterToUse && !imgError.poster) {
       return (
-        <div className="w-full h-full relative bg-black">
+        <div className="w-full h-full relative" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
           <img
             src={posterToUse}
             alt={match.title}
@@ -253,10 +255,11 @@ const PopularMatchCard: React.FC<{
       );
     }
 
-    // Priority 2: Use team badges with black background
+    // Priority 2: Use team badges with orange gradient background
     if ((homeBadge && !imgError.home) || (awayBadge && !imgError.away)) {
       return (
-        <div className="w-full h-full relative overflow-hidden bg-black">
+        <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+          <div className="absolute inset-0 bg-black/20" />
           <div className="flex items-center gap-3 z-10 relative h-full justify-center">
             {homeBadge && !imgError.home ? (
               <div className="flex flex-col items-center">
@@ -308,9 +311,10 @@ const PopularMatchCard: React.FC<{
       );
     }
 
-    // Priority 3: Default DAMITV branding
+    // Priority 3: Default DAMITV branding with orange gradient
     return (
-      <div className="w-full h-full relative overflow-hidden bg-black">
+      <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <span className="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
         </div>
@@ -399,7 +403,7 @@ const PopularMatchCard: React.FC<{
             )}
           </div>
           
-          {/* Match Time/Progress */}
+          {/* Match Time/Progress with Viewer Count */}
           <div className="flex items-center justify-between mt-auto">
             {match.isLive ? (
               <span className="text-[10px] text-red-500 font-medium">
@@ -409,6 +413,12 @@ const PopularMatchCard: React.FC<{
               <p className="text-[10px] text-red-500 font-medium">
                 {format(displayDate, 'EEE, do MMM, h:mm a')}
               </p>
+            )}
+            {match.isLive && match.viewerCount && match.viewerCount > 0 && (
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Users className="w-3 h-3" />
+                <span>{match.viewerCount >= 1000 ? `${(match.viewerCount / 1000).toFixed(1)}K` : match.viewerCount}</span>
+              </div>
             )}
           </div>
         </div>
