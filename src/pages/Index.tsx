@@ -10,7 +10,6 @@ import { Button } from '../components/ui/button';
 import PageLayout from '../components/PageLayout';
 import { isPopularLeague } from '../utils/popularLeagues';
 import { Helmet } from 'react-helmet-async';
-import { manualMatches } from '../data/manualMatches';
 import SectionHeader from '../components/SectionHeader';
 
 // Lazy load ALL heavy components for smaller initial bundle
@@ -50,10 +49,8 @@ const Index = () => {
   const [loadingSports, setLoadingSports] = useState(false); // Start false for instant render
   const [loadingMatches, setLoadingMatches] = useState(false);
 
-  // Filter visible manual matches
-  const visibleManualMatches = useMemo(() => {
-    return manualMatches.filter(match => match.visible);
-  }, []);
+  // Manual matches now come from Supabase, not static file
+  const visibleManualMatches: any[] = [];
 
   // Memoize popular matches calculation - filter by selected sport
   const popularMatches = useMemo(() => {
