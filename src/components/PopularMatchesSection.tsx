@@ -244,11 +244,16 @@ const PopularMatchCard: React.FC<{
     // Priority 1: Use poster/thumb image
     if (posterToUse && !imgError.poster) {
       return (
-        <div className="w-full h-full relative" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="w-full h-full relative">
+          <img
+            src={cardBackground}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
           <img
             src={posterToUse}
             alt={match.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover relative z-10"
             loading="lazy"
             onError={() => setImgError(prev => ({ ...prev, poster: true }))}
           />
@@ -259,7 +264,12 @@ const PopularMatchCard: React.FC<{
     // Priority 2: Use team badges with orange gradient background
     if ((homeBadge && !imgError.home) || (awayBadge && !imgError.away)) {
       return (
-        <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="w-full h-full relative overflow-hidden">
+          <img
+            src={cardBackground}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
           <div className="absolute inset-0 bg-black/20" />
           <div className="flex items-center gap-3 z-10 relative h-full justify-center">
             {homeBadge && !imgError.home ? (
@@ -314,7 +324,12 @@ const PopularMatchCard: React.FC<{
 
     // Priority 3: Default DAMITV branding with orange gradient
     return (
-      <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <div className="w-full h-full relative overflow-hidden">
+        <img
+          src={cardBackground}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
         <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <span className="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
