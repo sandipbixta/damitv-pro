@@ -81,16 +81,14 @@ const PageLayout: React.FC<PageLayoutProps> = ({
       {/* Adsterra Referral Banner */}
       <div className="w-full bg-background py-2 flex justify-center">
         <a 
-          href="https://www.adsterra.com" 
-          rel="nofollow noopener noreferrer" 
-          target="_blank"
+          href="" 
+          rel="nofollow"
           className="block w-full max-w-[700px] px-2"
         >
           <img 
-            alt="Adsterra banner" 
+            alt="banner" 
             src="https://landings-cdn.adsterratech.com/referralBanners/png/700%20x%2090%20px.png"
             className="w-full h-auto object-contain"
-            loading="lazy"
           />
         </a>
       </div>
