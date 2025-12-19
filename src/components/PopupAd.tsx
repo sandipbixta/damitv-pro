@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState, MouseEvent } from "react";
 import instantAccessImage from "@/assets/instant-access-offer.jpeg";
-import { adTracking } from "@/utils/adTracking";
+
 
 const SMARTLINK_URL = "https://foreseehawancestor.com/gmhn9rc6?key=42fea283e460c45715bc712ec6f5d7e7";
 const SESSION_KEY = "specialOfferClosed";
@@ -51,7 +51,6 @@ const PopupAd: React.FC = () => {
   // Track ad impression when popup opens
   useEffect(() => {
     if (open) {
-      adTracking.trackPopupImpression();
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -65,7 +64,6 @@ const PopupAd: React.FC = () => {
   const handleClose = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    adTracking.trackPopupClose();
     setOpen(false);
     sessionStorage.setItem(SESSION_KEY, "true");
     console.log("[PopupAd] Special offer popup closed");
@@ -73,7 +71,6 @@ const PopupAd: React.FC = () => {
 
   // Handler for image click - use direct navigation for better compatibility
   const handleImageClick = (e: MouseEvent<HTMLAnchorElement>) => {
-    adTracking.trackPopupClick();
     console.log("[PopupAd] Smartlink clicked - direct navigation");
     // Let the anchor tag handle navigation naturally
   };
@@ -81,7 +78,6 @@ const PopupAd: React.FC = () => {
   // Fallback: allow overlay click to close
   const handleOverlayClick = (e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      adTracking.trackPopupClose();
       setOpen(false);
       sessionStorage.setItem(SESSION_KEY, "true");
     }

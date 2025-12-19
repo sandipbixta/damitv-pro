@@ -9,16 +9,6 @@ import StreamQualitySelector from '../StreamQualitySelector';
 import BufferIndicator from '../BufferIndicator';
 import { LiveViewerCount } from '../LiveViewerCount';
 import { getConnectionInfo, getOptimizedHLSConfig, detectCasting, onConnectionChange, detectGeographicLatency } from '../../utils/connectionOptimizer';
-import { 
-  trackVideoStart, 
-  trackVideoPause, 
-  trackVideoResume, 
-  trackVideoBuffering, 
-  trackVideoError, 
-  trackQualityChange, 
-  trackFullscreen,
-  createProgressTracker 
-} from '../../utils/videoAnalytics';
 
 
 interface SimpleVideoPlayerProps {
@@ -59,7 +49,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   const isM3U8 = !!stream?.embedUrl && /\.m3u8(\?|$)/i.test(stream.embedUrl || '');
   const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
   const isCasting = detectCasting();
-  const progressTrackerRef = useRef<ReturnType<typeof createProgressTracker> | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate countdown for upcoming matches
@@ -117,13 +106,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       setLastStreamUrl(stream.embedUrl);
       console.log('🎬 New stream loaded, resetting error state');
       
-      // Track video start event
-      const streamId = match?.id || stream.embedUrl;
-      const matchTitle = match?.title || 'Unknown Match';
-      trackVideoStart(streamId, stream.embedUrl, matchTitle);
-      
-      // Initialize progress tracker
-      progressTrackerRef.current = createProgressTracker(streamId);
     }
   }, [stream?.embedUrl, lastStreamUrl, match]);
 
@@ -164,9 +146,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     
     console.log(`❌ Stream error detected (count: ${newErrorCount})`);
     
-    // Track video error in GA4
-    trackVideoError('Stream failed to load', match?.id || stream?.embedUrl, 'load_error');
-    
     // Trigger auto-fallback after first error
     if (newErrorCount === 1 && onAutoFallback) {
       console.log('🔄 Triggering auto-fallback to next source...');
@@ -182,14 +161,12 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     if (!document.fullscreenElement) {
       containerRef.current.requestFullscreen().then(() => {
         setIsFullscreen(true);
-        trackFullscreen(true, match?.id || stream?.embedUrl);
       }).catch(() => {
         console.log('Fullscreen failed');
       });
     } else {
       document.exitFullscreen().then(() => {
         setIsFullscreen(false);
-        trackFullscreen(false, match?.id || stream?.embedUrl);
       });
     }
   };
@@ -373,10 +350,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       hlsRef.current.currentLevel = level === -1 ? -1 : level - 1; // Adjust for HLS indexing
       setCurrentQuality(level);
       console.log(`🎮 Manual quality change to: ${level === -1 ? 'Auto' : `Level ${level}`}`);
-      
-      // Track quality change in GA4
-      const qualityLabel = level === -1 ? 'Auto' : `${availableQualities[level - 1]?.height || level}p`;
-      trackQualityChange(qualityLabel, match?.id || stream?.embedUrl);
     }
   };
 
@@ -663,16 +636,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           onPlaying={() => {
             console.log('Video playing');
             setIsBuffering(false);
-            // Start progress tracking
-            if (progressTrackerRef.current && !progressIntervalRef.current) {
-              progressIntervalRef.current = setInterval(() => {
-                progressTrackerRef.current?.tick();
-              }, 1000);
-            }
+            // Progress tracking removed
           }}
           onPause={() => {
             console.log('Video paused');
-            trackVideoPause(match?.id || stream?.embedUrl || 'unknown');
             // Stop progress tracking
             if (progressIntervalRef.current) {
               clearInterval(progressIntervalRef.current);
@@ -681,18 +648,16 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           }}
           onPlay={() => {
             console.log('Video resumed');
-            trackVideoResume(match?.id || stream?.embedUrl || 'unknown');
             // Resume progress tracking
-            if (progressTrackerRef.current && !progressIntervalRef.current) {
+            if (!progressIntervalRef.current) {
               progressIntervalRef.current = setInterval(() => {
-                progressTrackerRef.current?.tick();
+                // Progress tracking placeholder
               }, 1000);
             }
           }}
           onWaiting={() => {
             console.log('Video buffering...');
             setIsBuffering(true);
-            trackVideoBuffering(match?.id || stream?.embedUrl);
           }}
           onLoadedData={() => {
             console.log('Video data loaded');

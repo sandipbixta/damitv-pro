@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { trackSubscription } from '@/utils/videoAnalytics';
+
 interface EmailSubscriptionProps {
   compact?: boolean;
 }
@@ -74,8 +74,6 @@ const EmailSubscription: React.FC<EmailSubscriptionProps> = ({
           // Don't fail the subscription if email fails
         }
         setSubscribed(true);
-        // Track subscription in GA4
-        trackSubscription('email');
         toast({
           title: 'Successfully subscribed!',
           description: 'Check your email for confirmation.'

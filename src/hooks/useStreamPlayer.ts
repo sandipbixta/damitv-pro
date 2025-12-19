@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useToast } from './use-toast';
 import { Match, Stream, Source } from '../types/sports';
 import { fetchSimpleStream, fetchAllMatchStreams } from '../api/sportsApi';
-import { trackMatchSelect, trackSourceChange } from '@/utils/videoAnalytics';
+
 import { getPreloadedStreams } from '@/utils/streamPreloader';
 
 const STREAM_CACHE_KEY = 'damitv_stream_cache';
@@ -173,7 +173,7 @@ export const useStreamPlayer = () => {
     console.log(`🎯 Selected match: ${match.title}`);
     setFeaturedMatch(match);
     
-    trackMatchSelect(match.title, match.id, match.category || 'unknown');
+    
     
     // Use cached streams if available, fetch in background
     await fetchAllStreamsForMatch(match, false);
@@ -189,9 +189,8 @@ export const useStreamPlayer = () => {
 
   const handleSourceChange = async (source: string, id: string, streamNo?: number) => {
     console.log(`🔄 Source change: ${source}/${id}/${streamNo || 'default'}`);
-    setCurrentStream(null);
     
-    trackSourceChange(source, id);
+    setCurrentStream(null);
     
     if (featuredMatch) {
       setTimeout(() => {

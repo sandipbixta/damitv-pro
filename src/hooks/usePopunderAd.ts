@@ -7,7 +7,7 @@ import {
   wasAdShownThisSession,
   markAdShownThisSession
 } from '@/utils/adConfig';
-import { adTracking } from '@/utils/adTracking';
+
 
 export const usePopunderAd = () => {
   const hasTriggeredRef = useRef(false);
@@ -49,11 +49,9 @@ export const usePopunderAd = () => {
         
         script.onerror = () => {
           console.warn('Popunder ad script failed to load');
-          adTracking.trackPopunderError('Script failed to load');
         };
         
         script.onload = () => {
-          adTracking.trackPopunderLoad();
           console.log('✅ Popunder script loaded successfully');
         };
         

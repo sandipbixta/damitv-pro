@@ -1,5 +1,4 @@
 import { adConfig, isAdCooldownPassed, markAdTriggered } from './adConfig';
-import { adTracking } from './adTracking';
 
 /**
  * Triggers smartlink ad when changing streams
@@ -14,7 +13,6 @@ export const triggerStreamChangeAd = (): void => {
 
   // Mark as triggered first to prevent multiple triggers
   markAdTriggered(adConfig.directLink.sessionKey);
-  adTracking.trackStreamChangeAd();
   
   // Create a temporary anchor element and click it (bypasses popup blockers)
   const link = document.createElement('a');

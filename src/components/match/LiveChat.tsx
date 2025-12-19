@@ -7,7 +7,7 @@ import { Send, MessageCircle, Trophy, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { trackChatMessage } from '@/utils/videoAnalytics';
+
 
 interface Message {
   id: string;
@@ -223,8 +223,6 @@ export const LiveChat = ({ matchId, matchTitle, homeTeam = 'Home', awayTeam = 'A
       toast.error('Failed to send message');
     } else {
       setNewMessage('');
-      // Track chat message in GA4
-      trackChatMessage(matchId);
     }
 
     setIsLoading(false);

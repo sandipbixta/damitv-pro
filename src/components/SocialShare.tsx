@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { trackShare } from '@/utils/videoAnalytics';
+
 
 interface SocialShareProps {
   title: string;
@@ -37,7 +37,6 @@ const SocialShare: React.FC<SocialShareProps> = ({
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
-        trackShare('native', title);
         toast({
           title: "Shared successfully!",
           description: "Thanks for sharing DamiTV with others!",
@@ -52,7 +51,6 @@ const SocialShare: React.FC<SocialShareProps> = ({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      trackShare('copy_link', title);
       toast({
         title: "Link copied!",
         description: "The link has been copied to your clipboard.",
@@ -68,25 +66,21 @@ const SocialShare: React.FC<SocialShareProps> = ({
   };
 
   const shareToTwitter = () => {
-    trackShare('twitter', title);
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&hashtags=DamiTV,LiveSports,Football`;
     window.open(twitterUrl, '_blank', 'width=600,height=400');
   };
 
   const shareToFacebook = () => {
-    trackShare('facebook', title);
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(title)}`;
     window.open(facebookUrl, '_blank', 'width=600,height=400');
   };
 
   const shareToWhatsApp = () => {
-    trackShare('whatsapp', title);
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title} - ${description} ${url}`)}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const shareToTelegram = () => {
-    trackShare('telegram', title);
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`;
     window.open(telegramUrl, '_blank');
   };
