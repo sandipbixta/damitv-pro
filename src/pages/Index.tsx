@@ -22,7 +22,7 @@ const PromotionBoxes = lazy(() => import('../components/PromotionBoxes'));
 const FeaturedChannels = lazy(() => import('../components/FeaturedChannels'));
 const TrendingTopics = lazy(() => import('../components/TrendingTopics'));
 const HomepageContent = lazy(() => import('../components/HomepageContent'));
-const EmailSubscription = lazy(() => import('../components/EmailSubscription'));
+
 const PopularMatchesSection = lazy(() => import('../components/PopularMatchesSection'));
 const LiveScoresTicker = lazy(() => import('../components/LiveScoresTicker'));
 
@@ -362,9 +362,6 @@ const Index = () => {
         <Suspense fallback={null}>
           <CompetitorSEOContent />
         </Suspense>
-        
-        {/* Email Subscription Section */}
-        
         
         {/* Rich Homepage Content for AdSense Approval */}
         <Suspense fallback={null}>

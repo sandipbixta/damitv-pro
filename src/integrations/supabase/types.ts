@@ -95,48 +95,6 @@ export type Database = {
         }
         Relationships: []
       }
-      email_subscriptions: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          is_active: boolean | null
-          subscribed_leagues: string[] | null
-          subscribed_teams: string[] | null
-          timezone: string | null
-          updated_at: string
-          user_id: string | null
-          verification_token: string | null
-          verified: boolean | null
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          is_active?: boolean | null
-          subscribed_leagues?: string[] | null
-          subscribed_teams?: string[] | null
-          timezone?: string | null
-          updated_at?: string
-          user_id?: string | null
-          verification_token?: string | null
-          verified?: boolean | null
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          is_active?: boolean | null
-          subscribed_leagues?: string[] | null
-          subscribed_teams?: string[] | null
-          timezone?: string | null
-          updated_at?: string
-          user_id?: string | null
-          verification_token?: string | null
-          verified?: boolean | null
-        }
-        Relationships: []
-      }
       head_to_head_stats: {
         Row: {
           created_at: string
