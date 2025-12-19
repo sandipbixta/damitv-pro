@@ -274,6 +274,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
     const badgeLayoutHTML = () => `
       <div class="w-full h-full relative overflow-hidden" style="background-image: url(${cardBackground}); background-size: cover; background-position: center;">
+        <div class="absolute inset-0 bg-black/30"></div>
         <div class="flex items-center gap-4 z-10 relative h-full justify-center">
           ${homeBadge ? badgeHTML(homeBadge, home || 'Home Team') : ''}
           <span class="text-white font-bold text-lg drop-shadow-sm">VS</span>
@@ -333,7 +334,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
     if (homeBadge || awayBadge) {
       return (
         <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-          
+          <div className="absolute inset-0 bg-black/30" />
           {/* Teams display with enhanced badges */}
           <div className="flex items-center gap-4 z-10 relative h-full justify-center">
             {homeBadge ? (
@@ -403,6 +404,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
     // Priority 3: Use orange gradient background with DAMITV text for matches without logos/badges or posters
     return (
       <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="absolute inset-0 bg-black/30" />
         {/* DAMITV Text */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <span className="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
