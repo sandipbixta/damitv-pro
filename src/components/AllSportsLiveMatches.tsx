@@ -10,6 +10,7 @@ import { useToast } from '../hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import HighlightsSection from './HighlightsSection';
+import FeaturedMatchBanner from './FeaturedMatchBanner';
 
 // LocalStorage cache key for instant loading
 const CACHE_KEY_MATCHES = 'damitv_matches_cache_v2';
@@ -297,6 +298,14 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
   const hasLiveMatches = filteredLiveMatches.length > 0;
   const hasUpcomingMatches = filteredUpcomingMatches.length > 0;
 
+  // Get the most important live match for the featured banner
+  const featuredMatch = React.useMemo(() => {
+    // Priority: live match with highest priority score
+    if (filteredLiveMatches.length > 0) {
+      return filteredLiveMatches[0]; // Already sorted by priority
+    }
+    return null;
+  }, [filteredLiveMatches]);
 
   // Show skeleton only during initial load with no cache
   if (!hasInitialized && allMatches.length === 0) {
@@ -335,6 +344,10 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
         </div>
       )}
 
+      {/* Featured Match Banner */}
+      {featuredMatch && (
+        <FeaturedMatchBanner match={featuredMatch} />
+      )}
 
 
       {/* Live Matches Sections */}
