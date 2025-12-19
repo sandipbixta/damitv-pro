@@ -14,69 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ad_performance: {
-        Row: {
-          ad_type: string
-          ad_unit_id: string
-          country: string | null
-          created_at: string | null
-          device_type: string | null
-          event_type: string
-          id: string
-          page_path: string | null
-          session_id: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          ad_type: string
-          ad_unit_id: string
-          country?: string | null
-          created_at?: string | null
-          device_type?: string | null
-          event_type: string
-          id?: string
-          page_path?: string | null
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          ad_type?: string
-          ad_unit_id?: string
-          country?: string | null
-          created_at?: string | null
-          device_type?: string | null
-          event_type?: string
-          id?: string
-          page_path?: string | null
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      app_downloads: {
-        Row: {
-          created_at: string
-          id: string
-          platform: string
-          session_id: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          platform: string
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          platform?: string
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
       blog_posts: {
         Row: {
           author_name: string | null
@@ -676,23 +613,6 @@ export type Database = {
     }
     Functions: {
       cleanup_stale_viewer_sessions: { Args: never; Returns: undefined }
-      get_ad_stats: {
-        Args: { end_date?: string; start_date?: string }
-        Returns: {
-          ad_type: string
-          clicks: number
-          ctr: number
-          estimated_revenue: number
-          impressions: number
-        }[]
-      }
-      get_download_stats: {
-        Args: never
-        Returns: {
-          platform: string
-          total_downloads: number
-        }[]
-      }
       get_page_views_stats: {
         Args: { end_date?: string; start_date?: string }
         Returns: {
