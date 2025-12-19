@@ -195,6 +195,7 @@ const PopularMatchCard: React.FC<{
   
   // Check for streams - support both new format (sources) and old format (channels)
   const hasStream = (match.sources?.length || 0) > 0 || (match.channels?.length || 0) > 0;
+  const viewerCount = Number(match.viewerCount ?? 0);
 
   // Only fetch images if badges are missing from match data
   useEffect(() => {
@@ -414,10 +415,10 @@ const PopularMatchCard: React.FC<{
                 {format(displayDate, 'EEE, do MMM, h:mm a')}
               </p>
             )}
-            {match.isLive && match.viewerCount && match.viewerCount > 0 && (
+            {match.isLive && viewerCount > 0 && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Users className="w-3 h-3" />
-                <span>{match.viewerCount >= 1000 ? `${(match.viewerCount / 1000).toFixed(1)}K` : match.viewerCount}</span>
+                <span>{viewerCount >= 1000 ? `${(viewerCount / 1000).toFixed(1)}K` : viewerCount}</span>
               </div>
             )}
           </div>
