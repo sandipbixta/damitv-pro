@@ -281,16 +281,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         </div>
       )}
 
-      {/* Loading indicator - only show for first 3 seconds and when no countdown */}
-      {isLoading && reloadCount <= 1 && !countdown && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#151922]">
-          <div className="text-white text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-            <p className="text-sm">Loading stream...</p>
-            <p className="text-xs text-gray-400 mt-1">Preparing video player...</p>
-          </div>
-        </div>
-      )}
+      {/* No loading overlay - iframe shows directly */}
 
       <iframe 
         ref={iframeRef}
