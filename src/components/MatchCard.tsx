@@ -14,6 +14,7 @@ import TeamLogo from './TeamLogo';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMatchScore } from '../hooks/useLiveScoreUpdates';
 import { preloadOnHover, cancelPreload } from '../utils/streamPreloader';
+import { usePrefetchMatch } from '../hooks/usePrefetch';
 import fallbackBg from '@/assets/match-card-fallback-bg.jpg';
 import cardBackground from '@/assets/card-background.webp';
 
@@ -112,16 +113,23 @@ const MatchCard: React.FC<MatchCardProps> = ({
   const awayScore = liveScore?.away ?? match.score?.away;
   const matchProgress = liveScore?.progress || match.progress;
 
+  // Prefetch match data on hover for faster navigation
+  const { prefetchMatch, cancelPrefetch } = usePrefetchMatch();
+
   // Preload streams on hover for faster playback
   const handleMouseEnter = useCallback(() => {
+    // Prefetch match data for React Query cache
+    prefetchMatch(match);
+    // Also preload streams
     if (match.sources && match.sources.length > 0) {
       preloadOnHover(match);
     }
-  }, [match]);
+  }, [match, prefetchMatch]);
 
   const handleMouseLeave = useCallback(() => {
     cancelPreload();
-  }, []);
+    cancelPrefetch();
+  }, [cancelPrefetch]);
 
   // Lazy load - only fetch poster when card is visible
   useEffect(() => {
