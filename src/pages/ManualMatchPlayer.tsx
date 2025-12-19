@@ -1,27 +1,55 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Maximize2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { manualMatches } from '@/data/manualMatches';
-import { ManualMatchLink } from '@/types/manualMatch';
+import { ManualMatch, ManualMatchLink } from '@/types/manualMatch';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { Helmet } from 'react-helmet-async';
 import VideoPlayerSelector from '@/components/StreamPlayer/VideoPlayerSelector';
 import MatchDetails from '@/components/MatchDetails';
+import { supabase } from '@/integrations/supabase/client';
 
 const ManualMatchPlayer = () => {
   const { matchId } = useParams();
   const navigate = useNavigate();
+  const [match, setMatch] = useState<ManualMatch | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Track viewer count for this match
   useViewerTracking(matchId);
   
-  const match = manualMatches.find(m => m.id === matchId);
-  const [selectedLink, setSelectedLink] = useState<ManualMatchLink | null>(
-    match?.links?.[0] || null
-  );
+  const [selectedLink, setSelectedLink] = useState<ManualMatchLink | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+
+  // Fetch match from API/Supabase
+  useEffect(() => {
+    const fetchMatch = async () => {
+      if (!matchId) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        // Try to fetch from Supabase edge function or API
+        const { data, error } = await supabase.functions.invoke('fetch-popular-matches');
+        
+        if (data?.matches) {
+          const foundMatch = data.matches.find((m: any) => m.id === matchId);
+          if (foundMatch) {
+            setMatch(foundMatch);
+            setSelectedLink(foundMatch.links?.[0] || null);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching match:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchMatch();
+  }, [matchId]);
 
   const handleFullscreen = () => {
     const playerContainer = document.querySelector('[data-player-container]') as HTMLElement;
@@ -43,6 +71,17 @@ const ManualMatchPlayer = () => {
     console.error('Manual match video failed to load');
     setIsVideoLoaded(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0A0F1C] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading match...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!match) {
     return (
