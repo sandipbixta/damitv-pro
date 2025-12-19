@@ -68,33 +68,6 @@ export type Database = {
         }
         Relationships: []
       }
-      chat_messages: {
-        Row: {
-          created_at: string
-          display_name: string
-          id: string
-          match_id: string
-          message: string
-          session_id: string
-        }
-        Insert: {
-          created_at?: string
-          display_name: string
-          id?: string
-          match_id: string
-          message: string
-          session_id: string
-        }
-        Update: {
-          created_at?: string
-          display_name?: string
-          id?: string
-          match_id?: string
-          message?: string
-          session_id?: string
-        }
-        Relationships: []
-      }
       head_to_head_stats: {
         Row: {
           created_at: string

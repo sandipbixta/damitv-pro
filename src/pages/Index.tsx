@@ -330,7 +330,7 @@ const Index = () => {
                       <li>• No registration or subscription required</li>
                       <li>• HD quality streaming on all devices</li>
                       <li>• Multiple streaming sources for reliability</li>
-                      <li>• Live chat and match discussions</li>
+                      <li>• Match schedules and notifications</li>
                       <li>• Regular updates and new channels</li>
                     </ul>
                   </div>
