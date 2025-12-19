@@ -95,17 +95,4 @@ export async function prefetchCriticalData() {
   }
 }
 
-/**
- * Prefetch on route change
- */
-export function prefetchForRoute(path: string) {
-  // Prefetch based on where user is navigating
-  if (path === '/live' || path === '/') {
-    // These routes need popular matches
-    import('@/hooks/usePopularMatches').then(module => {
-      module.preloadPopularMatches();
-    });
-  }
-}
-
 export default usePrefetchMatch;

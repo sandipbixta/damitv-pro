@@ -84,18 +84,4 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-// Higher-order component for functional components
-export function withErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  fallback?: ReactNode
-) {
-  return function WithErrorBoundary(props: P) {
-    return (
-      <ErrorBoundary fallback={fallback}>
-        <WrappedComponent {...props} />
-      </ErrorBoundary>
-    );
-  };
-}
-
 export default ErrorBoundary;

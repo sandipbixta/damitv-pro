@@ -5,7 +5,7 @@ import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
 import { isMatchLive } from '../services/viewerCountService';
 import { useLiveScoreUpdates } from '../hooks/useLiveScoreUpdates';
 import MatchCard from './MatchCard';
-import SkeletonCard from './SkeletonCard';
+import { MatchCardSkeleton } from './skeletons';
 import { useToast } from '../hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -308,7 +308,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <SkeletonCard key={i} />
+            <MatchCardSkeleton key={i} />
           ))}
         </div>
       </div>
