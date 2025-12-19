@@ -5,7 +5,6 @@ import { Match as MatchType } from '@/types/sports';
 import { fetchMatch, fetchMatches } from '@/api/sportsApi';
 import { useStreamPlayer } from '@/hooks/useStreamPlayer';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
-import { useWatchHistory } from '@/hooks/useWatchHistory';
 import { Helmet } from 'react-helmet-async';
 import { isTrendingMatch } from '@/utils/popularLeagues';
 import { teamLogoService } from '@/services/teamLogoService';
@@ -87,9 +86,6 @@ const Match = () => {
 
   // Track viewer count for this match
   useViewerTracking(matchId);
-
-  // Track watch history
-  useWatchHistory(matchId, match?.title, sportId);
 
   // Use enhanced stream player hook for comprehensive stream management
   const {

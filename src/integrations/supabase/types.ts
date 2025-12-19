@@ -413,42 +413,6 @@ export type Database = {
         }
         Relationships: []
       }
-      watch_history: {
-        Row: {
-          created_at: string
-          id: string
-          last_watched_at: string
-          match_id: string
-          match_title: string
-          session_id: string
-          sport_id: string
-          user_id: string | null
-          watch_duration: number | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          last_watched_at?: string
-          match_id: string
-          match_title: string
-          session_id: string
-          sport_id: string
-          user_id?: string | null
-          watch_duration?: number | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          last_watched_at?: string
-          match_id?: string
-          match_title?: string
-          session_id?: string
-          sport_id?: string
-          user_id?: string | null
-          watch_duration?: number | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
