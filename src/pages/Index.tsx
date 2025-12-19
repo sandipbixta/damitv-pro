@@ -17,7 +17,6 @@ const SportsList = lazy(() => import('../components/SportsList'));
 const MatchesList = lazy(() => import('../components/MatchesList'));
 const FeaturedMatches = lazy(() => import('../components/FeaturedMatches'));
 const AllSportsLiveMatches = lazy(() => import('../components/AllSportsLiveMatches'));
-const PromotionBoxes = lazy(() => import('../components/PromotionBoxes'));
 const FeaturedChannels = lazy(() => import('../components/FeaturedChannels'));
 const TrendingTopics = lazy(() => import('../components/TrendingTopics'));
 const HomepageContent = lazy(() => import('../components/HomepageContent'));
@@ -273,9 +272,6 @@ const Index = () => {
           </Suspense>
         </div>
             
-        <Suspense fallback={<LoadingPlaceholder height="h-24" />}>
-          <PromotionBoxes />
-        </Suspense>
             
         {/* Hidden SEO content for competitor targeting */}
         <Suspense fallback={null}>

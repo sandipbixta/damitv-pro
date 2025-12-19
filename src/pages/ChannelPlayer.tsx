@@ -175,9 +175,7 @@ const ChannelPlayer = () => {
                 { type: 'simple' as PlayerType, name: 'Smart Player', desc: 'Best working option (recommended)' },
                 { type: 'iframe' as PlayerType, name: 'Direct Embed', desc: 'Shows provider controls' },
                 { type: 'custom' as PlayerType, name: 'Custom Overlay', desc: 'Visual controls (limited function)' },
-                { type: 'basic' as PlayerType, name: 'Basic Player', desc: 'Simple iframe fallback' },
-                { type: 'extracted' as PlayerType, name: 'Stream Extractor', desc: 'Advanced (may not work with protected sites)' },
-                { type: 'html5' as PlayerType, name: 'HTML5 Player', desc: 'For direct video streams only' }
+                { type: 'basic' as PlayerType, name: 'Basic Player', desc: 'Simple iframe fallback' }
               ].map((player) => (
                 <button
                   key={player.type}
