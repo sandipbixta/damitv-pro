@@ -110,28 +110,28 @@ const Match = () => {
     const loadMatchData = async () => {
       if (!sportId || !matchId) return;
 
+      const cachedMatch = getCachedMatch(matchId);
+
+      // If we have cached match, start loading streams immediately
+      if (cachedMatch && isMounted) {
+        handleMatchSelectRef.current(cachedMatch);
+      }
+
+      // Only show loading if no cached data
+      if (!cachedMatch && isMounted) {
+        setIsLoading(true);
+      }
+
+      console.log(`Loading match: ${sportId}/${matchId}`);
+
       try {
-        // If we have cached match, start loading streams immediately
-        const cachedMatch = getCachedMatch(matchId);
-        if (cachedMatch && isMounted) {
-          // Start stream loading with cached match immediately
-          handleMatchSelectRef.current(cachedMatch);
-        }
-        
-        // Only show loading if no cached data
-        if (!cachedMatch && isMounted) {
-          setIsLoading(true);
-        }
-        
-        console.log(`Loading match: ${sportId}/${matchId}`);
-        
-        // Fetch the specific match
+        // Fetch the specific match (critical)
         const matchData = await fetchMatch(sportId, matchId);
         if (!isMounted) return;
-        
+
         const enhancedMatch = teamLogoService.enhanceMatchWithLogos(matchData);
         setMatch(enhancedMatch);
-        
+
         // Cache the match for instant loading next time
         setCachedMatch(matchId, enhancedMatch);
 
@@ -145,26 +145,27 @@ const Match = () => {
         // Scroll to top first when page loads
         window.scrollTo({ top: 0, behavior: 'instant' });
 
-        // Load all matches for recommended sections
-        const allMatches = await fetchMatches(sportId);
-        if (!isMounted) return;
-        
-        const otherMatches = allMatches.filter(m => m.id !== matchId);
-        setAllMatches(allMatches);
-        
-        // Recommended matches (similar category)
-        const recommended = otherMatches
-          .filter(m => m.category === matchData.category && m.id !== matchId)
-          .slice(0, 6);
-        
-        // Trending matches (using trending logic)
-        const trending = otherMatches
-          .filter(m => isTrendingMatch(m.title).isTrending)
-          .slice(0, 6);
+        // Load recommended/trending (non-critical; never break the match page)
+        try {
+          const matchesForSport = await fetchMatches(sportId);
+          if (!isMounted) return;
 
-        setRecommendedMatches(recommended);
-        setTrendingMatches(trending);
-        
+          const otherMatches = matchesForSport.filter(m => m.id !== matchId);
+          setAllMatches(matchesForSport);
+
+          const recommended = otherMatches
+            .filter(m => m.category === matchData.category && m.id !== matchId)
+            .slice(0, 6);
+
+          const trending = otherMatches
+            .filter(m => isTrendingMatch(m.title).isTrending)
+            .slice(0, 6);
+
+          setRecommendedMatches(recommended);
+          setTrendingMatches(trending);
+        } catch (error) {
+          console.warn('⚠️ Failed to load recommended matches:', error);
+        }
       } catch (error) {
         console.error('Error loading match:', error);
         if (isMounted) {
