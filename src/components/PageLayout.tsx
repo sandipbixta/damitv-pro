@@ -87,7 +87,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         >
           <img 
             alt="banner" 
-            src="https://landings-cdn.adsterratech.com/referralBanners/png/700%20x%2090%20px.png"
+            src="https://landings-cdn.adsterratech.com/referralBanners/gif/720x90_adsterra_reff.gif"
             className="w-full h-auto object-contain"
           />
         </a>
