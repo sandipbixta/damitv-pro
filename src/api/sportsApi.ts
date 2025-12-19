@@ -333,13 +333,20 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
 
     // If not in cache, fetch all matches and find the specific match
     const allMatches = await fetchAllMatches();
-    const match = allMatches.find(m => m.id === matchId);
+    let match = allMatches.find(m => m.id === matchId);
+
+    // Some matches (especially niche/PPV events) can exist only in the sport-specific endpoint.
+    // Fallback to sport-specific fetch before failing.
+    if (!match) {
+      const sportMatches = await fetchMatches(sportId);
+      match = sportMatches.find(m => m.id === matchId);
+    }
     
     if (!match) {
       throw new Error(`Match ${matchId} not found`);
     }
     
-    // Match already enhanced by fetchAllMatches
+    // Match already enhanced by fetchAllMatches/fetchMatches
     setCachedData(cacheKey, match);
     console.log(`✅ Found match ${matchId} for sport ${sportId}`);
     return match;
