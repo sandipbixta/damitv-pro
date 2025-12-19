@@ -86,7 +86,7 @@ const FeaturedChannels = () => {
             delay: 3000,
             stopOnInteraction: false,
             stopOnMouseEnter: true,
-          }),
+          }) as any,
         ]}
         className="w-full"
       >
