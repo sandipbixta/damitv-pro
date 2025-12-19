@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useMatchScore } from '../hooks/useLiveScoreUpdates';
 import { preloadOnHover, cancelPreload } from '../utils/streamPreloader';
 import fallbackBg from '@/assets/match-card-fallback-bg.jpg';
+import cardBackground from '@/assets/card-background.webp';
 
 // Calculate real-time minutes based on match start time and current period
 const calculateLiveMinutes = (progress: string, matchStartTime?: number): string => {
@@ -272,7 +273,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
     };
 
     const badgeLayoutHTML = () => `
-      <div class="w-full h-full relative overflow-hidden bg-black">
+      <div class="w-full h-full relative overflow-hidden" style="background-image: url(${cardBackground}); background-size: cover; background-position: center;">
         <div class="flex items-center gap-4 z-10 relative h-full justify-center">
           ${homeBadge ? badgeHTML(homeBadge, home || 'Home Team') : ''}
           <span class="text-white font-bold text-lg drop-shadow-sm">VS</span>
@@ -306,7 +307,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
         : `https://api.cdn-live.tv${posterToUse}`;
       
       return (
-        <div className="w-full h-full relative bg-black">
+        <div className="w-full h-full relative" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
           <img
             src={posterUrl}
             alt={`${match.title || 'Sports match'} poster`}
@@ -331,7 +332,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
     // Priority 2: Use team badges with plain black background if available
     if (homeBadge || awayBadge) {
       return (
-        <div className="w-full h-full relative overflow-hidden bg-black">
+        <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
           
           {/* Teams display with enhanced badges */}
           <div className="flex items-center gap-4 z-10 relative h-full justify-center">
@@ -399,16 +400,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
       );
     }
 
-    // Priority 3: Use textured background with DAMITV text for matches without logos/badges or posters
+    // Priority 3: Use orange gradient background with DAMITV text for matches without logos/badges or posters
     return (
-      <div className="w-full h-full relative overflow-hidden">
-        <img 
-          src={fallbackBg} 
-          alt={`${match.title || 'Sports'} match background`}
-          className="absolute inset-0 w-full h-full object-cover opacity-60"
-          loading="lazy"
-          decoding="async"
-        />
+      <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         {/* DAMITV Text */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <span className="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
