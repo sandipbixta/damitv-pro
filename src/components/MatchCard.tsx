@@ -551,10 +551,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
     );
   }
 
+  // Normalize sportId to lowercase for consistent routing
+  const normalizedSportId = (sportId || match.sportId || match.category || 'unknown').toLowerCase().replace(/\s+/g, '-');
+
   if (hasStream) {
     return (
       <Link 
-        to={`/match/${sportId || match.sportId || match.category}/${match.id}`} 
+        to={`/match/${normalizedSportId}/${match.id}`} 
         className={`block ${className}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
