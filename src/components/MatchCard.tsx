@@ -273,7 +273,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
     };
 
     const badgeLayoutHTML = () => `
-      <div class="w-full h-full relative overflow-hidden" style="background-image: url(${cardBackground}); background-size: cover; background-position: center;">
+      <div class="w-full h-full relative overflow-hidden">
+        <img src="${cardBackground}" alt="" class="absolute inset-0 w-full h-full object-cover" />
         <div class="absolute inset-0 bg-black/20"></div>
         <div class="flex items-center gap-4 z-10 relative h-full justify-center">
           ${homeBadge ? badgeHTML(homeBadge, home || 'Home Team') : ''}
@@ -285,8 +286,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
     const defaultImageHTML = () => `
       <div class="w-full h-full relative overflow-hidden">
-        <img src="${fallbackBg}" alt="Match background" class="w-full h-full object-cover" />
-        <div class="absolute inset-0 bg-black/60" />
+        <img src="${cardBackground}" alt="" class="absolute inset-0 w-full h-full object-cover" />
+        <div class="absolute inset-0 bg-black/20" />
+        <div class="absolute inset-0 flex items-center justify-center z-10">
+          <span class="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
+        </div>
       </div>
     `;
 
@@ -308,11 +312,16 @@ const MatchCard: React.FC<MatchCardProps> = ({
         : `https://api.cdn-live.tv${posterToUse}`;
       
       return (
-        <div className="w-full h-full relative" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="w-full h-full relative">
+          <img
+            src={cardBackground}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
           <img
             src={posterUrl}
             alt={`${match.title || 'Sports match'} poster`}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover relative z-10"
             loading="lazy"
             decoding="async"
             onError={(e) => {
@@ -333,7 +342,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
     // Priority 2: Use team badges with plain black background if available
     if (homeBadge || awayBadge) {
       return (
-        <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="w-full h-full relative overflow-hidden">
+          <img
+            src={cardBackground}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
           <div className="absolute inset-0 bg-black/20" />
           {/* Teams display with enhanced badges */}
           <div className="flex items-center gap-4 z-10 relative h-full justify-center">
@@ -403,7 +417,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
     // Priority 3: Use orange gradient background with DAMITV text for matches without logos/badges or posters
     return (
-      <div className="w-full h-full relative overflow-hidden" style={{ backgroundImage: `url(${cardBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <div className="w-full h-full relative overflow-hidden">
+        <img
+          src={cardBackground}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
         <div className="absolute inset-0 bg-black/20" />
         {/* DAMITV Text */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
