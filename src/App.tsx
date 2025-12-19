@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,7 +12,8 @@ import PopupAd from "./components/PopupAd";
 import AdsterraSocialBar from "./components/AdsterraSocialBar";
 import SEOPageTracker from "./components/SEOPageTracker";
 import MonetizationTracker from "./components/MonetizationTracker";
-import { queryClient } from "./lib/queryClient";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { queryClient, prefetchQueries } from "./lib/queryClient";
 
 import RequireAdmin from "./components/admin/RequireAdmin";
 
@@ -74,18 +75,28 @@ const App: React.FC = () => {
   // Initialize live score updates globally (populates the global score store)
   useLiveScoreUpdates(30000);
 
+  // Prefetch critical data on app load
+  useEffect(() => {
+    // Delay slightly to not block initial render
+    const timer = setTimeout(() => {
+      prefetchQueries();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
-        <BrowserRouter>
-          
-          <MonetizationTracker>
-            <TooltipProvider>
-              <PopupAd />
-              <AdsterraSocialBar />
-              <Toaster />
-              <Sonner />
-            <Routes>
+        <ErrorBoundary>
+          <BrowserRouter>
+            
+            <MonetizationTracker>
+              <TooltipProvider>
+                <PopupAd />
+                <AdsterraSocialBar />
+                <Toaster />
+                <Sonner />
+                <Routes>
               <Route path="/" element={
                 <SEOPageTracker pageTitle="DamiTV - Free Live Football Streaming" contentType="home">
                   <Suspense fallback={<PageLoader />}><Index /></Suspense>
@@ -227,10 +238,11 @@ const App: React.FC = () => {
               {/* Auth */}
               <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TooltipProvider>
-        </MonetizationTracker>
-      </BrowserRouter>
+                </Routes>
+              </TooltipProvider>
+            </MonetizationTracker>
+          </BrowserRouter>
+      </ErrorBoundary>
     </HelmetProvider>
   </QueryClientProvider>
 );
