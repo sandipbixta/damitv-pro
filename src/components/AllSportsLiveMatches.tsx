@@ -7,7 +7,7 @@ import { useLiveScoreUpdates } from '../hooks/useLiveScoreUpdates';
 import MatchCard from './MatchCard';
 import SkeletonCard from './SkeletonCard';
 import { useToast } from '../hooks/use-toast';
-import { TrendingUp, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import HighlightsSection from './HighlightsSection';
 
@@ -297,12 +297,6 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
   const hasLiveMatches = filteredLiveMatches.length > 0;
   const hasUpcomingMatches = filteredUpcomingMatches.length > 0;
 
-  // Most popular matches (by priority from edge function)
-  const popularMatches = React.useMemo(() => {
-    return filteredLiveMatches
-      .filter(m => m.popular || (m.priority || 0) > 50)
-      .slice(0, 6);
-  }, [filteredLiveMatches]);
 
   // Show skeleton only during initial load with no cache
   if (!hasInitialized && allMatches.length === 0) {
@@ -341,34 +335,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
         </div>
       )}
 
-      {/* Popular/Trending Matches Section */}
-      {popularMatches.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Popular Matches
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary text-primary-foreground">
-                TRENDING
-              </span>
-            </h3>
-            <span className="text-sm text-muted-foreground">
-              {popularMatches.length} popular match{popularMatches.length !== 1 ? 'es' : ''}
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-fr">
-            {popularMatches.map((match) => (
-              <div key={`popular-${match.id}`} className="h-full">
-                <MatchCard
-                  match={match}
-                  sportId={match.sportId || match.category}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {/* Live Matches Sections */}
       {hasLiveMatches && (
