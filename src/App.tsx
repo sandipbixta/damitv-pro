@@ -57,6 +57,14 @@ const AdminBlog = lazy(() => import("./pages/AdminBlog"));
 const AdminBlogEditor = lazy(() => import("./pages/AdminBlogEditor"));
 const Auth = lazy(() => import("./pages/Auth"));
 
+// League Pages
+const LaLigaStreaming = lazy(() => import("./pages/leagues/LaLigaStreaming"));
+const BundesligaStreaming = lazy(() => import("./pages/leagues/BundesligaStreaming"));
+const SerieAStreaming = lazy(() => import("./pages/leagues/SerieAStreaming"));
+const Ligue1Streaming = lazy(() => import("./pages/leagues/Ligue1Streaming"));
+const ChampionsLeagueStreaming = lazy(() => import("./pages/leagues/ChampionsLeagueStreaming"));
+const EuropaLeagueStreaming = lazy(() => import("./pages/leagues/EuropaLeagueStreaming"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -183,6 +191,13 @@ const App: React.FC = () => {
                   <Suspense fallback={<PageLoader />}><WatchPremierLeague /></Suspense>
                 </SEOPageTracker>
               } />
+              {/* League Pages */}
+              <Route path="/la-liga-streaming" element={<Suspense fallback={<PageLoader />}><LaLigaStreaming /></Suspense>} />
+              <Route path="/bundesliga-streaming" element={<Suspense fallback={<PageLoader />}><BundesligaStreaming /></Suspense>} />
+              <Route path="/serie-a-streaming" element={<Suspense fallback={<PageLoader />}><SerieAStreaming /></Suspense>} />
+              <Route path="/ligue-1-streaming" element={<Suspense fallback={<PageLoader />}><Ligue1Streaming /></Suspense>} />
+              <Route path="/champions-league-streaming" element={<Suspense fallback={<PageLoader />}><ChampionsLeagueStreaming /></Suspense>} />
+              <Route path="/europa-league-streaming" element={<Suspense fallback={<PageLoader />}><EuropaLeagueStreaming /></Suspense>}
               <Route path="/nba-streaming-free" element={
                 <SEOPageTracker pageTitle="NBA Streaming Free" contentType="home">
                   <Suspense fallback={<PageLoader />}><NbaStreaming /></Suspense>
