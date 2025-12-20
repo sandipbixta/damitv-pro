@@ -197,7 +197,7 @@ const App: React.FC = () => {
               <Route path="/serie-a-streaming" element={<Suspense fallback={<PageLoader />}><SerieAStreaming /></Suspense>} />
               <Route path="/ligue-1-streaming" element={<Suspense fallback={<PageLoader />}><Ligue1Streaming /></Suspense>} />
               <Route path="/champions-league-streaming" element={<Suspense fallback={<PageLoader />}><ChampionsLeagueStreaming /></Suspense>} />
-              <Route path="/europa-league-streaming" element={<Suspense fallback={<PageLoader />}><EuropaLeagueStreaming /></Suspense>}
+              <Route path="/europa-league-streaming" element={<Suspense fallback={<PageLoader />}><EuropaLeagueStreaming /></Suspense>} />
               <Route path="/nba-streaming-free" element={
                 <SEOPageTracker pageTitle="NBA Streaming Free" contentType="home">
                   <Suspense fallback={<PageLoader />}><NbaStreaming /></Suspense>
