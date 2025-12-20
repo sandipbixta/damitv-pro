@@ -65,6 +65,17 @@ const Ligue1Streaming = lazy(() => import("./pages/leagues/Ligue1Streaming"));
 const ChampionsLeagueStreaming = lazy(() => import("./pages/leagues/ChampionsLeagueStreaming"));
 const EuropaLeagueStreaming = lazy(() => import("./pages/leagues/EuropaLeagueStreaming"));
 
+// American Sports Pages
+const NFLStreaming = lazy(() => import("./pages/sports/NFLStreaming"));
+const MLBStreaming = lazy(() => import("./pages/sports/MLBStreaming"));
+const NHLStreaming = lazy(() => import("./pages/sports/NHLStreaming"));
+const MLSStreaming = lazy(() => import("./pages/sports/MLSStreaming"));
+
+// Combat & Motorsports Pages
+const BoxingStreaming = lazy(() => import("./pages/sports/BoxingStreaming"));
+const WWEStreaming = lazy(() => import("./pages/sports/WWEStreaming"));
+const MotoGPStreaming = lazy(() => import("./pages/sports/MotoGPStreaming"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -198,6 +209,15 @@ const App: React.FC = () => {
               <Route path="/ligue-1-streaming" element={<Suspense fallback={<PageLoader />}><Ligue1Streaming /></Suspense>} />
               <Route path="/champions-league-streaming" element={<Suspense fallback={<PageLoader />}><ChampionsLeagueStreaming /></Suspense>} />
               <Route path="/europa-league-streaming" element={<Suspense fallback={<PageLoader />}><EuropaLeagueStreaming /></Suspense>} />
+              {/* American Sports */}
+              <Route path="/nfl-streaming" element={<Suspense fallback={<PageLoader />}><NFLStreaming /></Suspense>} />
+              <Route path="/mlb-streaming" element={<Suspense fallback={<PageLoader />}><MLBStreaming /></Suspense>} />
+              <Route path="/nhl-streaming" element={<Suspense fallback={<PageLoader />}><NHLStreaming /></Suspense>} />
+              <Route path="/mls-streaming" element={<Suspense fallback={<PageLoader />}><MLSStreaming /></Suspense>} />
+              {/* Combat & Motorsports */}
+              <Route path="/boxing-streaming" element={<Suspense fallback={<PageLoader />}><BoxingStreaming /></Suspense>} />
+              <Route path="/wwe-streaming" element={<Suspense fallback={<PageLoader />}><WWEStreaming /></Suspense>} />
+              <Route path="/motogp-streaming" element={<Suspense fallback={<PageLoader />}><MotoGPStreaming /></Suspense>} />
               <Route path="/nba-streaming-free" element={
                 <SEOPageTracker pageTitle="NBA Streaming Free" contentType="home">
                   <Suspense fallback={<PageLoader />}><NbaStreaming /></Suspense>
