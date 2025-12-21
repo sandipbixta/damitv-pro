@@ -3,13 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { QUERY_KEYS } from '@/lib/queryClient';
 import { Match } from '@/types/sports';
 
-// CDN Channel type
-interface CDNChannel {
-  name: string;
-  code: string;
-  url: string;
-  image: string | null;
-  viewers: number;
+// Extended source type (includes CDN channel info)
+interface MatchSource {
+  source: string;
+  id: string;
+  name?: string;
+  image?: string;
+  isCdn?: boolean;
 }
 
 // Edge function response type
@@ -23,7 +23,7 @@ interface PopularMatchResponse {
     home: { name: string; badge?: string };
     away: { name: string; badge?: string };
   };
-  sources: { source: string; id: string }[];
+  sources: MatchSource[];
   poster?: string;
   tournament?: string;
   isLive: boolean;
@@ -31,7 +31,6 @@ interface PopularMatchResponse {
   progress?: string;
   priority: number;
   broadcaster?: string;
-  channels?: CDNChannel[];
 }
 
 // Memory cache for instant access
@@ -41,6 +40,15 @@ const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 // Transform edge function response to Match type for MatchCard compatibility
 function transformToMatch(data: PopularMatchResponse): Match {
+  // Extract CDN channels from sources for the channels property
+  const cdnSources = data.sources.filter(s => s.isCdn);
+  const channels = cdnSources.length > 0 ? cdnSources.map(s => ({
+    name: s.name || s.source,
+    code: 'cdn',
+    url: s.id,
+    image: s.image,
+  })) : undefined;
+
   return {
     id: data.id,
     title: data.title,
@@ -57,7 +65,13 @@ function transformToMatch(data: PopularMatchResponse): Match {
         badge: data.teams.away.badge,
       },
     },
-    sources: data.sources,
+    // Sources now include both WeStream (priority) and CDN channels (backup)
+    sources: data.sources.map(s => ({
+      source: s.source,
+      id: s.id,
+      name: s.name,
+      image: s.image,
+    })),
     poster: data.poster,
     tournament: data.tournament,
     isLive: data.isLive,
@@ -67,14 +81,7 @@ function transformToMatch(data: PopularMatchResponse): Match {
     } : undefined,
     progress: data.progress,
     priority: data.priority,
-    // Map CDN channels to MatchChannel format
-    channels: data.channels?.map(ch => ({
-      name: ch.name,
-      code: ch.code,
-      url: ch.url,
-      image: ch.image || undefined,
-      viewers: ch.viewers,
-    })),
+    channels, // For display purposes on match cards
   };
 }
 
