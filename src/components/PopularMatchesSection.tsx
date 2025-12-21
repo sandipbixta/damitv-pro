@@ -442,20 +442,6 @@ const PopularMatchCard: React.FC<{
     </div>
   );
 });
-
-// Skeleton Component
-const MatchCardSkeleton: React.FC = () => (
-  <div className="w-[180px] md:w-[200px] flex-shrink-0 rounded-lg bg-card overflow-hidden border border-border/50">
-    <div className="aspect-[16/10] bg-muted animate-pulse" />
-    <div className="p-2 space-y-1.5">
-      <div className="h-2.5 w-20 bg-muted animate-pulse rounded" />
-      <div className="h-3 w-24 bg-muted animate-pulse rounded" />
-      <div className="h-3 w-20 bg-muted animate-pulse rounded" />
-      <div className="h-2.5 w-28 bg-muted animate-pulse rounded" />
-    </div>
-  </div>
-);
-
 const CACHE_KEY = 'damitv_popular_matches';
 const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
 
@@ -607,11 +593,10 @@ const PopularMatchesSection: React.FC = () => {
     return (
       <section className="mb-8">
         <SectionHeader title="Popular Matches" />
-        <div className="relative">
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <MatchCardSkeleton key={i} />
-            ))}
+        <div className="flex items-center justify-center py-8">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Loading popular matches...</span>
           </div>
         </div>
       </section>

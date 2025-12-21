@@ -7,7 +7,6 @@ import PageLayout from '@/components/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -114,10 +113,11 @@ const AdminBlog = () => {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
-                  ))}
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span>Loading posts...</span>
+                  </div>
                 </div>
               ) : posts && posts.length > 0 ? (
                 <Table>

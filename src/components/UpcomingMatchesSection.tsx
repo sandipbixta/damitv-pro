@@ -135,16 +135,11 @@ const UpcomingMatchesSection: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg animate-pulse">
-              <div className="w-8 h-8 rounded-full bg-muted" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-muted rounded w-3/4" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center justify-center py-6">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Loading matches...</span>
+          </div>
         </div>
       ) : filteredMatches.length === 0 ? (
         <div className="text-center py-6 text-muted-foreground">

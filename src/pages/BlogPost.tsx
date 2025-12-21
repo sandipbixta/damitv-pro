@@ -6,7 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import PageLayout from '@/components/PageLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Eye, User, ArrowLeft, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -65,15 +64,10 @@ const BlogPost = () => {
   if (isLoading) {
     return (
       <PageLayout>
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <Skeleton className="h-8 w-32 mb-8" />
-          <Skeleton className="h-12 w-full mb-4" />
-          <Skeleton className="h-6 w-64 mb-8" />
-          <Skeleton className="aspect-video w-full mb-8" />
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+        <div className="container mx-auto px-4 py-16 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span>Loading article...</span>
           </div>
         </div>
       </PageLayout>

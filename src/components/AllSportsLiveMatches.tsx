@@ -5,7 +5,6 @@ import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
 import { isMatchLive } from '../services/viewerCountService';
 import { useLiveScoreUpdates } from '../hooks/useLiveScoreUpdates';
 import MatchCard from './MatchCard';
-import { MatchCardSkeleton } from './skeletons';
 import { useToast } from '../hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -305,11 +304,6 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
         <div className="flex items-center gap-2">
           <Loader2 className="w-5 h-5 text-primary animate-spin" />
           <span className="text-muted-foreground text-sm">Loading matches...</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <MatchCardSkeleton key={i} />
-          ))}
         </div>
       </div>
     );

@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import PageLayout from '@/components/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Eye, User } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -56,16 +55,11 @@ const Blog = () => {
           </header>
 
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i}>
-                  <Skeleton className="h-48 w-full" />
-                  <CardHeader>
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-full mt-2" />
-                  </CardHeader>
-                </Card>
-              ))}
+            <div className="flex items-center justify-center py-16">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span>Loading posts...</span>
+              </div>
             </div>
           ) : posts && posts.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
