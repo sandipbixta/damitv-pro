@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Play, Link2, Video, AlertCircle, CheckCircle2, Copy, ExternalLink } from 'lucide-react';
+import { Loader2, Play, Link2, Video, AlertCircle, CheckCircle2, Copy, ExternalLink, Users, Trophy, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { extractHlsFromUrl, ExtractedStream } from '@/services/hlsExtractorService';
+import { extractHlsFromUrl, ExtractedStream, MatchInfo } from '@/services/hlsExtractorService';
 import MainNav from '@/components/MainNav';
 import Footer from '@/components/Footer';
 
@@ -280,12 +280,17 @@ const HlsExtractor: React.FC = () => {
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant={stream.type === 'hls' ? 'default' : 'secondary'}>
                               {stream.type.toUpperCase()}
                             </Badge>
                             {stream.quality && (
                               <Badge variant="outline">{stream.quality}</Badge>
+                            )}
+                            {stream.matchInfo?.status && (
+                              <Badge variant={stream.matchInfo.status.toLowerCase() === 'live' ? 'destructive' : 'secondary'}>
+                                {stream.matchInfo.status}
+                              </Badge>
                             )}
                           </div>
                           <div className="flex gap-1">
@@ -305,6 +310,35 @@ const HlsExtractor: React.FC = () => {
                             </Button>
                           </div>
                         </div>
+                        
+                        {/* Match Info */}
+                        {stream.matchInfo && (
+                          <div className="mb-2 p-2 bg-muted/50 rounded text-sm space-y-1">
+                            {stream.matchInfo.title && (
+                              <p className="font-medium text-foreground">{stream.matchInfo.title}</p>
+                            )}
+                            {stream.matchInfo.teams && stream.matchInfo.teams.length === 2 && (
+                              <div className="flex items-center gap-2 text-foreground">
+                                <Users className="w-3 h-3 text-muted-foreground" />
+                                <span>{stream.matchInfo.teams[0]}</span>
+                                <span className="text-muted-foreground">vs</span>
+                                <span>{stream.matchInfo.teams[1]}</span>
+                              </div>
+                            )}
+                            {stream.matchInfo.league && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Trophy className="w-3 h-3" />
+                                <span>{stream.matchInfo.league}</span>
+                              </div>
+                            )}
+                            {stream.matchInfo.time && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                <span>{stream.matchInfo.time}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         
                         <p className="text-xs font-mono text-muted-foreground break-all mb-2">
                           {stream.url}
