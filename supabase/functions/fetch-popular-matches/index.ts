@@ -388,7 +388,18 @@ serve(async (req) => {
       
       // Find matching SportsDB event for enrichment
       const sdbMatch = findSportsDbMatch(wsMatch, sportsDbMatches);
-      const isLive = isMatchLive(wsMatch) || !!sdbMatch;
+      
+      // A match is live ONLY if:
+      // 1. It's within the live window based on start time + sport duration
+      // 2. OR if SportsDB explicitly has live progress (not finished)
+      const sdbProgress = sdbMatch?.strProgress?.toLowerCase() || '';
+      const isSdbLive = sdbProgress && 
+        !sdbProgress.includes('ft') && 
+        !sdbProgress.includes('finished') && 
+        !sdbProgress.includes('ended') &&
+        !sdbProgress.includes('postponed') &&
+        sdbProgress !== '';
+      const isLive = isMatchLive(wsMatch) && (isSdbLive || !sdbMatch);
       
       // Build enriched match
       const enrichedMatch: EnrichedMatch = {
