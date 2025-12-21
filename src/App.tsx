@@ -76,6 +76,9 @@ const BoxingStreaming = lazy(() => import("./pages/sports/BoxingStreaming"));
 const WWEStreaming = lazy(() => import("./pages/sports/WWEStreaming"));
 const MotoGPStreaming = lazy(() => import("./pages/sports/MotoGPStreaming"));
 
+// Tools
+const HlsExtractor = lazy(() => import("./pages/HlsExtractor"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -272,6 +275,8 @@ const App: React.FC = () => {
               />
               {/* Auth */}
               <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
+              {/* Tools */}
+              <Route path="/hls-extractor" element={<Suspense fallback={<PageLoader />}><HlsExtractor /></Suspense>} />
               <Route path="*" element={<NotFound />} />
                 </Routes>
               </TooltipProvider>
