@@ -32,10 +32,43 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   // Pop-up blocker state
   const [clicksAbsorbed, setClicksAbsorbed] = useState(0);
   const [showOverlay, setShowOverlay] = useState(true);
-  const [overlayMessage, setOverlayMessage] = useState('Click to play');
+  const [overlayMessage, setOverlayMessage] = useState('Tap to play');
+  
+  // Global popup blocker for mobile - blocks window.open calls
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const originalOpen = window.open;
+    
+    // Block popup windows on mobile
+    window.open = function(...args) {
+      console.log('🛡️ Mobile popup blocked:', args[0]);
+      return null;
+    };
+    
+    // Block touch-triggered popups
+    const blockPopupEvent = (e: Event) => {
+      const target = e.target as HTMLElement;
+      // If click is outside our controlled elements, it might be an ad trigger
+      if (target.tagName === 'A' && target.getAttribute('target') === '_blank') {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🛡️ Mobile: Blocked external link popup');
+      }
+    };
+    
+    document.addEventListener('click', blockPopupEvent, true);
+    document.addEventListener('touchend', blockPopupEvent, true);
+    
+    return () => {
+      window.open = originalOpen;
+      document.removeEventListener('click', blockPopupEvent, true);
+      document.removeEventListener('touchend', blockPopupEvent, true);
+    };
+  }, [isMobile]);
   
   // Handle overlay clicks - absorb first few clicks to block pop-ups
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
+  const handleOverlayClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -49,17 +82,18 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     } else {
       // Show progress message
       const remaining = CLICKS_TO_ABSORB - newCount;
-      setOverlayMessage(remaining === 1 ? 'Click once more to play' : `Click ${remaining} more times to play`);
+      const action = isMobile ? 'Tap' : 'Click';
+      setOverlayMessage(remaining === 1 ? `${action} once more to play` : `${action} ${remaining} more times to play`);
       console.log(`🛡️ Pop-up blocker: Absorbed click ${newCount}/${CLICKS_TO_ABSORB}`);
     }
-  }, [clicksAbsorbed]);
+  }, [clicksAbsorbed, isMobile]);
   
   // Reset overlay when source changes
   useEffect(() => {
     setClicksAbsorbed(0);
     setShowOverlay(true);
-    setOverlayMessage('Click to play');
-  }, [src]);
+    setOverlayMessage(isMobile ? 'Tap to play' : 'Click to play');
+  }, [src, isMobile]);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -352,23 +386,26 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         }}
       />
       
-      {/* Pop-up Blocker Overlay - Absorbs first clicks that trigger ads */}
+      {/* Pop-up Blocker Overlay - Absorbs first clicks/taps that trigger ads */}
       {showOverlay && !isLoading && !countdown && (
         <div 
-          className="absolute inset-0 z-40 cursor-pointer flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
+          className="absolute inset-0 z-40 cursor-pointer flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity touch-manipulation"
           onClick={handleOverlayClick}
+          onTouchEnd={handleOverlayClick}
         >
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Shield className="w-8 h-8 text-green-400" />
               <span className="text-white font-bold text-lg">Ad Blocker Active</span>
             </div>
-            <div className="bg-primary/90 hover:bg-primary text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 mx-auto cursor-pointer transition-colors">
+            <div className="bg-primary/90 hover:bg-primary active:bg-primary/80 text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 mx-auto cursor-pointer transition-colors select-none">
               <Play className="w-5 h-5" />
               <span className="font-medium">{overlayMessage}</span>
             </div>
             <p className="text-white/60 text-xs mt-3">
-              {clicksAbsorbed > 0 ? `${CLICKS_TO_ABSORB - clicksAbsorbed} clicks remaining` : 'Blocking pop-up ads...'}
+              {clicksAbsorbed > 0 
+                ? `${CLICKS_TO_ABSORB - clicksAbsorbed} ${isMobile ? 'taps' : 'clicks'} remaining` 
+                : 'Blocking pop-up ads...'}
             </p>
           </div>
         </div>
