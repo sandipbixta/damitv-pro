@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import Hls from 'hls.js';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Video, Trophy, CheckCircle, XCircle } from 'lucide-react';
+import { Play, Video, Trophy, CheckCircle, XCircle, Loader2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import MainNav from '@/components/MainNav';
 import Footer from '@/components/Footer';
 
@@ -13,11 +15,13 @@ interface StreamChannel {
   title: string;
   league: string;
   url: string;
+  homeTeam?: string;
+  awayTeam?: string;
   status?: 'untested' | 'working' | 'failed';
 }
 
 // Pre-extracted streams from sportslive.run
-const EXTRACTED_STREAMS: StreamChannel[] = [
+const DEFAULT_STREAMS: StreamChannel[] = [
   {
     title: 'Channel 01',
     league: 'Live Stream',
@@ -57,13 +61,77 @@ const EXTRACTED_STREAMS: StreamChannel[] = [
 ];
 
 const StreamTest: React.FC = () => {
-  const [streams, setStreams] = useState<StreamChannel[]>(EXTRACTED_STREAMS);
+  const [streams, setStreams] = useState<StreamChannel[]>(DEFAULT_STREAMS);
   const [selectedStream, setSelectedStream] = useState<StreamChannel | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [matchUrl, setMatchUrl] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const { toast } = useToast();
+
+  const extractFromUrl = async () => {
+    if (!matchUrl.trim()) {
+      toast({
+        title: 'URL Required',
+        description: 'Please enter a match page URL',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExtracting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-match', {
+        body: { url: matchUrl.trim() },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.data) {
+        const { matchInfo, streams: extractedStreams } = data.data;
+        
+        if (extractedStreams.length > 0) {
+          const newStreams: StreamChannel[] = extractedStreams.map((s: any, i: number) => ({
+            title: matchInfo.title || `Stream ${i + 1}`,
+            league: matchInfo.league || 'Unknown',
+            homeTeam: matchInfo.homeTeam,
+            awayTeam: matchInfo.awayTeam,
+            url: s.url,
+            status: 'untested' as const,
+          }));
+          
+          setStreams(newStreams);
+          toast({
+            title: 'Match Found!',
+            description: `${matchInfo.title || 'Match'} - ${extractedStreams.length} stream(s)`,
+          });
+        } else {
+          toast({
+            title: 'No Streams Found',
+            description: data.message || 'The page may require user interaction to load streams',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        toast({
+          title: 'Extraction Failed',
+          description: data.error || 'Could not extract match data',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('Extract error:', err);
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to extract match',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const playStream = (stream: StreamChannel) => {
     setSelectedStream(stream);
@@ -177,9 +245,48 @@ const StreamTest: React.FC = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Stream Test Page</h1>
             <p className="text-muted-foreground">
-              Test pre-extracted HLS streams from sportslive.run - Click any stream to play it.
+              Test HLS streams - Extract from a match URL or use pre-loaded streams.
             </p>
           </div>
+
+          {/* URL Extractor */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                Extract from Match URL (Firecrawl)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-3">
+                <Input
+                  type="url"
+                  placeholder="https://sportslive.run/live/detail?..."
+                  value={matchUrl}
+                  onChange={(e) => setMatchUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && extractFromUrl()}
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={extractFromUrl} 
+                  disabled={isExtracting}
+                  className="min-w-[120px]"
+                >
+                  {isExtracting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Extracting...
+                    </>
+                  ) : (
+                    'Extract Match'
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Paste a specific match page URL to extract team names, league, and stream links.
+              </p>
+            </CardContent>
+          </Card>
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Video Player */}
