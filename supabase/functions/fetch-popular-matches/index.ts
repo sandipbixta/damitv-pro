@@ -419,6 +419,35 @@ function findSportsDbMatch(weStreamMatch: WeStreamMatch, sportsDbMatches: Sports
 const eventPosterCache: Map<string, { poster: string | null; timestamp: number }> = new Map();
 const POSTER_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
+// Sport-specific fallback images from TheSportsDB
+const SPORT_FALLBACK_IMAGES: Record<string, string> = {
+  'football': 'https://www.thesportsdb.com/images/media/sport/fanart/rxsswu1422751049.jpg',
+  'soccer': 'https://www.thesportsdb.com/images/media/sport/fanart/rxsswu1422751049.jpg',
+  'basketball': 'https://www.thesportsdb.com/images/media/sport/fanart/rwvvvx1422751166.jpg',
+  'nba': 'https://www.thesportsdb.com/images/media/sport/fanart/rwvvvx1422751166.jpg',
+  'cricket': 'https://www.thesportsdb.com/images/media/sport/fanart/ruysvr1422751164.jpg',
+  'nfl': 'https://www.thesportsdb.com/images/media/sport/fanart/vusqyp1472416627.jpg',
+  'american-football': 'https://www.thesportsdb.com/images/media/sport/fanart/vusqyp1472416627.jpg',
+  'mma': 'https://www.thesportsdb.com/images/media/sport/fanart/yvsquv1472416628.jpg',
+  'ufc': 'https://www.thesportsdb.com/images/media/sport/fanart/yvsquv1472416628.jpg',
+  'fighting': 'https://www.thesportsdb.com/images/media/sport/fanart/yvsquv1472416628.jpg',
+  'boxing': 'https://www.thesportsdb.com/images/media/sport/fanart/yvsquv1472416628.jpg',
+  'motorsport': 'https://www.thesportsdb.com/images/media/sport/fanart/wwxqsv1422750620.jpg',
+  'f1': 'https://www.thesportsdb.com/images/media/sport/fanart/wwxqsv1422750620.jpg',
+  'motogp': 'https://www.thesportsdb.com/images/media/sport/fanart/wwxqsv1422750620.jpg',
+  'racing': 'https://www.thesportsdb.com/images/media/sport/fanart/wwxqsv1422750620.jpg',
+  'baseball': 'https://www.thesportsdb.com/images/media/sport/fanart/vvxpys1422751069.jpg',
+  'mlb': 'https://www.thesportsdb.com/images/media/sport/fanart/vvxpys1422751069.jpg',
+  'rugby': 'https://www.thesportsdb.com/images/media/sport/fanart/ruysvr1422751164.jpg',
+  'default': 'https://www.thesportsdb.com/images/media/sport/fanart/rxsswu1422751049.jpg',
+};
+
+// Get fallback image for a sport
+function getSportFallbackImage(category: string): string {
+  const normalized = normalizeSportCategory(category);
+  return SPORT_FALLBACK_IMAGES[normalized] || SPORT_FALLBACK_IMAGES['default'];
+}
+
 // Search for event poster from SportsDB searchevents endpoint
 async function searchEventPoster(homeTeam: string, awayTeam: string): Promise<string | null> {
   const cacheKey = `${normalizeTeamName(homeTeam)}_${normalizeTeamName(awayTeam)}`;
@@ -653,32 +682,44 @@ serve(async (req) => {
       enrichedMatches.push(enrichedMatch);
     }
 
-    // Fetch event posters for matches that don't have one (batch up to 10 for performance)
-    const matchesNeedingPosters = enrichedMatches
-      .filter(m => !m.poster && m.teams.home.name && m.teams.away.name)
-      .slice(0, 10); // Limit to avoid too many API calls
-    
-    if (matchesNeedingPosters.length > 0) {
-      console.log(`Fetching event posters for ${matchesNeedingPosters.length} matches...`);
-      const posterPromises = matchesNeedingPosters.map(async (match) => {
-        const poster = await searchEventPoster(match.teams.home.name, match.teams.away.name);
-        if (poster) {
-          match.poster = poster;
-        }
-      });
-      await Promise.all(posterPromises);
-      console.log(`Poster fetch complete`);
-    }
-
-    // Sort by priority (highest first), then by date (soonest first)
+    // Sort by priority first to fetch posters for top matches
     enrichedMatches.sort((a, b) => {
       if (b.priority !== a.priority) return b.priority - a.priority;
       return a.date - b.date;
     });
 
-    // Return more matches for a complete experience
+    // Get top 50 matches first
     const topMatches = enrichedMatches.slice(0, 50);
+
+    // Fetch event posters for ALL top matches that don't have one (batch in groups of 5 for parallel requests)
+    const matchesNeedingPosters = topMatches.filter(m => !m.poster && m.teams.home.name && m.teams.away.name);
     
+    if (matchesNeedingPosters.length > 0) {
+      console.log(`Fetching event posters for ${matchesNeedingPosters.length} matches...`);
+      
+      // Process in batches of 5 to avoid rate limiting
+      const batchSize = 5;
+      for (let i = 0; i < matchesNeedingPosters.length; i += batchSize) {
+        const batch = matchesNeedingPosters.slice(i, i + batchSize);
+        const posterPromises = batch.map(async (match) => {
+          const poster = await searchEventPoster(match.teams.home.name, match.teams.away.name);
+          if (poster) {
+            match.poster = poster;
+          }
+        });
+        await Promise.all(posterPromises);
+      }
+      console.log(`Poster fetch complete`);
+    }
+
+    // Apply sport-specific fallback images for matches still without posters
+    for (const match of topMatches) {
+      if (!match.poster) {
+        match.poster = getSportFallbackImage(match.category);
+      }
+    }
+    console.log(`Applied fallback images where needed`);
+
     // Cache result
     responseCache = { data: topMatches, timestamp: Date.now() };
     
