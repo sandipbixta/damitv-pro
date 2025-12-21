@@ -1,11 +1,11 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Home, Clock } from 'lucide-react';
+import { Home, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
+import { removeAdsFromIframe, setupDelayedAdBlocking, injectAdBlockStyles } from '../../utils/adBlocker';
 
 interface IframeVideoPlayerProps {
   src: string;
@@ -78,16 +78,20 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   };
 
 
-  // Handle iframe load success
+  // Handle iframe load success with ad blocking
   const handleIframeLoad = () => {
     console.log('✅ Iframe content loaded');
     setIsLoading(false);
     onLoad();
     
-    // Give the iframe content time to fully initialize
-    setTimeout(() => {
-      console.log('🎬 Stream should now be ready for playback');
-    }, 1000);
+    // Apply ad blocking on iframe load
+    if (iframeRef.current) {
+      removeAdsFromIframe(iframeRef.current);
+      injectAdBlockStyles(iframeRef.current);
+      setupDelayedAdBlocking(iframeRef.current, () => {
+        console.log('🎬 Stream ready with ad blocking applied');
+      });
+    }
   };
 
   // Handle iframe load error
@@ -283,6 +287,18 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
 
       {/* No loading overlay - iframe shows directly */}
 
+      {/* Branded Loading State */}
+      {isLoading && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted to-background">
+          <div className="relative">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-primary/20" />
+          </div>
+          <p className="mt-4 text-foreground font-medium">Loading stream...</p>
+          <p className="text-muted-foreground text-sm mt-1">DAMITV</p>
+        </div>
+      )}
+
       <iframe 
         ref={iframeRef}
         className="w-full h-full absolute inset-0"
@@ -292,7 +308,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         onError={handleIframeError}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         referrerPolicy="no-referrer"
-        loading="eager"
+        loading="lazy"
         style={{ 
           border: 'none',
           pointerEvents: 'auto'
