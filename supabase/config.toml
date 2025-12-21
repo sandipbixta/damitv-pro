@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.api-matches]
 verify_jwt = false
+
+[functions.extract-hls]
+verify_jwt = false
