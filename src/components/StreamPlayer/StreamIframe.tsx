@@ -3,6 +3,7 @@ import { Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
+import { removeAdsFromIframe, setupDelayedAdBlocking, injectAdBlockStyles } from '../../utils/adBlocker';
 
 interface StreamIframeProps {
   src: string;
@@ -53,6 +54,14 @@ const StreamIframe: React.FC<StreamIframeProps> = ({ src, onLoad, onError, video
     setLoaded(true);
     setLoadError(false);
     if (timerRef.current) clearInterval(timerRef.current);
+    
+    // Apply ad blocking on iframe load
+    if (videoRef.current) {
+      removeAdsFromIframe(videoRef.current);
+      injectAdBlockStyles(videoRef.current);
+      setupDelayedAdBlocking(videoRef.current);
+    }
+    
     onLoad?.();
   };
 
@@ -109,8 +118,8 @@ const StreamIframe: React.FC<StreamIframeProps> = ({ src, onLoad, onError, video
         onLoad={handleLoad}
         onError={handleError}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-        referrerPolicy="origin"
-        loading="eager"
+        referrerPolicy="no-referrer"
+        loading="lazy"
         style={{ 
           border: 'none',
           width: '100%',

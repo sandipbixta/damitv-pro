@@ -4,6 +4,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =================================
+   Global Ad Blocking Styles
+   ================================= */
+
+/* Hide ad iframes based on URL patterns */
+iframe[src*="doubleclick"],
+iframe[src*="googleads"],
+iframe[src*="googlesyndication"],
+iframe[src*="advertising"],
+iframe[src*="adserver"],
+iframe[src*="adform"],
+iframe[src*="taboola"],
+iframe[src*="outbrain"],
+iframe[src*="popads"],
+iframe[src*="propellerads"] {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hide popup overlays and ad containers */
+.popup-overlay,
+.ad-overlay,
+.interstitial-ad,
+[class*="popup-ad"],
+[class*="overlay-ad"],
+[id*="popup-ad"],
+[id*="overlay-ad"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
 @layer base {
   :root {
     /* Dark mode colors (default) - FanCode inspired deep navy */
