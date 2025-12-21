@@ -67,10 +67,20 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     };
   }, [isMobile]);
   
+  // Track last interaction to prevent double-firing
+  const lastInteractionRef = useRef<number>(0);
+  
   // Handle overlay clicks - absorb first few clicks to block pop-ups
-  const handleOverlayClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const handleOverlayInteraction = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Prevent double-firing from touch + click
+    const now = Date.now();
+    if (now - lastInteractionRef.current < 300) {
+      return;
+    }
+    lastInteractionRef.current = now;
     
     const newCount = clicksAbsorbed + 1;
     setClicksAbsorbed(newCount);
@@ -390,10 +400,11 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
       {showOverlay && !isLoading && !countdown && (
         <div 
           className="absolute inset-0 z-40 cursor-pointer flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity touch-manipulation"
-          onClick={handleOverlayClick}
-          onTouchEnd={handleOverlayClick}
+          onClick={handleOverlayInteraction}
+          onTouchStart={(e) => e.preventDefault()}
+          onTouchEnd={handleOverlayInteraction}
         >
-          <div className="text-center">
+          <div className="text-center pointer-events-none">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Shield className="w-8 h-8 text-green-400" />
               <span className="text-white font-bold text-lg">Ad Blocker Active</span>
