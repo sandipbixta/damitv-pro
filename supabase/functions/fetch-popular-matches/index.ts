@@ -132,6 +132,15 @@ interface CDNChannel {
   viewers: number;
 }
 
+// Extended source with name and image for CDN channels
+interface MatchSource {
+  source: string;
+  id: string;
+  name?: string;
+  image?: string;
+  isCdn?: boolean; // Flag to identify CDN sources
+}
+
 interface EnrichedMatch {
   id: string;
   title: string;
@@ -142,7 +151,7 @@ interface EnrichedMatch {
     home: { name: string; badge?: string };
     away: { name: string; badge?: string };
   };
-  sources: { source: string; id: string }[];
+  sources: MatchSource[];
   poster?: string;
   tournament?: string;
   isLive: boolean;
@@ -150,7 +159,17 @@ interface EnrichedMatch {
   progress?: string;
   priority: number;
   broadcaster?: string; // From SportsDB strTVStation
-  channels?: CDNChannel[]; // Matched CDN channels
+}
+
+// Convert CDN channels to MatchSource format
+function cdnChannelsToSources(channels: CDNChannel[]): MatchSource[] {
+  return channels.map((ch, idx) => ({
+    source: 'cdn',
+    id: ch.url, // URL is the stream ID for CDN channels
+    name: ch.name,
+    image: ch.image || undefined,
+    isCdn: true,
+  }));
 }
 
 // Cache for WeStream and SportsDB data
@@ -537,6 +556,14 @@ serve(async (req) => {
         sdbProgress !== '';
       const isLive = isMatchLive(wsMatch) && (isSdbLive || !sdbMatch);
       
+      // Merge WeStream sources (priority 1) with CDN channel sources (backup)
+      const matchedCdnChannels = matchBroadcasterToChannels(sdbMatch?.strTVStation || null, cdnChannels, wsMatch.category);
+      const cdnSources = cdnChannelsToSources(matchedCdnChannels);
+      const allSources: MatchSource[] = [
+        ...wsMatch.sources.map(s => ({ ...s, isCdn: false })), // WeStream first (priority)
+        ...cdnSources, // CDN channels as backup
+      ];
+      
       // Build enriched match
       const enrichedMatch: EnrichedMatch = {
         id: wsMatch.id,
@@ -554,14 +581,13 @@ serve(async (req) => {
             badge: sdbMatch?.strAwayTeamBadge || wsMatch.teams?.away?.badge,
           },
         },
-        sources: wsMatch.sources,
+        sources: allSources,
         poster: sdbMatch?.strThumb || sdbMatch?.strPoster || wsMatch.poster,
         tournament: sdbMatch?.strLeague,
         isLive,
         progress: sdbMatch?.strProgress || undefined,
         priority: calculatePriority(wsMatch, sdbMatch, isLive),
         broadcaster: sdbMatch?.strTVStation || undefined,
-        channels: matchBroadcasterToChannels(sdbMatch?.strTVStation || null, cdnChannels, wsMatch.category),
       };
       
       // Add live score if available
