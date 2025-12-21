@@ -78,6 +78,7 @@ const MotoGPStreaming = lazy(() => import("./pages/sports/MotoGPStreaming"));
 
 // Tools
 const HlsExtractor = lazy(() => import("./pages/HlsExtractor"));
+const StreamTest = lazy(() => import("./pages/StreamTest"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -277,6 +278,7 @@ const App: React.FC = () => {
               <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
               {/* Tools */}
               <Route path="/hls-extractor" element={<Suspense fallback={<PageLoader />}><HlsExtractor /></Suspense>} />
+              <Route path="/stream-test" element={<Suspense fallback={<PageLoader />}><StreamTest /></Suspense>} />
               <Route path="*" element={<NotFound />} />
                 </Routes>
               </TooltipProvider>
