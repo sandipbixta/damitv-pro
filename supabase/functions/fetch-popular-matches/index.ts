@@ -415,6 +415,58 @@ function findSportsDbMatch(weStreamMatch: WeStreamMatch, sportsDbMatches: Sports
   return bestMatch;
 }
 
+// Event poster cache to avoid duplicate API calls
+const eventPosterCache: Map<string, { poster: string | null; timestamp: number }> = new Map();
+const POSTER_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Search for event poster from SportsDB searchevents endpoint
+async function searchEventPoster(homeTeam: string, awayTeam: string): Promise<string | null> {
+  const cacheKey = `${normalizeTeamName(homeTeam)}_${normalizeTeamName(awayTeam)}`;
+  
+  // Check cache first
+  const cached = eventPosterCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < POSTER_CACHE_DURATION) {
+    return cached.poster;
+  }
+  
+  try {
+    // Try searching with home team first
+    const searchQuery = encodeURIComponent(homeTeam);
+    const response = await fetch(
+      `https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${searchQuery}`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      const events = data?.event || [];
+      
+      // Find event matching both teams
+      const awayLower = normalizeTeamName(awayTeam);
+      for (const event of events) {
+        const eventAwayLower = normalizeTeamName(event.strAwayTeam || '');
+        const eventHomeLower = normalizeTeamName(event.strHomeTeam || '');
+        
+        // Check if away team matches
+        if (eventAwayLower.includes(awayLower) || awayLower.includes(eventAwayLower) ||
+            eventHomeLower.includes(awayLower) || awayLower.includes(eventHomeLower)) {
+          const poster = event.strThumb || event.strPoster || event.strBanner || null;
+          if (poster) {
+            eventPosterCache.set(cacheKey, { poster, timestamp: Date.now() });
+            return poster;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.log(`Failed to search event poster for ${homeTeam} vs ${awayTeam}`);
+  }
+  
+  // Cache null result to avoid repeated failed lookups
+  eventPosterCache.set(cacheKey, { poster: null, timestamp: Date.now() });
+  return null;
+}
+
 // Check if match is currently live based on sport-specific duration
 function isMatchLive(match: WeStreamMatch): boolean {
   const now = Date.now();
@@ -599,6 +651,23 @@ serve(async (req) => {
       }
       
       enrichedMatches.push(enrichedMatch);
+    }
+
+    // Fetch event posters for matches that don't have one (batch up to 10 for performance)
+    const matchesNeedingPosters = enrichedMatches
+      .filter(m => !m.poster && m.teams.home.name && m.teams.away.name)
+      .slice(0, 10); // Limit to avoid too many API calls
+    
+    if (matchesNeedingPosters.length > 0) {
+      console.log(`Fetching event posters for ${matchesNeedingPosters.length} matches...`);
+      const posterPromises = matchesNeedingPosters.map(async (match) => {
+        const poster = await searchEventPoster(match.teams.home.name, match.teams.away.name);
+        if (poster) {
+          match.poster = poster;
+        }
+      });
+      await Promise.all(posterPromises);
+      console.log(`Poster fetch complete`);
     }
 
     // Sort by priority (highest first), then by date (soonest first)
