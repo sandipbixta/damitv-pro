@@ -3,6 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { QUERY_KEYS } from '@/lib/queryClient';
 import { Match } from '@/types/sports';
 
+// CDN Channel type
+interface CDNChannel {
+  name: string;
+  code: string;
+  url: string;
+  image: string | null;
+  viewers: number;
+}
+
 // Edge function response type
 interface PopularMatchResponse {
   id: string;
@@ -21,6 +30,8 @@ interface PopularMatchResponse {
   score?: { home?: string; away?: string };
   progress?: string;
   priority: number;
+  broadcaster?: string;
+  channels?: CDNChannel[];
 }
 
 // Memory cache for instant access
@@ -55,6 +66,15 @@ function transformToMatch(data: PopularMatchResponse): Match {
       away: data.score.away,
     } : undefined,
     progress: data.progress,
+    priority: data.priority,
+    // Map CDN channels to MatchChannel format
+    channels: data.channels?.map(ch => ({
+      name: ch.name,
+      code: ch.code,
+      url: ch.url,
+      image: ch.image || undefined,
+      viewers: ch.viewers,
+    })),
   };
 }
 

@@ -477,10 +477,54 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
         {/* Info Section */}
         <div className="p-3 flex flex-col gap-2 flex-1 bg-card">
-          {/* Sport • Tournament */}
-          <p className="text-xs text-muted-foreground truncate">
-            {match.category || 'Sports'} • {match.tournament || match.title}
-          </p>
+          {/* Sport • Tournament • Channels */}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground truncate flex-1">
+              {match.category || 'Sports'} • {match.tournament || match.title}
+            </p>
+            {/* Show channel logos if available */}
+            {match.channels && match.channels.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center -space-x-1.5 flex-shrink-0">
+                    {match.channels.slice(0, 2).map((channel, idx) => (
+                      channel.image ? (
+                        <img
+                          key={idx}
+                          src={channel.image}
+                          alt={channel.name}
+                          className="w-5 h-5 rounded-full border border-border bg-background object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div 
+                          key={idx}
+                          className="w-5 h-5 rounded-full border border-border bg-muted flex items-center justify-center"
+                        >
+                          <Tv className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                      )
+                    ))}
+                    {match.channels.length > 2 && (
+                      <div className="w-5 h-5 rounded-full border border-border bg-muted flex items-center justify-center text-[9px] font-medium text-muted-foreground">
+                        +{match.channels.length - 2}
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <div className="text-xs">
+                    <p className="font-medium mb-1">Watch on:</p>
+                    {match.channels.map((ch, i) => (
+                      <span key={i}>{ch.name}{i < match.channels!.length - 1 ? ', ' : ''}</span>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           
           {/* Show match title if no team names, otherwise show teams */}
           {home && away ? (

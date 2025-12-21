@@ -8,6 +8,7 @@ const corsHeaders = {
 const SPORTS_DB_API_KEY = '751945';
 const SPORTS_DB_V2_BASE = 'https://www.thesportsdb.com/api/v2/json';
 const WESTREAM_API = 'https://westream.top';
+const CDN_LIVE_API = 'https://cdn-live.tv/api/v1/vip/damitv';
 
 // PRIORITY SPORTS (in order of importance)
 const PRIORITY_SPORTS = [
@@ -119,6 +120,16 @@ interface SportsDbLiveMatch {
   strProgress: string | null;
   intHomeScore: string | null;
   intAwayScore: string | null;
+  strTVStation: string | null; // Broadcaster info
+}
+
+// CDN Channel type
+interface CDNChannel {
+  name: string;
+  code: string;
+  url: string;
+  image: string | null;
+  viewers: number;
 }
 
 interface EnrichedMatch {
@@ -138,12 +149,134 @@ interface EnrichedMatch {
   score?: { home?: string; away?: string };
   progress?: string;
   priority: number;
+  broadcaster?: string; // From SportsDB strTVStation
+  channels?: CDNChannel[]; // Matched CDN channels
 }
 
 // Cache for WeStream and SportsDB data
 let weStreamCache: { data: WeStreamMatch[]; timestamp: number } | null = null;
 let sportsDbCache: { data: SportsDbLiveMatch[]; timestamp: number } | null = null;
+let cdnChannelsCache: { data: CDNChannel[]; timestamp: number } | null = null;
 const CACHE_DURATION = 60 * 1000; // 1 minute cache for faster responses
+const CDN_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for channels
+
+// Broadcaster to CDN channel keyword mapping
+const BROADCASTER_CHANNEL_MAP: Record<string, string[]> = {
+  'espn': ['espn'],
+  'sky sports': ['sky sport'],
+  'bt sport': ['bt sport'],
+  'bein sports': ['bein'],
+  'dazn': ['dazn'],
+  'nbc': ['nbc', 'peacock'],
+  'cbs': ['cbs sport', 'paramount'],
+  'fox': ['fox sport', 'fox'],
+  'tnt': ['tnt'],
+  'abc': ['abc'],
+  'star sports': ['star sport'],
+  'sony sports': ['sony sport'],
+  'willow': ['willow'],
+  'supersport': ['super sport'],
+  'peacock': ['peacock'],
+  'amazon prime': ['prime'],
+  'paramount+': ['paramount', 'cbs'],
+  'optus sport': ['optus'],
+  'tsn': ['tsn'],
+  'sportsnet': ['sportsnet'],
+  'canal+': ['canal'],
+  'movistar': ['movistar'],
+  'eleven sports': ['eleven'],
+};
+
+// Common sports channels (fallback static list when API unavailable)
+const COMMON_SPORTS_CHANNELS: CDNChannel[] = [
+  { name: 'ESPN', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=espn&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/espn.svg', viewers: 50 },
+  { name: 'ESPN 2', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=espn+2&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/espn-2.svg', viewers: 10 },
+  { name: 'Sky Sports Main Event', code: 'gb', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=sky+sports+main+event&code=gb', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-kingdom/sky-sports-main.svg', viewers: 30 },
+  { name: 'Sky Sports Premier League', code: 'gb', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=sky+sports+premier+league&code=gb', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-kingdom/sky-sports-pl.svg', viewers: 40 },
+  { name: 'BT Sport 1', code: 'gb', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=bt+sport+1&code=gb', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-kingdom/bt-sport-1.svg', viewers: 20 },
+  { name: 'BT Sport 2', code: 'gb', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=bt+sport+2&code=gb', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-kingdom/bt-sport-2.svg', viewers: 15 },
+  { name: 'TNT', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=tnt&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/tnt.png', viewers: 25 },
+  { name: 'NBC', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=nbc&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/nbc.png', viewers: 20 },
+  { name: 'FOX Sports 1', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=fox+sports+1&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/fox-sport-1.svg', viewers: 15 },
+  { name: 'CBS Sports Network', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=cbs+sports+network&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/cbs-sports-network.svg', viewers: 10 },
+  { name: 'beIN SPORTS', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=bein+sports&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/bein-sports.webp', viewers: 20 },
+  { name: 'DAZN 1', code: 'gb', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=dazn+1&code=gb', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-kingdom/dazn-1.png', viewers: 25 },
+  { name: 'Star Sports 1', code: 'in', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=star+sports+1&code=in', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/india/star-sports-1.svg', viewers: 30 },
+  { name: 'Willow Cricket', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=willow+cricket&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/willow-cricket-1.svg', viewers: 15 },
+  { name: 'Peacock Event 1', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=peacock+event+1&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/peacock.png', viewers: 10 },
+  { name: 'NBA TV', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=nba+tv&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/nba-tv.svg', viewers: 20 },
+  { name: 'NFL Network', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=nfl+network&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/nfl-network.svg', viewers: 25 },
+  { name: 'ABC', code: 'us', url: 'https://cdn-live.tv/api/v1/vip/damitv/channels/player/?name=abc&code=us', image: 'https://api.cdn-live.tv/api/v1/channels/images6318/united-states/abc.png', viewers: 15 },
+];
+
+// Fetch CDN channels - try API first, fallback to static list
+async function fetchCDNChannels(): Promise<CDNChannel[]> {
+  if (cdnChannelsCache && Date.now() - cdnChannelsCache.timestamp < CDN_CACHE_DURATION) {
+    console.log('Using cached CDN channels');
+    return cdnChannelsCache.data;
+  }
+
+  try {
+    const response = await fetch(`${CDN_LIVE_API}/channels/`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const channels: CDNChannel[] = Array.isArray(data) ? data : data.channels || [];
+      if (channels.length > 0) {
+        cdnChannelsCache = { data: channels, timestamp: Date.now() };
+        console.log(`Fetched ${channels.length} CDN channels from API`);
+        return channels;
+      }
+    }
+  } catch (error) {
+    console.log('CDN API unavailable, using static list');
+  }
+  
+  // Fallback to static list
+  cdnChannelsCache = { data: COMMON_SPORTS_CHANNELS, timestamp: Date.now() };
+  console.log(`Using ${COMMON_SPORTS_CHANNELS.length} static CDN channels`);
+  return COMMON_SPORTS_CHANNELS;
+}
+
+// Match broadcaster to CDN channels
+function matchBroadcasterToChannels(broadcaster: string | null, allChannels: CDNChannel[], category: string): CDNChannel[] {
+  if (!broadcaster || allChannels.length === 0) return [];
+  
+  const broadcasterLower = broadcaster.toLowerCase();
+  const matchedChannels: CDNChannel[] = [];
+  
+  // Find matching keywords for this broadcaster
+  for (const [broadcasterKey, keywords] of Object.entries(BROADCASTER_CHANNEL_MAP)) {
+    if (broadcasterLower.includes(broadcasterKey)) {
+      // Find channels matching these keywords
+      for (const channel of allChannels) {
+        const channelName = channel.name.toLowerCase();
+        if (keywords.some(kw => channelName.includes(kw))) {
+          if (!matchedChannels.find(c => c.name === channel.name)) {
+            matchedChannels.push(channel);
+          }
+        }
+      }
+    }
+  }
+  
+  // Also try direct name match
+  for (const channel of allChannels) {
+    const channelName = channel.name.toLowerCase();
+    if (broadcasterLower.includes(channelName) || channelName.includes(broadcasterLower.split(' ')[0])) {
+      if (!matchedChannels.find(c => c.name === channel.name)) {
+        matchedChannels.push(channel);
+      }
+    }
+  }
+  
+  // Sort by viewers (most popular first) and limit to 3
+  return matchedChannels
+    .sort((a, b) => (b.viewers || 0) - (a.viewers || 0))
+    .slice(0, 3);
+}
 
 // Fetch all matches from WeStream API (PRIMARY SOURCE)
 async function fetchWeStreamMatches(): Promise<WeStreamMatch[]> {
@@ -344,11 +477,14 @@ serve(async (req) => {
 
     console.log('Fetching popular matches (priority sports focus)...');
     
-    // Fetch both sources in parallel
-    const [weStreamMatches, sportsDbMatches] = await Promise.all([
+    // Fetch all sources in parallel (including CDN channels)
+    const [weStreamMatches, sportsDbMatches, cdnChannels] = await Promise.all([
       fetchWeStreamMatches(),
       fetchSportsDbLiveMatches(),
+      fetchCDNChannels(),
     ]);
+
+    console.log(`CDN channels available: ${cdnChannels.length}`);
 
     console.log(`Processing ${weStreamMatches.length} WeStream matches`);
 
@@ -424,6 +560,8 @@ serve(async (req) => {
         isLive,
         progress: sdbMatch?.strProgress || undefined,
         priority: calculatePriority(wsMatch, sdbMatch, isLive),
+        broadcaster: sdbMatch?.strTVStation || undefined,
+        channels: matchBroadcasterToChannels(sdbMatch?.strTVStation || null, cdnChannels, wsMatch.category),
       };
       
       // Add live score if available
