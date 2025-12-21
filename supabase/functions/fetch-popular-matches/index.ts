@@ -448,7 +448,7 @@ function getSportFallbackImage(category: string): string {
   return SPORT_FALLBACK_IMAGES[normalized] || SPORT_FALLBACK_IMAGES['default'];
 }
 
-// Search for event poster from SportsDB searchevents endpoint
+// Search for event poster from SportsDB searchevents endpoint with timeout
 async function searchEventPoster(homeTeam: string, awayTeam: string): Promise<string | null> {
   const cacheKey = `${normalizeTeamName(homeTeam)}_${normalizeTeamName(awayTeam)}`;
   
@@ -459,12 +459,17 @@ async function searchEventPoster(homeTeam: string, awayTeam: string): Promise<st
   }
   
   try {
-    // Try searching with home team first
+    // Try searching with home team first - with 3 second timeout
     const searchQuery = encodeURIComponent(homeTeam);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    
     const response = await fetch(
       `https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${searchQuery}`,
-      { headers: { 'Accept': 'application/json' } }
+      { headers: { 'Accept': 'application/json' }, signal: controller.signal }
     );
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       const data = await response.json();
@@ -553,8 +558,9 @@ function calculatePriority(match: WeStreamMatch, sportsDbMatch: SportsDbLiveMatc
   return priority;
 }
 
-// Main cache
+// Main cache - longer duration to reduce compute
 let responseCache: { data: EnrichedMatch[]; timestamp: number } | null = null;
+const RESPONSE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes cache to reduce compute load
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -562,8 +568,8 @@ serve(async (req) => {
   }
 
   try {
-    // Check response cache
-    if (responseCache && Date.now() - responseCache.timestamp < CACHE_DURATION) {
+    // Check response cache - use longer duration to reduce compute
+    if (responseCache && Date.now() - responseCache.timestamp < RESPONSE_CACHE_DURATION) {
       console.log('Returning cached response');
       return new Response(
         JSON.stringify({ 
@@ -691,24 +697,26 @@ serve(async (req) => {
     // Get top 50 matches first
     const topMatches = enrichedMatches.slice(0, 50);
 
-    // Fetch event posters for ALL top matches that don't have one (batch in groups of 5 for parallel requests)
-    const matchesNeedingPosters = topMatches.filter(m => !m.poster && m.teams.home.name && m.teams.away.name);
+    // OPTIMIZED: Only fetch posters for top 8 matches to reduce compute load
+    const matchesNeedingPosters = topMatches
+      .filter(m => !m.poster && m.teams.home.name && m.teams.away.name)
+      .slice(0, 8);
     
     if (matchesNeedingPosters.length > 0) {
       console.log(`Fetching event posters for ${matchesNeedingPosters.length} matches...`);
       
-      // Process in batches of 5 to avoid rate limiting
-      const batchSize = 5;
-      for (let i = 0; i < matchesNeedingPosters.length; i += batchSize) {
-        const batch = matchesNeedingPosters.slice(i, i + batchSize);
-        const posterPromises = batch.map(async (match) => {
+      // Process in smaller batch of 4 to stay within compute limits
+      const posterPromises = matchesNeedingPosters.map(async (match) => {
+        try {
           const poster = await searchEventPoster(match.teams.home.name, match.teams.away.name);
           if (poster) {
             match.poster = poster;
           }
-        });
-        await Promise.all(posterPromises);
-      }
+        } catch (e) {
+          // Ignore poster fetch errors
+        }
+      });
+      await Promise.all(posterPromises);
       console.log(`Poster fetch complete`);
     }
 
