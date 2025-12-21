@@ -1,10 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface MatchInfo {
+  title?: string;
+  teams?: string[];
+  league?: string;
+  time?: string;
+  status?: string;
+}
+
 export interface ExtractedStream {
   url: string;
   type: 'hls' | 'mp4' | 'unknown';
   quality?: string;
   source?: string;
+  matchInfo?: MatchInfo;
 }
 
 export interface HlsExtractionResult {
