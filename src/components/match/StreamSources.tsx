@@ -207,41 +207,9 @@ const StreamSources = ({
 
   // Show no streams message
   if (allAvailableStreams.length === 0) {
-    return (
-      <div className="mt-6 text-center py-8 bg-card/50 rounded-xl border border-border">
-        <div className="text-muted-foreground mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2 text-muted-foreground/50">
-            <path d="M17 17H3V7h14m4 2v6a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2z"/>
-            <line x1="1" y1="1" x2="23" y2="23" />
-          </svg>
-        </div>
-        <p className="text-muted-foreground text-sm mb-2">No streams available yet</p>
-        <p className="text-muted-foreground/70 text-xs">Stream links will appear when the match goes live</p>
-        {onRefresh && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="mt-4 bg-gray-800 hover:bg-gray-700 border-gray-600"
-          >
-            {isRefreshing ? (
-              <>
-                <Loader className="w-3 h-3 mr-1.5 animate-spin" />
-                Checking...
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-                </svg>
-                Check for Streams
-              </>
-            )}
-          </Button>
-        )}
-      </div>
-    );
+    return <div className="mt-6 text-center py-8">
+        
+      </div>;
   }
   return <div className="mt-6">
       <div className="flex items-center justify-between mb-4">
