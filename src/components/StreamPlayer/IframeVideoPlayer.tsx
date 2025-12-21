@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Home, Loader2 } from 'lucide-react';
+import { Home, Loader2, Shield, Play } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Match } from '../../types/sports';
@@ -16,6 +16,9 @@ interface IframeVideoPlayerProps {
   match?: Match | ManualMatch | null;
 }
 
+// Number of clicks to absorb before allowing through to iframe
+const CLICKS_TO_ABSORB = 3;
+
 const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, title, matchStartTime, match }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -25,6 +28,38 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   const [lastSrc, setLastSrc] = useState('');
   const [reloadCount, setReloadCount] = useState(0);
   const [countdown, setCountdown] = useState<string>('');
+  
+  // Pop-up blocker state
+  const [clicksAbsorbed, setClicksAbsorbed] = useState(0);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [overlayMessage, setOverlayMessage] = useState('Click to play');
+  
+  // Handle overlay clicks - absorb first few clicks to block pop-ups
+  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const newCount = clicksAbsorbed + 1;
+    setClicksAbsorbed(newCount);
+    
+    if (newCount >= CLICKS_TO_ABSORB) {
+      // All ad-triggering clicks absorbed, allow through
+      setShowOverlay(false);
+      console.log('🛡️ Pop-up blocker: All ad clicks absorbed, playing stream');
+    } else {
+      // Show progress message
+      const remaining = CLICKS_TO_ABSORB - newCount;
+      setOverlayMessage(remaining === 1 ? 'Click once more to play' : `Click ${remaining} more times to play`);
+      console.log(`🛡️ Pop-up blocker: Absorbed click ${newCount}/${CLICKS_TO_ABSORB}`);
+    }
+  }, [clicksAbsorbed]);
+  
+  // Reset overlay when source changes
+  useEffect(() => {
+    setClicksAbsorbed(0);
+    setShowOverlay(true);
+    setOverlayMessage('Click to play');
+  }, [src]);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -311,9 +346,31 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         loading="lazy"
         style={{ 
           border: 'none',
-          pointerEvents: 'auto'
+          pointerEvents: showOverlay ? 'none' : 'auto'
         }}
       />
+      
+      {/* Pop-up Blocker Overlay - Absorbs first clicks that trigger ads */}
+      {showOverlay && !isLoading && !countdown && (
+        <div 
+          className="absolute inset-0 z-40 cursor-pointer flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={handleOverlayClick}
+        >
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Shield className="w-8 h-8 text-green-400" />
+              <span className="text-white font-bold text-lg">Ad Blocker Active</span>
+            </div>
+            <div className="bg-primary/90 hover:bg-primary text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 mx-auto cursor-pointer transition-colors">
+              <Play className="w-5 h-5" />
+              <span className="font-medium">{overlayMessage}</span>
+            </div>
+            <p className="text-white/60 text-xs mt-3">
+              {clicksAbsorbed > 0 ? `${CLICKS_TO_ABSORB - clicksAbsorbed} clicks remaining` : 'Blocking pop-up ads...'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Always Visible DAMITV Home Button - Top Center */}
       <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
