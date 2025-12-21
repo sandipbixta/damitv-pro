@@ -16,8 +16,8 @@ interface IframeVideoPlayerProps {
   match?: Match | ManualMatch | null;
 }
 
-// Number of clicks to absorb before allowing through to iframe
-const CLICKS_TO_ABSORB = 3;
+// Number of interactions to absorb before allowing through to iframe
+const CLICKS_TO_ABSORB = 1;
 
 const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, title, matchStartTime, match }) => {
   const isMobile = useIsMobile();
@@ -32,71 +32,38 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   // Pop-up blocker state
   const [clicksAbsorbed, setClicksAbsorbed] = useState(0);
   const [showOverlay, setShowOverlay] = useState(true);
-  const [overlayMessage, setOverlayMessage] = useState('Tap to play');
+  const [overlayMessage, setOverlayMessage] = useState(isMobile ? 'Tap to play' : 'Click to play');
   
-  // Global popup blocker for mobile - blocks window.open calls
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const originalOpen = window.open;
-    
-    // Block popup windows on mobile
-    window.open = function(...args) {
-      console.log('🛡️ Mobile popup blocked:', args[0]);
-      return null;
-    };
-    
-    // Block touch-triggered popups
-    const blockPopupEvent = (e: Event) => {
-      const target = e.target as HTMLElement;
-      // If click is outside our controlled elements, it might be an ad trigger
-      if (target.tagName === 'A' && target.getAttribute('target') === '_blank') {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('🛡️ Mobile: Blocked external link popup');
-      }
-    };
-    
-    document.addEventListener('click', blockPopupEvent, true);
-    document.addEventListener('touchend', blockPopupEvent, true);
-    
-    return () => {
-      window.open = originalOpen;
-      document.removeEventListener('click', blockPopupEvent, true);
-      document.removeEventListener('touchend', blockPopupEvent, true);
-    };
-  }, [isMobile]);
+  // NOTE: We intentionally do NOT override global window.open or add document-level click listeners here.
+  // Those approaches can break legitimate stream players and other site interactions, especially on desktop.
+  // Instead we rely on the overlay absorption + same-origin iframe cleanup in utils/adBlocker.
   
-  // Track last interaction to prevent double-firing
-  const lastInteractionRef = useRef<number>(0);
-  
-  // Handle overlay clicks - absorb first few clicks to block pop-ups
-  const handleOverlayInteraction = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Prevent double-firing from touch + click
-    const now = Date.now();
-    if (now - lastInteractionRef.current < 300) {
-      return;
-    }
-    lastInteractionRef.current = now;
-    
-    const newCount = clicksAbsorbed + 1;
-    setClicksAbsorbed(newCount);
-    
-    if (newCount >= CLICKS_TO_ABSORB) {
-      // All ad-triggering clicks absorbed, allow through
-      setShowOverlay(false);
-      console.log('🛡️ Pop-up blocker: All ad clicks absorbed, playing stream');
-    } else {
-      // Show progress message
-      const remaining = CLICKS_TO_ABSORB - newCount;
-      const action = isMobile ? 'Tap' : 'Click';
-      setOverlayMessage(remaining === 1 ? `${action} once more to play` : `${action} ${remaining} more times to play`);
-      console.log(`🛡️ Pop-up blocker: Absorbed click ${newCount}/${CLICKS_TO_ABSORB}`);
-    }
-  }, [clicksAbsorbed, isMobile]);
+  // Handle overlay interactions - absorb initial interaction(s) to block pop-ups
+  const handleOverlayInteraction = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setClicksAbsorbed((prev) => {
+        const newCount = prev + 1;
+
+        if (newCount >= CLICKS_TO_ABSORB) {
+          setShowOverlay(false);
+          console.log('🛡️ Pop-up blocker: overlay dismissed');
+        } else {
+          const remaining = CLICKS_TO_ABSORB - newCount;
+          const action = isMobile ? 'Tap' : 'Click';
+          setOverlayMessage(
+            remaining === 1 ? `${action} once more to play` : `${action} ${remaining} more times to play`
+          );
+          console.log(`🛡️ Pop-up blocker: Absorbed interaction ${newCount}/${CLICKS_TO_ABSORB}`);
+        }
+
+        return newCount;
+      });
+    },
+    [isMobile]
+  );
   
   // Reset overlay when source changes
   useEffect(() => {
@@ -396,13 +363,11 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         }}
       />
       
-      {/* Pop-up Blocker Overlay - Absorbs first clicks/taps that trigger ads */}
+      {/* Pop-up Blocker Overlay - Absorbs first interaction(s) that trigger ads */}
       {showOverlay && !isLoading && !countdown && (
-        <div 
+        <div
           className="absolute inset-0 z-40 cursor-pointer flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity touch-manipulation"
-          onClick={handleOverlayInteraction}
-          onTouchStart={(e) => e.preventDefault()}
-          onTouchEnd={handleOverlayInteraction}
+          onPointerDown={handleOverlayInteraction}
         >
           <div className="text-center pointer-events-none">
             <div className="flex items-center justify-center gap-2 mb-3">
@@ -414,8 +379,8 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
               <span className="font-medium">{overlayMessage}</span>
             </div>
             <p className="text-white/60 text-xs mt-3">
-              {clicksAbsorbed > 0 
-                ? `${CLICKS_TO_ABSORB - clicksAbsorbed} ${isMobile ? 'taps' : 'clicks'} remaining` 
+              {clicksAbsorbed > 0
+                ? `${CLICKS_TO_ABSORB - clicksAbsorbed} ${isMobile ? 'taps' : 'clicks'} remaining`
                 : 'Blocking pop-up ads...'}
             </p>
           </div>
