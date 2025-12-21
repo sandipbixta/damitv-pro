@@ -1,6 +1,13 @@
-
 [build]
   publish = "dist"
+
+# Enable prerendering for search engine bots (Netlify's built-in feature)
+# This serves pre-rendered HTML to crawlers while serving the SPA to regular users
+[build.processing]
+  skip_processing = false
+
+[build.processing.html]
+  pretty_urls = true
 
 # Fix duplicate content with proper 301 redirects
 [[redirects]]

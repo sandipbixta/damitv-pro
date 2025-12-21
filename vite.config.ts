@@ -3,51 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from 'vite-plugin-pwa';
-import vitePrerender from 'vite-plugin-prerender';
-
-// All routes to pre-render with their SEO data
-const prerenderRoutes = [
-  '/',
-  '/live',
-  '/channels',
-  '/schedule',
-  '/dmca',
-  '/install',
-  '/ufc-streaming-free',
-  '/nba-streaming-free',
-  '/watch-premier-league-free',
-  '/hesgoal-alternatives',
-  '/batmanstream-alternatives',
-  '/daddylivehd-alternatives',
-  '/streameast-alternatives',
-  '/crackstreams-alternative',
-  '/hesgoal',
-  '/hesgoal-live-stream',
-  '/hesgoal-tv',
-  '/vipleague',
-  '/myp2p',
-  '/sport365-live',
-  '/freestreams-live-1',
-  '/totalsportek-formula1',
-  '/totalsportek-tennis',
-  '/blog',
-  // League pages
-  '/premier-league-streaming',
-  '/champions-league-streaming',
-  '/europa-league-streaming',
-  '/la-liga-streaming',
-  '/bundesliga-streaming',
-  '/serie-a-streaming',
-  '/ligue-1-streaming',
-  // Sports pages
-  '/nfl-streaming',
-  '/mlb-streaming',
-  '/nhl-streaming',
-  '/mls-streaming',
-  '/boxing-streaming',
-  '/wwe-streaming',
-  '/motogp-streaming',
-];
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -154,22 +109,6 @@ export default defineConfig(({ mode }) => ({
             }
           }
         ]
-      }
-    }),
-    // Pre-render static pages for SEO - only in production build
-    mode === 'production' && vitePrerender({
-      staticDir: path.resolve(__dirname, 'dist'),
-      routes: prerenderRoutes,
-      renderer: new vitePrerender.PuppeteerRenderer({
-        headless: true,
-        renderAfterTime: 5000,
-      }),
-      postProcess(renderedRoute) {
-        // Inject critical inline styles and cleanup
-        renderedRoute.html = renderedRoute.html
-          .replace(/<script\s+type="module"\s+crossorigin/gi, '<script type="module" defer crossorigin')
-          .replace(/data-server-rendered="true"/gi, '');
-        return renderedRoute;
       }
     }),
   ].filter(Boolean),
