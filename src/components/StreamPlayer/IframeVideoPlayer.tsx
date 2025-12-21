@@ -320,9 +320,21 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         </div>
       )}
 
-      {/* No loading overlay - iframe shows directly */}
-
-      {/* No loading skeleton - stream loads directly */}
+      {/* Branded Loading State with Spinner */}
+      {isLoading && !countdown && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted to-background">
+          <div className="relative">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-primary/20" />
+          </div>
+          <p className="mt-4 text-foreground font-medium">Loading stream...</p>
+          <p className="text-muted-foreground text-sm mt-1">DAMITV</p>
+          <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+            <Shield className="w-4 h-4 text-green-500" />
+            <span>Ad blocker active</span>
+          </div>
+        </div>
+      )}
 
       <iframe 
         ref={iframeRef}
