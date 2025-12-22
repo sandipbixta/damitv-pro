@@ -76,13 +76,22 @@ const AdminCustomMatch = () => {
       return;
     }
 
+    // Convert datetime-local value to ISO string
+    let dateValue = new Date().toISOString();
+    if (matchDate) {
+      const parsedDate = new Date(matchDate);
+      if (!isNaN(parsedDate.getTime())) {
+        dateValue = parsedDate.toISOString();
+      }
+    }
+
     const newMatch: CustomMatch = {
       id: `custom-${Date.now()}`,
       homeTeam,
       awayTeam,
       imageUrl,
       streamUrl,
-      date: matchDate || new Date().toISOString(),
+      date: dateValue,
       visible: true,
       category,
     };
@@ -96,6 +105,7 @@ const AdminCustomMatch = () => {
     setImageUrl('');
     setStreamUrl('');
     setMatchDate('');
+    setCategory('Football');
     
     toast({ title: 'Match added successfully!' });
   };
@@ -219,8 +229,10 @@ const AdminCustomMatch = () => {
                     type="datetime-local"
                     value={matchDate}
                     onChange={(e) => setMatchDate(e.target.value)}
-                    className="bg-background border-border"
+                    className="bg-background border-border [color-scheme:dark]"
+                    placeholder="Select date and time"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Click to pick date/time</p>
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
