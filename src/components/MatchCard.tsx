@@ -193,12 +193,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
             ) : null}
           </div>
 
-          {/* Viewer count for live matches */}
-          {isLive && match.viewerCount && match.viewerCount > 0 && (
-            <div className="absolute top-3 right-3 z-10">
-              <LiveViewerCount match={match} size="sm" />
-            </div>
-          )}
+          {/* Remove viewer count from thumbnail - moved to bottom */}
         </div>
 
         {/* Info Section */}
@@ -220,16 +215,26 @@ const MatchCard: React.FC<MatchCardProps> = ({
             </h3>
           )}
           
-          {/* Match Start Time */}
-          <p className="text-xs text-muted-foreground mt-auto pt-3 border-t border-border/40 font-medium">
+          {/* Bottom section - Viewer count on left, Match status on right */}
+          <div className="mt-auto pt-3 border-t border-border/40">
             {isLive ? (
-              <span className="text-destructive font-bold">● Match is Live</span>
-            ) : match.date ? (
-              formatMatchDate(match.date)
+              <div className="flex items-center justify-between">
+                {/* Viewer count on left */}
+                <div className="flex items-center gap-1.5">
+                  <LiveViewerCount match={match} size="sm" />
+                </div>
+                {/* Match is Live on right */}
+                <span className="text-destructive font-bold text-xs flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                  Match is Live
+                </span>
+              </div>
             ) : (
-              'Time TBD'
+              <p className="text-xs text-muted-foreground font-medium">
+                {match.date ? formatMatchDate(match.date) : 'Time TBD'}
+              </p>
             )}
-          </p>
+          </div>
         </div>
       </div>
     </div>
