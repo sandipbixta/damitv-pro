@@ -12,6 +12,8 @@ import { generateMatchSlug } from '@/utils/matchSlug';
 import { teamLogoService } from '@/services/teamLogoService';
 import SEOMetaTags from '@/components/SEOMetaTags';
 import SocialShare from '@/components/SocialShare';
+import { useMatchTeamLogos } from '@/hooks/useTeamLogo';
+import TeamLogoDisplay from '@/components/TeamLogoDisplay';
 
 // Component imports
 import MatchHeader from '@/components/match/MatchHeader';
@@ -127,6 +129,9 @@ const Match = () => {
   const matchTitle = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : match.title;
   const matchSlug = generateMatchSlug(homeTeam, awayTeam, match.title);
   
+  // Fetch team logos
+  const { homeLogo, awayLogo } = useMatchTeamLogos(match.teams?.home, match.teams?.away);
+  
   // SEO-optimized title and description
   const seoTitle = `Watch ${matchTitle} Live Stream - HD Score`;
   const seoDescription = `Watch ${matchTitle} live stream with real-time scores, stats, and HD coverage on DamiTV.`;
@@ -219,8 +224,25 @@ const Match = () => {
       <div className="container mx-auto px-4 py-4 sm:py-8">
         <div className="w-full flex justify-center mb-4">
           <div className="text-center max-w-4xl px-4">
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{matchTitle} Live Stream</h1>
-            <p className="text-sm md:text-base text-gray-400">Watch {matchTitle} with HD quality on DamiTV</p>
+            {homeTeam && awayTeam ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <TeamLogoDisplay logo={homeLogo} teamName={homeTeam} size="lg" />
+                    <span className="text-2xl md:text-3xl font-bold text-white">{homeTeam}</span>
+                  </div>
+                  <span className="text-xl md:text-2xl font-medium text-gray-400">vs</span>
+                  <div className="flex items-center gap-2">
+                    <TeamLogoDisplay logo={awayLogo} teamName={awayTeam} size="lg" />
+                    <span className="text-2xl md:text-3xl font-bold text-white">{awayTeam}</span>
+                  </div>
+                </div>
+                <h1 className="text-lg md:text-xl text-gray-300">Live Stream</h1>
+              </div>
+            ) : (
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{matchTitle} Live Stream</h1>
+            )}
+            <p className="text-sm md:text-base text-gray-400 mt-2">Watch {matchTitle} with HD quality on DamiTV</p>
           </div>
         </div>
         
