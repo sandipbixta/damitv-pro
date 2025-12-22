@@ -44,7 +44,7 @@ const CustomMatchCards = () => {
   };
 
   return (
-    <section className="mb-8">
+    <section className="mb-8 px-4 md:px-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
           <Tv className="text-primary" size={24} />
