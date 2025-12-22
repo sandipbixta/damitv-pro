@@ -4,7 +4,7 @@ import { Stream, Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
 import { Button } from '../ui/button';
 import { Play, RotateCcw, Maximize, ExternalLink, Monitor, Clock } from 'lucide-react';
-import StreamIframe from './StreamIframe';
+import IframeVideoPlayer from './IframeVideoPlayer';
 import StreamQualitySelector from '../StreamQualitySelector';
 import BufferIndicator from '../BufferIndicator';
 import { getConnectionInfo, getOptimizedHLSConfig, detectCasting, onConnectionChange, detectGeographicLatency } from '../../utils/connectionOptimizer';
@@ -560,11 +560,13 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           }}
         />
       ) : (
-        <StreamIframe
-          videoRef={iframeRef}
+        <IframeVideoPlayer
           src={stream.embedUrl.startsWith('http://') ? stream.embedUrl.replace(/^http:\/\//i, 'https://') : stream.embedUrl}
           onLoad={() => setError(false)}
           onError={handleError}
+          title={match?.title}
+          matchStartTime={match?.date ? (typeof match.date === 'string' ? new Date(match.date).getTime() : match.date) : undefined}
+          match={match}
         />
       )}
       {/* External open fallback on Android for non-m3u8 embeds */}
