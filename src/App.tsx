@@ -19,6 +19,8 @@ import Live from "./pages/Live";
 import Channels from "./pages/Channels";
 import ChannelPlayer from "./pages/ChannelPlayer";
 import ManualMatchPlayer from "./pages/ManualMatchPlayer";
+import AdminCustomMatch from "./pages/AdminCustomMatch";
+import CustomMatchPlayer from "./pages/CustomMatchPlayer";
 import Analytics from "./pages/Analytics";
 import DMCANotice from "./pages/DMCANotice";
 import NotFound from "./pages/NotFound";
@@ -87,6 +89,12 @@ const App: React.FC = () => {
               <Route path="/manual-match/:matchId" element={
                 <SEOPageTracker contentType="match">
                   <ManualMatchPlayer />
+                </SEOPageTracker>
+              } />
+              <Route path="/admin/blog/new" element={<AdminCustomMatch />} />
+              <Route path="/custom-match/:matchId" element={
+                <SEOPageTracker contentType="match">
+                  <CustomMatchPlayer />
                 </SEOPageTracker>
               } />
               <Route path="/schedule" element={
