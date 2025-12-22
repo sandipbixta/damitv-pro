@@ -67,8 +67,8 @@ async function markAsNotified(matchId: string, matchTitle: string, notificationT
   }
 }
 
-// ========== TheSportsDB Image Fetching ==========
-async function fetchSportsDBEventImage(homeTeam: string, awayTeam: string): Promise<string | null> {
+// ========== TheSportsDB Team Badge Fetching ==========
+async function fetchTeamBadge(teamName: string): Promise<string | null> {
   const apiKey = Deno.env.get('THESPORTSDB_API_KEY');
   if (!apiKey) {
     console.log('⚠️ TheSportsDB API key not configured');
@@ -78,37 +78,40 @@ async function fetchSportsDBEventImage(homeTeam: string, awayTeam: string): Prom
   const baseUrl = `https://www.thesportsdb.com/api/v1/json/${apiKey}`;
 
   try {
-    const searchTerms = [homeTeam, awayTeam];
-
-    for (const term of searchTerms) {
-      try {
-        const teamSearchUrl = `${baseUrl}/searchteams.php?t=${encodeURIComponent(term)}`;
-        const teamResponse = await fetch(teamSearchUrl);
-        
-        if (teamResponse.ok) {
-          const teamData = await teamResponse.json();
-          const team = teamData?.teams?.[0];
-          if (team?.strBadge) {
-            console.log(`✅ Using team badge: ${team.strBadge}`);
-            return team.strBadge;
-          }
-        }
-      } catch (e) {
-        console.log(`Search failed for team "${term}":`, e);
+    const teamSearchUrl = `${baseUrl}/searchteams.php?t=${encodeURIComponent(teamName)}`;
+    const teamResponse = await fetch(teamSearchUrl);
+    
+    if (teamResponse.ok) {
+      const teamData = await teamResponse.json();
+      const team = teamData?.teams?.[0];
+      if (team?.strBadge) {
+        console.log(`✅ Found badge for ${teamName}: ${team.strBadge}`);
+        return team.strBadge;
       }
     }
-
-    return null;
-  } catch (error) {
-    console.error('❌ Error fetching TheSportsDB image:', error);
-    return null;
+  } catch (e) {
+    console.log(`Search failed for team "${teamName}":`, e);
   }
+
+  return null;
+}
+
+// Fetch both team badges
+async function fetchBothTeamBadges(homeTeam: string, awayTeam: string): Promise<{ homeBadge: string | null; awayBadge: string | null }> {
+  const [homeBadge, awayBadge] = await Promise.all([
+    fetchTeamBadge(homeTeam),
+    fetchTeamBadge(awayTeam)
+  ]);
+  
+  console.log(`🏟️ Badges fetched - Home: ${homeBadge ? 'Yes' : 'No'}, Away: ${awayBadge ? 'Yes' : 'No'}`);
+  return { homeBadge, awayBadge };
 }
 
 // ========== Telegram Posting ==========
-async function postToTelegram(
+async function postToTelegramWithBothLogos(
   message: string,
-  imageUrl?: string
+  homeBadge?: string | null,
+  awayBadge?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
@@ -121,8 +124,33 @@ async function postToTelegram(
   try {
     let response;
     
-    if (imageUrl) {
-      // Send photo with caption
+    // If both badges available, send as media group with 2 photos
+    if (homeBadge && awayBadge) {
+      console.log('📸 Sending media group with both team logos');
+      const url = `https://api.telegram.org/bot${botToken}/sendMediaGroup`;
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          media: [
+            {
+              type: 'photo',
+              media: homeBadge,
+              caption: message,
+              parse_mode: 'HTML'
+            },
+            {
+              type: 'photo',
+              media: awayBadge
+            }
+          ]
+        })
+      });
+    } else if (homeBadge || awayBadge) {
+      // Only one badge available, send single photo
+      const imageUrl = homeBadge || awayBadge;
+      console.log('📸 Sending single photo with one team logo');
       const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
       response = await fetch(url, {
         method: 'POST',
@@ -135,7 +163,8 @@ async function postToTelegram(
         })
       });
     } else {
-      // Send text message only
+      // No badges, send text only
+      console.log('📝 Sending text message only (no logos found)');
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
       response = await fetch(url, {
         method: 'POST',
@@ -303,15 +332,9 @@ serve(async (req) => {
       );
     }
 
-    // Fetch image if not provided
-    let imageUrl = matchData.poster || '';
-    if (!imageUrl) {
-      console.log('🖼️ Fetching match image from TheSportsDB...');
-      const sportsDBImage = await fetchSportsDBEventImage(matchData.homeTeam, matchData.awayTeam);
-      if (sportsDBImage) {
-        imageUrl = sportsDBImage;
-      }
-    }
+    // Fetch both team badges from TheSportsDB
+    console.log('🖼️ Fetching both team badges from TheSportsDB...');
+    const { homeBadge, awayBadge } = await fetchBothTeamBadges(matchData.homeTeam, matchData.awayTeam);
 
     // Format message based on event type
     let message: string;
@@ -325,8 +348,8 @@ serve(async (req) => {
 
     console.log('📝 Formatted message:', message);
 
-    // Post to Telegram
-    const telegramResult = await postToTelegram(message, imageUrl || undefined);
+    // Post to Telegram with both team logos
+    const telegramResult = await postToTelegramWithBothLogos(message, homeBadge, awayBadge);
 
     // Mark as notified if successful
     if (telegramResult.success) {
@@ -340,7 +363,8 @@ serve(async (req) => {
         success: telegramResult.success,
         telegram: telegramResult,
         streamUrl,
-        imageUrl
+        homeBadge,
+        awayBadge
       }),
       { 
         status: telegramResult.success ? 200 : 500, 
