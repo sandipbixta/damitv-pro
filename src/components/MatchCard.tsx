@@ -179,15 +179,15 @@ const MatchCard: React.FC<MatchCardProps> = ({
           {/* Gradient overlay at bottom */}
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
           
-          {/* WATCH IN / LIVE Badge - FanCode style with orange */}
-          <div className="absolute bottom-3 left-3 z-10">
+          {/* WATCH IN / LIVE Badge - Smaller size */}
+          <div className="absolute bottom-2 left-2 z-10">
             {isLive || isMatchStarting ? (
-              <div className="bg-destructive text-destructive-foreground text-[11px] font-extrabold uppercase px-3 py-1.5 rounded tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 bg-current rounded-full animate-pulse" />
+              <div className="bg-destructive text-destructive-foreground text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
                 LIVE
               </div>
             ) : countdown ? (
-              <div className="bg-primary text-primary-foreground text-[11px] font-extrabold uppercase px-3 py-1.5 rounded tracking-wider italic">
+              <div className="bg-primary text-primary-foreground text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide italic">
                 WATCH IN {countdown}
               </div>
             ) : null}
