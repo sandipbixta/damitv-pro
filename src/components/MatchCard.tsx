@@ -142,10 +142,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
     );
   };
 
-  // Team row component - FanCode style
+  // Team row component - FanCode style with larger text
   const TeamRow = ({ name, badge }: { name: string; badge: string }) => (
     <div className="flex items-center gap-3">
-      <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
+      <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center flex-shrink-0">
         {badge ? (
           <img
             src={badge}
@@ -156,76 +156,74 @@ const MatchCard: React.FC<MatchCardProps> = ({
             }}
           />
         ) : (
-          <span className="text-[8px] font-bold text-slate-400">
+          <span className="text-[9px] font-bold text-slate-400">
             {name.substring(0, 2).toUpperCase()}
           </span>
         )}
       </div>
-      <span className="text-white font-normal text-[15px]">{name}</span>
+      <span className="text-white font-normal text-base">{name}</span>
     </div>
   );
 
   const cardContent = (
     <div className="group cursor-pointer h-full">
-      <div className="relative overflow-hidden rounded-2xl bg-[#1a1a2e] transition-all duration-300 hover:scale-[1.02] h-full flex flex-col">
+      <div className="relative overflow-hidden rounded-xl bg-[#16161e] transition-all duration-300 hover:bg-[#1c1c28] h-full flex flex-col">
         {/* Thumbnail Section */}
-        <div className="relative aspect-[16/10] overflow-hidden flex-shrink-0 rounded-t-2xl">
+        <div className="relative aspect-[16/9] overflow-hidden flex-shrink-0 rounded-t-xl">
           {generateThumbnail()}
           
-          {/* WATCH IN / LIVE Badge - Bottom left overlapping */}
-          <div className="absolute -bottom-3 left-4 z-20">
+          {/* WATCH IN / LIVE Badge - Positioned at bottom, overlapping */}
+          <div className="absolute bottom-0 left-0 z-20 translate-y-1/2 ml-3">
             {isLive || isMatchStarting ? (
               <div 
-                className="text-white text-[11px] font-bold uppercase px-4 py-1.5 italic tracking-wide shadow-xl"
+                className="text-white text-xs font-semibold italic px-3 py-1 transform -skew-x-6"
                 style={{
                   background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
-                  clipPath: 'polygon(0 0, 100% 0, 95% 100%, 5% 100%)',
                 }}
               >
-                ● LIVE NOW
+                <span className="inline-block transform skew-x-6">● LIVE NOW</span>
               </div>
             ) : countdown ? (
               <div 
-                className="text-white text-[11px] font-bold uppercase px-4 py-1.5 italic tracking-wide shadow-xl"
+                className="text-white text-xs font-semibold italic px-3 py-1 transform -skew-x-6"
                 style={{
                   background: 'linear-gradient(90deg, #0d9488 0%, #10b981 100%)',
-                  clipPath: 'polygon(0 0, 100% 0, 95% 100%, 5% 100%)',
                 }}
               >
-                WATCH IN {countdown}
+                <span className="inline-block transform skew-x-6">WATCH IN {countdown}</span>
               </div>
             ) : null}
           </div>
 
           {/* Viewer count for live matches */}
           {isLive && match.viewerCount && match.viewerCount > 0 && (
-            <div className="absolute top-3 right-3 z-10">
+            <div className="absolute top-2 right-2 z-10">
               <LiveViewerCount match={match} size="sm" />
             </div>
           )}
         </div>
 
         {/* Info Section - FanCode style */}
-        <div className="px-4 pt-5 pb-4 flex flex-col flex-1 gap-2.5">
+        <div className="px-4 pt-6 pb-4 flex flex-col flex-1 gap-2">
           {/* Sport & Competition */}
-          <p className="text-[13px] text-slate-400 truncate">
-            {getSportName()}{match.title && ` • ${match.title.length > 30 ? match.title.substring(0, 30) + '...' : match.title}`}
+          <p className="text-sm text-gray-400">
+            {getSportName()}{match.title && ` • ${match.title.length > 35 ? match.title.substring(0, 35) + '...' : match.title}`}
           </p>
           
           {/* Teams - Vertical layout like FanCode */}
           {home && away ? (
-            <div className="flex flex-col gap-2 mt-1">
+            <div className="flex flex-col gap-2.5 mt-1">
               <TeamRow name={home} badge={homeBadge} />
               <TeamRow name={away} badge={awayBadge} />
             </div>
           ) : (
-            <h3 className="font-medium text-white text-[15px] line-clamp-2">
+            <h3 className="font-medium text-white text-base line-clamp-2">
               {match.title}
             </h3>
           )}
           
           {/* Match Start Time - FanCode style */}
-          <p className="text-[12px] text-slate-500 mt-auto pt-1">
+          <p className="text-sm text-gray-500 mt-auto pt-2">
             {isLive ? (
               <span className="text-red-400">Match is Live</span>
             ) : match.date ? (
