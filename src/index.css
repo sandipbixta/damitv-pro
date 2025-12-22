@@ -7,41 +7,41 @@
 
 @layer base {
   :root {
-    /* FanCode-inspired dark theme (default) */
+    /* FanCode-inspired dark theme (default) - Dark Orange accent */
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
-    --card: 0 0% 7%;
+    --card: 0 0% 8%;
     --card-foreground: 0 0% 100%;
-    --popover: 0 0% 7%;
+    --popover: 0 0% 8%;
     --popover-foreground: 0 0% 100%;
-    --primary: 167 74% 50%;
+    --primary: 24 91% 63%;
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 100%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 24 91% 63%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 18%;
+    --border: 0 0% 20%;
     --input: 0 0% 15%;
-    --ring: 167 74% 50%;
-    --chart-1: 167 74% 50%;
+    --ring: 24 91% 63%;
+    --chart-1: 24 91% 63%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     
-    /* FanCode brand colors */
-    --fancode-teal: 167 74% 50%;
+    /* FanCode brand colors - Dark Orange */
+    --fancode-orange: 24 91% 63%;
     --fancode-red: 0 84% 60%;
     --fancode-dark: 0 0% 0%;
-    --fancode-surface: 0 0% 7%;
+    --fancode-surface: 0 0% 8%;
     --fancode-surface-light: 0 0% 12%;
     
     /* Sports-specific colors */
-    --sports-primary: 167 74% 50%;
+    --sports-primary: 24 91% 63%;
     --sports-secondary: 0 0% 12%;
     --sports-accent: 167 74% 50%;
     --sports-dark: 0 0% 0%;
@@ -51,21 +51,21 @@
   }
 
   .light {
-    /* Light mode - kept but slightly adjusted */
+    /* Light mode */
     --background: 0 0% 98%;
     --foreground: 0 0% 5%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 5%;
-    --primary: 167 74% 40%;
+    --primary: 24 91% 55%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 92%;
     --secondary-foreground: 0 0% 5%;
     --muted: 0 0% 95%;
     --muted-foreground: 0 0% 40%;
-    --accent: 0 0% 92%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 24 91% 55%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 88%;
