@@ -167,6 +167,20 @@ function getSportEmoji(sport?: string): string {
   return sportEmojis[sport?.toLowerCase() || ''] || '🏆';
 }
 
+// Helper to extract teams from matchTitle like "Team A vs Team B"
+function extractTeamsFromTitle(title: string): { home: string; away: string } | null {
+  const vsPatterns = [' vs ', ' v ', ' VS ', ' V ', ' versus ', ' - '];
+  for (const pattern of vsPatterns) {
+    if (title.includes(pattern)) {
+      const parts = title.split(pattern);
+      if (parts.length >= 2) {
+        return { home: parts[0].trim(), away: parts[1].trim() };
+      }
+    }
+  }
+  return null;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -179,14 +193,31 @@ serve(async (req) => {
     const matchData: MatchData = await req.json();
     console.log('📥 Received match data:', JSON.stringify(matchData, null, 2));
 
+    // Try to extract teams from matchTitle if homeTeam/awayTeam are empty
+    let homeTeam = matchData.homeTeam;
+    let awayTeam = matchData.awayTeam;
+    
+    if ((!homeTeam || !awayTeam) && matchData.matchTitle) {
+      const extracted = extractTeamsFromTitle(matchData.matchTitle);
+      if (extracted) {
+        homeTeam = homeTeam || extracted.home;
+        awayTeam = awayTeam || extracted.away;
+        console.log(`📋 Extracted teams from title: "${homeTeam}" vs "${awayTeam}"`);
+      }
+    }
+
     // Validate required fields
-    if (!matchData.homeTeam || !matchData.awayTeam) {
+    if (!homeTeam || !awayTeam) {
       console.error('❌ Missing required fields: homeTeam and awayTeam');
       return new Response(
         JSON.stringify({ success: false, error: 'homeTeam and awayTeam are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Update matchData with extracted teams
+    matchData.homeTeam = homeTeam;
+    matchData.awayTeam = awayTeam;
 
     // Build stream URL
     const matchId = matchData.matchId || `${matchData.homeTeam.toLowerCase().replace(/\s+/g, '-')}-vs-${matchData.awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
