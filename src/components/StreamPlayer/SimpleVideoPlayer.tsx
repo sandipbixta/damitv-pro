@@ -393,32 +393,103 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   if (!stream || error) {
     // Show countdown timer if match hasn't started yet
     if (!stream && countdown && match) {
+      const matchAny = match as any;
+      const matchDateMs = typeof matchAny.date === 'number' ? matchAny.date : new Date(matchAny.date).getTime();
+      const formattedDateTime = new Date(matchDateMs).toLocaleString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+
+      const homeTeamName = matchAny?.teams?.home?.name ?? matchAny?.teams?.home ?? '';
+      const awayTeamName = matchAny?.teams?.away?.name ?? matchAny?.teams?.away ?? '';
+      const matchPoster = matchAny?.poster ?? null;
+
+      // Parse countdown into separate parts for styled display
+      const countdownParts = countdown.split(/[hms\s]+/).filter(Boolean);
+      const hasDays = countdown.includes('d');
+      const hasHours = countdown.includes('h');
+      const hasMinutes = countdown.includes('m');
+
+      let hours = '00', minutes = '00', seconds = '00';
+      if (hasDays) {
+        hours = countdownParts[1]?.padStart(2, '0') || '00';
+        minutes = countdownParts[2]?.padStart(2, '0') || '00';
+        seconds = '00';
+      } else if (hasHours) {
+        hours = countdownParts[0]?.padStart(2, '0') || '00';
+        minutes = countdownParts[1]?.padStart(2, '0') || '00';
+        seconds = countdownParts[2]?.padStart(2, '0') || '00';
+      } else if (hasMinutes) {
+        hours = '00';
+        minutes = countdownParts[0]?.padStart(2, '0') || '00';
+        seconds = countdownParts[1]?.padStart(2, '0') || '00';
+      } else {
+        seconds = countdownParts[0]?.padStart(2, '0') || '00';
+      }
+
       return (
-        <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video bg-gradient-to-br from-gray-900 to-black rounded-2xl flex items-center justify-center relative overflow-hidden`}>
-          {/* Background decoration */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-primary rounded-full blur-3xl" />
-            <div className="absolute bottom-10 right-10 w-32 h-32 bg-purple-500 rounded-full blur-3xl" />
-          </div>
-          
-          <div className="text-center text-white p-6 z-10">
-            <Clock className="w-20 h-20 mx-auto mb-6 text-primary animate-pulse" />
-            <h3 className="text-2xl font-bold mb-3">Match Starting Soon</h3>
-            <p className="text-gray-400 mb-6">Stream will be available when the match begins</p>
-            
-            {/* Countdown Display */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mb-4 inline-block">
-              <div className="text-5xl font-black text-white mb-2 font-mono tracking-wider">
-                {countdown}
-              </div>
-              <div className="text-sm text-gray-400 uppercase tracking-widest">Until Kickoff</div>
-            </div>
-            
-            {match.title && (
-              <p className="text-lg text-white/80 mt-4 font-semibold">
-                {match.title}
-              </p>
+        <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video rounded-2xl overflow-hidden relative bg-background`}>
+          {/* Background */}
+          <div className="absolute inset-0">
+            {matchPoster && (
+              <img
+                src={typeof matchPoster === 'string' && matchPoster.startsWith('/api') ? `https://streamed.pk${matchPoster}` : matchPoster}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover opacity-40"
+                loading="lazy"
+                decoding="async"
+                onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+              />
             )}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/80 via-accent/60 to-secondary/80" />
+            <div className="absolute inset-0 bg-background/35" />
+            <div
+              className="absolute inset-0 opacity-10"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(45deg, transparent, transparent 2px, white 2px, white 3px)',
+              }}
+            />
+          </div>
+
+          {/* Content */}
+          <div className="absolute bottom-0 left-0 p-6 sm:p-8 md:p-12 z-10 max-w-2xl">
+            <p className="text-foreground/80 text-xs sm:text-sm font-medium tracking-widest uppercase mb-2">
+              WATCH LIVE
+            </p>
+
+            <p className="text-foreground text-lg sm:text-xl md:text-2xl font-semibold mb-4">
+              {formattedDateTime}
+            </p>
+
+            {(homeTeamName || awayTeamName) ? (
+              <div className="space-y-1">
+                <h2 className="text-foreground text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+                  {homeTeamName}
+                </h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-foreground/60 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light italic">
+                    Vs
+                  </span>
+                  <h2 className="text-foreground text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+                    {awayTeamName}
+                  </h2>
+                </div>
+              </div>
+            ) : (
+              <h2 className="text-foreground text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+                {match.title}
+              </h2>
+            )}
+
+            <div className="flex items-center gap-2 mt-6 bg-background/40 backdrop-blur-sm rounded-lg px-4 py-2 w-fit border border-border/30">
+              <span className="text-muted-foreground text-xs uppercase tracking-wide">Starts in:</span>
+              <span className="text-foreground font-bold text-sm sm:text-base font-mono">
+                {hours}:{minutes}:{seconds}
+              </span>
+            </div>
           </div>
         </div>
       );
@@ -466,8 +537,8 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           isFullscreen ? 'w-screen h-screen' : 'aspect-video w-full'
         }`}
       >
-      {/* Countdown Overlay - Show over everything when match hasn't started */}
-      {countdown && match && (
+      {/* Countdown Overlay - Show over everything when match hasn't started (HLS only) */}
+      {isM3U8 && countdown && match && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
           {/* Background decoration */}
           <div className="absolute inset-0 opacity-10">
