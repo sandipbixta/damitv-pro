@@ -25,6 +25,7 @@ import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 import { useLiveMatchNotifier } from '../hooks/useLiveMatchNotifier';
 import CustomMatchCards from '../components/CustomMatchCards';
+import LatestHighlights from '../components/LatestHighlights';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -317,6 +318,9 @@ const Index = () => {
             
             {/* Hidden SEO content for competitor targeting */}
             <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
+            
+            {/* Latest Highlights Section */}
+            <LatestHighlights />
             
             {/* Call to Action Section */}
             <section className="mb-10 mt-10">
