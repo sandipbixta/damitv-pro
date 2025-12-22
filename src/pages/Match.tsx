@@ -5,14 +5,12 @@ import { Match as MatchType } from '@/types/sports';
 import { fetchMatch, fetchMatches } from '@/api/sportsApi';
 import { useStreamPlayer } from '@/hooks/useStreamPlayer';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
-import { useWatchHistory } from '@/hooks/useWatchHistory';
 import { Helmet } from 'react-helmet-async';
 import { isTrendingMatch } from '@/utils/popularLeagues';
 import TelegramBanner from '@/components/TelegramBanner';
 import { teamLogoService } from '@/services/teamLogoService';
 import SEOMetaTags from '@/components/SEOMetaTags';
 import SocialShare from '@/components/SocialShare';
-import FavoriteButton from '@/components/FavoriteButton';
 
 // Component imports
 import MatchHeader from '@/components/match/MatchHeader';
@@ -37,8 +35,6 @@ const Match = () => {
   // Track viewer count for this match
   useViewerTracking(matchId);
 
-  // Track watch history
-  useWatchHistory(matchId, match?.title, sportId);
 
   // Use enhanced stream player hook for comprehensive stream management
   const {
@@ -204,13 +200,7 @@ const Match = () => {
         streamAvailable={!!stream && stream.id !== "error"}
         socialShare={
           <div className="flex items-center gap-2">
-            <FavoriteButton
-              type="match"
-              id={matchId || ''}
-              name={matchTitle}
-              variant="outline"
-            />
-            <SocialShare 
+            <SocialShare
               title={matchTitle}
               description={matchDescription}
               image={matchPosterUrl}
