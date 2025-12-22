@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, CalendarDays, Tv2, Tv, Download } from "lucide-react";
+import { Home, CalendarDays, Tv2, Tv, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MobileBottomNav = () => {
@@ -10,32 +10,32 @@ const MobileBottomNav = () => {
   
   const navItems = [
     { title: "Home", icon: Home, path: "/" },
-    { title: "Schedule", icon: CalendarDays, path: "/schedule" },
     { title: "Live", icon: Tv2, path: "/live" },
+    { title: "Schedule", icon: CalendarDays, path: "/schedule" },
     { title: "Channels", icon: Tv, path: "/channels" },
-    { title: "Download", icon: Download, path: "/install" }
+    { title: "Search", icon: Search, path: "/install" }
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background border-t border-border shadow-lg">
-      <div className="flex justify-around items-center h-16">
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background border-t border-border">
+      <div className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
           const isActive = currentPath === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
-              className="flex flex-col items-center justify-center py-1 w-full"
+              className="flex flex-col items-center justify-center py-2 px-3 min-w-[60px]"
             >
               <item.icon 
                 className={cn(
                   "h-5 w-5 transition-colors", 
-                  isActive ? "text-foreground" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground"
                 )} 
               />
               <span className={cn(
-                "text-xs mt-1 transition-colors",
-                isActive ? "text-foreground font-medium" : "text-muted-foreground"
+                "text-[10px] mt-1 transition-colors font-medium",
+                isActive ? "text-primary" : "text-muted-foreground"
               )}>
                 {item.title}
               </span>

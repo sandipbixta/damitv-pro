@@ -233,12 +233,12 @@ const Index = () => {
         <FeaturedMatches visibleManualMatches={visibleManualMatches} />
 
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-bold text-foreground">Featured Sports</h3>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl md:text-2xl font-bold text-foreground uppercase tracking-wide">Featured Sports</h2>
             <div className="flex gap-2">
               <Link to="/schedule">
-                <Button variant="outline" className="text-foreground border-border hover:bg-muted bg-background">
-                  <Calendar className="mr-2 h-4 w-4" /> View Schedule
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Calendar className="mr-2 h-4 w-4" /> Schedule
                 </Button>
               </Link>
             </div>
@@ -275,23 +275,23 @@ const Index = () => {
                 <>
                   {selectedSport === 'all' ? (
                     <div>
-                      <div className="mb-4">
-                        <h4 className="text-xl font-bold text-foreground">
-                          Live Matches - All Sports
-                        </h4>
-                        <p className="text-gray-400 text-sm">
-                          Currently live matches from all sports categories
+                      <div className="mb-6">
+                        <h2 className="text-xl md:text-2xl font-bold text-foreground uppercase tracking-wide">
+                          Live Matches
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Currently live across all sports
                         </p>
                       </div>
                       <AllSportsLiveMatches searchTerm={searchTerm} />
                     </div>
                   ) : (
                     <>
-                      <div className="mb-4">
-                        <h4 className="text-xl font-bold text-foreground">
+                      <div className="mb-6">
+                        <h2 className="text-xl md:text-2xl font-bold text-foreground uppercase tracking-wide">
                           {sports.find(s => s.id === selectedSport)?.name || 'Matches'}
-                        </h4>
-                        <p className="text-gray-400 text-sm">
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-1">
                           {filteredMatches.length} matches available
                         </p>
                       </div>
@@ -311,22 +311,21 @@ const Index = () => {
             <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
             
             {/* Call to Action Section */}
-            <section className="mb-6 sm:mb-8 mt-8">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 sm:p-8 md:p-10 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/hero-pattern.svg')] opacity-10"></div>
-                <div className="relative">
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-4">Start Watching Sports Now</h2>
-                  <p className="text-sm sm:text-base md:text-lg mb-4 sm:mb-6 max-w-2xl">
-                    Join thousands of sports fans who trust DamiTV for free live streaming. Access all major leagues and tournaments with crystal clear HD quality on any device.
+            <section className="mb-8 mt-8">
+              <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl p-6 md:p-8 border border-primary/20">
+                <div className="max-w-2xl">
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Start Watching Now</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Join thousands of sports fans streaming live matches in HD quality.
                   </p>
                   <div className="flex flex-wrap gap-3">
                     <Link to="/live">
-                      <Button variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100">
-                        <Tv className="mr-2 h-4 w-4" /> Watch Live Sports
+                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Tv className="mr-2 h-4 w-4" /> Watch Live
                       </Button>
                     </Link>
                     <Link to="/channels">
-                      <Button variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600">
+                      <Button variant="outline" className="border-border hover:bg-muted">
                         <Calendar className="mr-2 h-4 w-4" /> Browse Channels
                       </Button>
                     </Link>

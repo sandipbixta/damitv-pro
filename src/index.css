@@ -1,4 +1,5 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import url('./components/ui/animations.css');
 @tailwind base;
 @tailwind components;
@@ -6,68 +7,77 @@
 
 @layer base {
   :root {
-    /* Dark mode colors (default) */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 220 19% 16%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 14% 24%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
+    /* FanCode-inspired dark theme (default) */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 167 74% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 18%;
+    --input: 0 0% 15%;
+    --ring: 167 74% 50%;
+    --chart-1: 167 74% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     
+    /* FanCode brand colors */
+    --fancode-teal: 167 74% 50%;
+    --fancode-red: 0 84% 60%;
+    --fancode-dark: 0 0% 0%;
+    --fancode-surface: 0 0% 7%;
+    --fancode-surface-light: 0 0% 12%;
+    
     /* Sports-specific colors */
-    --sports-primary: 16 100% 60%;     /* #ff5a36 in HSL */
-    --sports-secondary: 200 69% 24%;   /* #0c4a6e in HSL */
-    --sports-accent: 16 100% 60%;      /* #ff5a36 in HSL */
-    --sports-dark: 220 39% 11%;        /* #111827 in HSL */
-    --sports-light: 210 40% 95%;       /* #f1f5f9 in HSL */
+    --sports-primary: 167 74% 50%;
+    --sports-secondary: 0 0% 12%;
+    --sports-accent: 167 74% 50%;
+    --sports-dark: 0 0% 0%;
+    --sports-light: 0 0% 95%;
+    
+    --radius: 0.5rem;
   }
 
   .light {
-    /* Light mode colors */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light mode - kept but slightly adjusted */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 5%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 84% 4.9%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 5%;
+    --primary: 167 74% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 5%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 167 74% 40%;
     
     /* Sports colors for light mode */
-    --sports-primary: 16 100% 60%;     /* Keep accent color same */
-    --sports-secondary: 200 69% 24%;   /* Keep secondary same */
-    --sports-accent: 16 100% 60%;      /* Keep accent same */
-    --sports-dark: 0 0% 100%;          /* White background in light mode */
-    --sports-light: 222.2 84% 4.9%;   /* Dark text in light mode */
+    --sports-primary: 167 74% 40%;
+    --sports-secondary: 0 0% 92%;
+    --sports-accent: 167 74% 40%;
+    --sports-dark: 0 0% 100%;
+    --sports-light: 0 0% 5%;
   }
 }
 
@@ -75,8 +85,14 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
   }
 }
 
@@ -116,10 +132,10 @@
   /* Glow pulse animation for HOT badges */
   @keyframes glowPulse {
     0%, 100% {
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+      box-shadow: 0 0 10px hsl(167 74% 50% / 0.5);
     }
     50% {
-      box-shadow: 0 0 20px rgba(34, 197, 94, 0.8), 0 0 30px rgba(34, 197, 94, 0.4);
+      box-shadow: 0 0 20px hsl(167 74% 50% / 0.8), 0 0 30px hsl(167 74% 50% / 0.4);
     }
   }
 
@@ -143,11 +159,25 @@
 
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    display: none;
+  }
+  
+  /* FanCode-style gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent;
+  }
+  
+  /* FanCode-style card hover */
+  .fancode-card {
+    @apply bg-card rounded-lg border border-border/50 transition-all duration-300;
+  }
+  
+  .fancode-card:hover {
+    @apply border-primary/30 shadow-lg shadow-primary/5;
   }
 }
