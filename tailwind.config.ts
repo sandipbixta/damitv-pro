@@ -19,6 +19,10 @@ export default {
       }
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -63,13 +67,21 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))'
         },
-        // Updating sports-specific colors
+        // FanCode-inspired colors
+        fancode: {
+          teal: 'hsl(var(--fancode-teal))',
+          red: 'hsl(var(--fancode-red))',
+          dark: 'hsl(var(--fancode-dark))',
+          surface: 'hsl(var(--fancode-surface))',
+          'surface-light': 'hsl(var(--fancode-surface-light))',
+        },
+        // Sports-specific colors using CSS custom properties
         sports: {
-          primary: '#ff5a36',  // Changed to #ff5a36
-          secondary: '#0c4a6e', // Darker blue
-          accent: '#ff5a36',   // Changed to #ff5a36
-          dark: '#111827',     // Almost black for backgrounds
-          light: '#f1f5f9',    // Very light gray for contrast
+          primary: 'hsl(var(--sports-primary))',
+          secondary: 'hsl(var(--sports-secondary))',
+          accent: 'hsl(var(--sports-accent))',
+          dark: 'hsl(var(--sports-dark))',
+          light: 'hsl(var(--sports-light))',
         }
       },
       borderRadius: {
@@ -97,12 +109,17 @@ export default {
         'pulse-subtle': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.8' }
+        },
+        'slide-up': {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+        'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'slide-up': 'slide-up 0.3s ease-out'
       }
     }
   },

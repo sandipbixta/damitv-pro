@@ -1,20 +1,8 @@
 
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { Home, CalendarDays, Tv2, Radio, Download } from "lucide-react";
+import { Home, CalendarDays, Tv2, Radio, Search } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useNavigate } from "react-router-dom";
-import Clock from "./Clock";
-import ThemeToggle from "./ThemeToggle";
-import PushNotifications from "./PushNotifications";
-import { Button } from "./ui/button";
-import damitvLogo from "@/assets/damitv-logo.png";
 
 const MainNav = () => {
   const isMobile = useIsMobile();
@@ -22,10 +10,10 @@ const MainNav = () => {
   const location = useLocation();
 
   const menuItems = [
-    { title: "Home", icon: Home, path: "/" },
-    { title: "Schedule", icon: CalendarDays, path: "/schedule" },
-    { title: "Live", icon: Tv2, path: "/live" },
-    { title: "Channels", icon: Radio, path: "/channels" }
+    { title: "Home", path: "/" },
+    { title: "Live", path: "/live" },
+    { title: "Schedule", path: "/schedule" },
+    { title: "Channels", path: "/channels" }
   ];
 
   const handleNavigate = (path: string) => {
@@ -33,55 +21,45 @@ const MainNav = () => {
   };
 
   return (
-    <div className="flex items-center gap-4 w-full md:w-auto">
-      <button onClick={() => navigate("/")} className="cursor-pointer flex items-center gap-2 flex-shrink-0">
-        <img 
-          src={damitvLogo} 
-          alt="DAMITV Logo" 
-          width={56}
-          height={56}
-          className="h-14 w-14 object-cover" 
-        />
-        <h1 className="text-xl font-bold text-foreground whitespace-nowrap">
-          DAMITV
-        </h1>
+    <nav className="flex items-center justify-between w-full">
+      {/* Logo */}
+      <button 
+        onClick={() => navigate("/")} 
+        className="cursor-pointer flex items-center gap-2 flex-shrink-0"
+      >
+        <span className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+          DAMI<span className="text-primary">TV</span>
+        </span>
       </button>
       
-      <NavigationMenu className="hidden md:flex">
-        <NavigationMenuList>
-          {menuItems.map((item) => (
-            <NavigationMenuItem key={item.path}>
-              <NavigationMenuLink 
-                className={cn(
-                  navigationMenuTriggerStyle(),
-                  "bg-transparent hover:bg-accent text-foreground cursor-pointer",
-                  location.pathname === item.path && "bg-accent"
-                )}
-                onClick={() => handleNavigate(item.path)}
-              >
-                <item.icon className="mr-2 h-4 w-4" />
-                {item.title}
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-          ))}
-        </NavigationMenuList>
-      </NavigationMenu>
-      
-      <div className="hidden md:flex items-center gap-2 ml-auto">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/install")}
-          className="text-foreground hover:bg-accent"
-          title="Install DamiTV App"
-        >
-          <Download className="h-4 w-4" />
-        </Button>
-        <PushNotifications />
-        <ThemeToggle />
-        <Clock />
+      {/* Desktop Navigation */}
+      <div className="hidden md:flex items-center gap-1">
+        {menuItems.map((item) => (
+          <button
+            key={item.path}
+            onClick={() => handleNavigate(item.path)}
+            className={cn(
+              "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+              location.pathname === item.path 
+                ? "text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {item.title}
+          </button>
+        ))}
       </div>
-    </div>
+      
+      {/* Search Icon */}
+      <div className="hidden md:flex items-center">
+        <button 
+          className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => {/* Could implement search modal */}}
+        >
+          <Search className="h-5 w-5" />
+        </button>
+      </div>
+    </nav>
   );
 };
 
