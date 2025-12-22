@@ -12,10 +12,6 @@ export const adConfig = {
     sessionKey: 'popunderAdTriggered_v2', // Updated key to reset stale entries
     delaySeconds: 3
   },
-  sidebar: {
-    cooldownMinutes: 360, // 6 hours - only show once per 6 hours
-    sessionKey: 'sidebarAdTriggered_v2' // New frequency cap for sidebar
-  }
 };
 
 // Helper to determine if ads should be shown
