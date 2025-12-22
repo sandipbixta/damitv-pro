@@ -1,9 +1,11 @@
-
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Home, Clock } from 'lucide-react';
+import { Home, Loader2, Shield, Play } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
+import { Match } from '../../types/sports';
+import { ManualMatch } from '../../types/manualMatch';
+import { removeAdsFromIframe, setupDelayedAdBlocking, injectAdBlockStyles } from '../../utils/adBlocker';
 
 interface IframeVideoPlayerProps {
   src: string;
@@ -11,9 +13,13 @@ interface IframeVideoPlayerProps {
   onError: () => void;
   title?: string;
   matchStartTime?: number | Date | null;
+  match?: Match | ManualMatch | null;
 }
 
-const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, title, matchStartTime }) => {
+// Number of clicks to absorb before allowing through to iframe
+const CLICKS_TO_ABSORB = 3;
+
+const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, title, matchStartTime, match }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -22,6 +28,38 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   const [lastSrc, setLastSrc] = useState('');
   const [reloadCount, setReloadCount] = useState(0);
   const [countdown, setCountdown] = useState<string>('');
+  
+  // Pop-up blocker state
+  const [clicksAbsorbed, setClicksAbsorbed] = useState(0);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [overlayMessage, setOverlayMessage] = useState('Click to play');
+  
+  // Handle overlay clicks - absorb first few clicks to block pop-ups
+  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const newCount = clicksAbsorbed + 1;
+    setClicksAbsorbed(newCount);
+    
+    if (newCount >= CLICKS_TO_ABSORB) {
+      // All ad-triggering clicks absorbed, allow through
+      setShowOverlay(false);
+      console.log('🛡️ Pop-up blocker: All ad clicks absorbed, playing stream');
+    } else {
+      // Show progress message
+      const remaining = CLICKS_TO_ABSORB - newCount;
+      setOverlayMessage(remaining === 1 ? 'Click once more to play' : `Click ${remaining} more times to play`);
+      console.log(`🛡️ Pop-up blocker: Absorbed click ${newCount}/${CLICKS_TO_ABSORB}`);
+    }
+  }, [clicksAbsorbed]);
+  
+  // Reset overlay when source changes
+  useEffect(() => {
+    setClicksAbsorbed(0);
+    setShowOverlay(true);
+    setOverlayMessage('Click to play');
+  }, [src]);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -74,17 +112,20 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     navigate('/');
   };
 
-
-  // Handle iframe load success
+  // Handle iframe load success with ad blocking
   const handleIframeLoad = () => {
     console.log('✅ Iframe content loaded');
     setIsLoading(false);
     onLoad();
     
-    // Give the iframe content time to fully initialize
-    setTimeout(() => {
-      console.log('🎬 Stream should now be ready for playback');
-    }, 1000);
+    // Apply ad blocking on iframe load
+    if (iframeRef.current) {
+      removeAdsFromIframe(iframeRef.current);
+      injectAdBlockStyles(iframeRef.current);
+      setupDelayedAdBlocking(iframeRef.current, () => {
+        console.log('🎬 Stream ready with ad blocking applied');
+      });
+    }
   };
 
   // Handle iframe load error
@@ -113,7 +154,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
           console.log('🎯 Setting new iframe src:', src.substring(0, 80) + '...');
           iframeRef.current.src = src;
         }
-      }, 300); // Increased delay for better reliability
+      }, 300);
     }
   }, [src, lastSrc]);
 
@@ -125,9 +166,9 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
       if (isLoading) {
         console.log('⏰ Iframe load timeout - assuming successful');
         setIsLoading(false);
-        onLoad(); // Assume success after reasonable wait time
+        onLoad();
       }
-    }, 15000); // Increased to 15 seconds for streaming content
+    }, 15000);
 
     return () => clearTimeout(timeout);
   }, [isLoading, onLoad, reloadCount]);
@@ -138,7 +179,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     
     const timer = setTimeout(() => {
       setShowControls(false);
-    }, 5000); // Increased to 5 seconds
+    }, 5000);
 
     const handleMouseMove = () => {
       setShowControls(true);
@@ -156,32 +197,121 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     return () => clearTimeout(timer);
   }, [showControls]);
 
+  // Parse countdown into separate parts for styled display
+  const parseCountdown = () => {
+    const countdownParts = countdown.split(/[hms\s]+/).filter(Boolean);
+    const hasHours = countdown.includes('h');
+    const hasMinutes = countdown.includes('m');
+    const hasDays = countdown.includes('d');
+    
+    let hours = '00', minutes = '00', seconds = '00';
+    if (hasDays) {
+      hours = countdownParts[1]?.padStart(2, '0') || '00';
+      minutes = countdownParts[2]?.padStart(2, '0') || '00';
+      seconds = '00';
+    } else if (hasHours) {
+      hours = countdownParts[0]?.padStart(2, '0') || '00';
+      minutes = countdownParts[1]?.padStart(2, '0') || '00';
+      seconds = countdownParts[2]?.padStart(2, '0') || '00';
+    } else if (hasMinutes) {
+      hours = '00';
+      minutes = countdownParts[0]?.padStart(2, '0') || '00';
+      seconds = countdownParts[1]?.padStart(2, '0') || '00';
+    } else {
+      seconds = countdownParts[0]?.padStart(2, '0') || '00';
+    }
+    
+    return { hours, minutes, seconds };
+  };
+
+  const { hours, minutes, seconds } = parseCountdown();
+
+  // Get team info from match
+  const homeTeam = match && 'teams' in match ? match.teams?.home : null;
+  const awayTeam = match && 'teams' in match ? match.teams?.away : null;
+  const tournament = match && 'tournament' in match ? match.tournament : null;
+
   return (
     <div className="relative w-full h-full bg-black overflow-hidden">
-      {/* Countdown Display - Show when match hasn't started */}
+      {/* Countdown Display - Mobile-friendly design */}
       {countdown && matchStartTime && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
-          {/* Background decoration */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-primary rounded-full blur-3xl" />
-            <div className="absolute bottom-10 right-10 w-32 h-32 bg-purple-500 rounded-full blur-3xl" />
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]">
+          {/* Background decoration - colorful blurs */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-20 -left-20 w-40 h-40 sm:w-64 sm:h-64 bg-blue-600/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -right-20 w-40 h-40 sm:w-64 sm:h-64 bg-red-500/20 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-purple-500/20 rounded-full blur-3xl" />
           </div>
           
-          <div className="text-center text-white p-6 z-10">
-            <Clock className="w-16 h-16 mx-auto mb-4 text-primary animate-pulse" />
-            <h3 className="text-xl font-bold mb-2">Match Starting Soon</h3>
-            <p className="text-sm text-gray-400 mb-4">Stream will be available when the match begins</p>
+          <div className="text-center text-white p-3 sm:p-6 z-10 w-full max-w-lg">
+            {/* Watch Live In */}
+            <p className="text-xs sm:text-sm text-gray-300 mb-2 sm:mb-3 tracking-wide">Watch Live In</p>
             
-            {/* Countdown Display */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 inline-block">
-              <div className="text-4xl font-black text-white mb-1 font-mono tracking-wider">
-                {countdown}
+            {/* Countdown Timer Boxes */}
+            <div className="flex items-center justify-center gap-1 sm:gap-2 mb-4 sm:mb-6">
+              <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
+                {hours}
               </div>
-              <div className="text-xs text-gray-400 uppercase tracking-widest">Until Kickoff</div>
+              <span className="text-white text-xl sm:text-3xl font-bold">:</span>
+              <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
+                {minutes}
+              </div>
+              <span className="text-white text-xl sm:text-3xl font-bold">:</span>
+              <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
+                {seconds}
+              </div>
             </div>
-            
-            {title && (
-              <p className="text-base text-white/80 mt-3 font-semibold">
+
+            {/* Tournament/League Name */}
+            {tournament && (
+              <p className="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4 line-clamp-1">
+                {typeof tournament === 'string' ? tournament : (tournament as { name?: string })?.name || ''}
+              </p>
+            )}
+
+            {/* Teams Display */}
+            {(homeTeam || awayTeam) && (
+              <div className="flex items-center justify-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+                {/* Home Team */}
+                <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                  {typeof homeTeam === 'object' && homeTeam?.badge && (
+                    <img 
+                      src={homeTeam.badge} 
+                      alt={homeTeam.name || 'Home'} 
+                      className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
+                      onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                    />
+                  )}
+                  <span className="text-white text-xs sm:text-sm font-medium text-center line-clamp-2 max-w-[80px] sm:max-w-[100px]">
+                    {typeof homeTeam === 'object' ? homeTeam?.name : homeTeam}
+                  </span>
+                </div>
+
+                {/* VS Separator */}
+                <div className="bg-orange-500 text-white font-bold text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md flex-shrink-0">
+                  Vs
+                </div>
+
+                {/* Away Team */}
+                <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                  {typeof awayTeam === 'object' && awayTeam?.badge && (
+                    <img 
+                      src={awayTeam.badge} 
+                      alt={awayTeam.name || 'Away'} 
+                      className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
+                      onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                    />
+                  )}
+                  <span className="text-white text-xs sm:text-sm font-medium text-center line-clamp-2 max-w-[80px] sm:max-w-[100px]">
+                    {typeof awayTeam === 'object' ? awayTeam?.name : awayTeam}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Match Title (if no teams) */}
+            {title && !homeTeam && !awayTeam && (
+              <p className="text-sm sm:text-base text-white/80 font-semibold line-clamp-2">
                 {title}
               </p>
             )}
@@ -189,14 +319,15 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         </div>
       )}
 
-      {/* Loading indicator - only show for first 3 seconds and when no countdown */}
-      {isLoading && reloadCount <= 1 && !countdown && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#151922]">
-          <div className="text-white text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-            <p className="text-sm">Loading stream...</p>
-            <p className="text-xs text-gray-400 mt-1">Preparing video player...</p>
+      {/* Branded Loading State */}
+      {isLoading && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted to-background">
+          <div className="relative">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-primary/20" />
           </div>
+          <p className="mt-4 text-foreground font-medium">Loading stream...</p>
+          <p className="text-muted-foreground text-sm mt-1">DAMITV</p>
         </div>
       )}
 
@@ -209,12 +340,34 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         onError={handleIframeError}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         referrerPolicy="no-referrer"
-        loading="eager"
+        loading="lazy"
         style={{ 
           border: 'none',
-          pointerEvents: 'auto'
+          pointerEvents: showOverlay ? 'none' : 'auto'
         }}
       />
+      
+      {/* Pop-up Blocker Overlay - Absorbs first clicks that trigger ads */}
+      {showOverlay && !isLoading && !countdown && (
+        <div 
+          className="absolute inset-0 z-40 cursor-pointer flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={handleOverlayClick}
+        >
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Shield className="w-8 h-8 text-green-400" />
+              <span className="text-white font-bold text-lg">Ad Blocker Active</span>
+            </div>
+            <div className="bg-primary/90 hover:bg-primary text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 mx-auto cursor-pointer transition-colors">
+              <Play className="w-5 h-5" />
+              <span className="font-medium">{overlayMessage}</span>
+            </div>
+            <p className="text-white/60 text-xs mt-3">
+              {clicksAbsorbed > 0 ? `${CLICKS_TO_ABSORB - clicksAbsorbed} clicks remaining` : 'Blocking pop-up ads...'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Always Visible DAMITV Home Button - Top Center */}
       <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
@@ -229,6 +382,34 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         </Button>
       </div>
 
+      {/* Match Title with Team Logos - Bottom of Player */}
+      {match && 'teams' in match && match.teams && (
+        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 z-40">
+          <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 border border-white/10">
+            {/* Home team logo */}
+            {typeof match.teams.home === 'object' && match.teams.home?.badge && (
+              <img 
+                src={match.teams.home.badge} 
+                alt={match.teams.home.name || 'Home'} 
+                className="w-5 h-5 object-contain"
+                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+              />
+            )}
+            <span className="text-white text-xs font-medium max-w-[200px] truncate">
+              {title || match.title}
+            </span>
+            {/* Away team logo */}
+            {typeof match.teams.away === 'object' && match.teams.away?.badge && (
+              <img 
+                src={match.teams.away.badge} 
+                alt={match.teams.away.name || 'Away'} 
+                className="w-5 h-5 object-contain"
+                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
