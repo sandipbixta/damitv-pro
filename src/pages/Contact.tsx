@@ -136,7 +136,7 @@ const Contact = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Join our Telegram channel for instant updates and community support.
                     </p>
-                    <a href="https://t.me/damitv" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <a href="https://t.me/Sports_matches_bot" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       Join Telegram
                     </a>
                   </div>
