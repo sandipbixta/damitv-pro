@@ -113,21 +113,21 @@ const MatchCard: React.FC<MatchCardProps> = ({
     // Fallback with team badges
     if (homeBadge || awayBadge) {
       return (
-        <div className="w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center gap-6">
+        <div className="w-full h-full bg-gradient-to-br from-slate-900 via-purple-900/30 to-slate-900 flex items-center justify-center gap-8 px-4">
           {homeBadge && (
             <img
               src={homeBadge}
               alt={home}
-              className="w-16 h-16 object-contain"
+              className="w-20 h-20 object-contain drop-shadow-lg"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           )}
-          <span className="text-white/60 font-bold text-lg">vs</span>
+          <span className="text-white/50 font-bold text-xl">vs</span>
           {awayBadge && (
             <img
               src={awayBadge}
               alt={away}
-              className="w-16 h-16 object-contain"
+              className="w-20 h-20 object-contain drop-shadow-lg"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           )}
@@ -136,16 +136,16 @@ const MatchCard: React.FC<MatchCardProps> = ({
     }
 
     return (
-      <div className="w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <span className="text-white/40 font-bold text-xl tracking-widest">DAMITV</span>
+      <div className="w-full h-full bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 flex items-center justify-center">
+        <span className="text-white/30 font-bold text-2xl tracking-widest">DAMITV</span>
       </div>
     );
   };
 
-  // Team row component
+  // Team row component - FanCode style
   const TeamRow = ({ name, badge }: { name: string; badge: string }) => (
     <div className="flex items-center gap-3">
-      <div className="w-6 h-6 rounded-full overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+      <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
         {badge ? (
           <img
             src={badge}
@@ -153,41 +153,45 @@ const MatchCard: React.FC<MatchCardProps> = ({
             className="w-full h-full object-contain"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
-              const parent = (e.target as HTMLImageElement).parentElement;
-              if (parent) {
-                parent.innerHTML = `<span class="text-[10px] font-bold text-muted-foreground">${name.substring(0, 2).toUpperCase()}</span>`;
-              }
             }}
           />
         ) : (
-          <span className="text-[10px] font-bold text-muted-foreground">
+          <span className="text-[8px] font-bold text-slate-400">
             {name.substring(0, 2).toUpperCase()}
           </span>
         )}
       </div>
-      <span className="text-foreground font-medium text-sm truncate">{name}</span>
+      <span className="text-white font-normal text-[15px]">{name}</span>
     </div>
   );
 
   const cardContent = (
     <div className="group cursor-pointer h-full">
-      <div className="relative overflow-hidden rounded-xl bg-card border border-border/50 transition-all duration-300 hover:border-sports-primary/50 hover:shadow-lg hover:shadow-sports-primary/10 h-full flex flex-col">
+      <div className="relative overflow-hidden rounded-2xl bg-[#1a1a2e] transition-all duration-300 hover:scale-[1.02] h-full flex flex-col">
         {/* Thumbnail Section */}
-        <div className="relative aspect-[16/9] overflow-hidden flex-shrink-0">
+        <div className="relative aspect-[16/10] overflow-hidden flex-shrink-0 rounded-t-2xl">
           {generateThumbnail()}
           
-          {/* Gradient overlay at bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
-          
-          {/* WATCH IN / LIVE Badge */}
-          <div className="absolute bottom-3 left-3 z-10">
+          {/* WATCH IN / LIVE Badge - Bottom left overlapping */}
+          <div className="absolute -bottom-3 left-4 z-20">
             {isLive || isMatchStarting ? (
-              <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold uppercase px-3 py-1.5 rounded-sm tracking-wide flex items-center gap-1.5 shadow-lg">
-                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                LIVE NOW
+              <div 
+                className="text-white text-[11px] font-bold uppercase px-4 py-1.5 italic tracking-wide shadow-xl"
+                style={{
+                  background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
+                  clipPath: 'polygon(0 0, 100% 0, 95% 100%, 5% 100%)',
+                }}
+              >
+                ● LIVE NOW
               </div>
             ) : countdown ? (
-              <div className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white text-xs font-bold uppercase px-3 py-1.5 rounded-sm tracking-wide shadow-lg italic">
+              <div 
+                className="text-white text-[11px] font-bold uppercase px-4 py-1.5 italic tracking-wide shadow-xl"
+                style={{
+                  background: 'linear-gradient(90deg, #0d9488 0%, #10b981 100%)',
+                  clipPath: 'polygon(0 0, 100% 0, 95% 100%, 5% 100%)',
+                }}
+              >
                 WATCH IN {countdown}
               </div>
             ) : null}
@@ -201,29 +205,29 @@ const MatchCard: React.FC<MatchCardProps> = ({
           )}
         </div>
 
-        {/* Info Section */}
-        <div className="p-4 flex flex-col flex-1 gap-3">
+        {/* Info Section - FanCode style */}
+        <div className="px-4 pt-5 pb-4 flex flex-col flex-1 gap-2.5">
           {/* Sport & Competition */}
-          <p className="text-xs text-muted-foreground truncate">
-            {getSportName()} {match.title && !home && !away && `• ${match.title}`}
+          <p className="text-[13px] text-slate-400 truncate">
+            {getSportName()}{match.title && ` • ${match.title.length > 30 ? match.title.substring(0, 30) + '...' : match.title}`}
           </p>
           
-          {/* Teams */}
+          {/* Teams - Vertical layout like FanCode */}
           {home && away ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mt-1">
               <TeamRow name={home} badge={homeBadge} />
               <TeamRow name={away} badge={awayBadge} />
             </div>
           ) : (
-            <h3 className="font-semibold text-foreground text-sm line-clamp-2">
+            <h3 className="font-medium text-white text-[15px] line-clamp-2">
               {match.title}
             </h3>
           )}
           
-          {/* Match Start Time */}
-          <p className="text-xs text-muted-foreground mt-auto pt-2">
+          {/* Match Start Time - FanCode style */}
+          <p className="text-[12px] text-slate-500 mt-auto pt-1">
             {isLive ? (
-              <span className="text-red-400 font-medium">Match is Live</span>
+              <span className="text-red-400">Match is Live</span>
             ) : match.date ? (
               `Match Starts at ${formatMatchDate(match.date)}`
             ) : (
