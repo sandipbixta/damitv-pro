@@ -38,6 +38,12 @@ const Match = () => {
   // Track viewer count for this match
   useViewerTracking(matchId);
 
+  // IMPORTANT: All hooks must be called before any conditional returns
+  // Fetch team logos - call hook unconditionally with safe fallbacks
+  const { homeLogo, awayLogo } = useMatchTeamLogos(
+    match?.teams?.home,
+    match?.teams?.away
+  );
 
   // Use enhanced stream player hook for comprehensive stream management
   const {
@@ -128,9 +134,6 @@ const Match = () => {
   const awayTeam = match.teams?.away?.name || '';
   const matchTitle = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : match.title;
   const matchSlug = generateMatchSlug(homeTeam, awayTeam, match.title);
-  
-  // Fetch team logos
-  const { homeLogo, awayLogo } = useMatchTeamLogos(match.teams?.home, match.teams?.away);
   
   // SEO-optimized title and description
   const seoTitle = `Watch ${matchTitle} Live Stream - HD Score`;
