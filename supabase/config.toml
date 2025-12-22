@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.fetch-team-logo]
 verify_jwt = false
+
+[functions.fetch-match-details]
+verify_jwt = false
+
+[functions.social-webhook]
+verify_jwt = false
