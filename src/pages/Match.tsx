@@ -7,6 +7,7 @@ import { useStreamPlayer } from '@/hooks/useStreamPlayer';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { Helmet } from 'react-helmet-async';
 import { isTrendingMatch } from '@/utils/popularLeagues';
+import { generateMatchSlug } from '@/utils/matchSlug';
 
 import { teamLogoService } from '@/services/teamLogoService';
 import SEOMetaTags from '@/components/SEOMetaTags';
@@ -124,7 +125,12 @@ const Match = () => {
   const homeTeam = match.teams?.home?.name || '';
   const awayTeam = match.teams?.away?.name || '';
   const matchTitle = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : match.title;
-  const matchDescription = `Watch ${matchTitle} live stream online for free on DamiTV. HD quality streaming with multiple sources available.`;
+  const matchSlug = generateMatchSlug(homeTeam, awayTeam, match.title);
+  
+  // SEO-optimized title and description
+  const seoTitle = `Watch ${matchTitle} Live Stream - HD Score`;
+  const seoDescription = `Watch ${matchTitle} live stream with real-time scores, stats, and HD coverage on DamiTV.`;
+  const canonicalUrl = `https://damitv.pro/match/${sportId}/${matchId}/${matchSlug}`;
 
   // Generate match poster URL for social sharing
   const getMatchPosterUrl = () => {
@@ -142,10 +148,10 @@ const Match = () => {
   return (
     <div className="min-h-screen bg-sports-dark text-sports-light">
       <SEOMetaTags
-        title={`${matchTitle} - Live Stream | DamiTV`}
-        description={`${matchDescription} - Watch ${matchTitle} on damitv.pro with HD quality streaming.`}
+        title={seoTitle}
+        description={seoDescription}
         keywords={`${homeTeam} live stream, ${awayTeam} online, ${matchTitle}, ${matchTitle} on damitv.pro, live football streaming`}
-        canonicalUrl={`https://damitv.pro/match/${sportId}/${matchId}`}
+        canonicalUrl={canonicalUrl}
         ogImage={matchPosterUrl}
         matchInfo={{
           homeTeam,
@@ -156,7 +162,7 @@ const Match = () => {
         breadcrumbs={[
           { name: 'Home', url: 'https://damitv.pro/' },
           { name: 'Live Matches', url: 'https://damitv.pro/live' },
-          { name: `${matchTitle} on damitv.pro`, url: `https://damitv.pro/match/${sportId}/${matchId}` }
+          { name: `${matchTitle} Live Stream`, url: canonicalUrl }
         ]}
       />
 
@@ -167,13 +173,13 @@ const Match = () => {
             "@context": "https://schema.org",
             "@type": "SportsEvent",
             "name": matchTitle,
-            "description": matchDescription,
+            "description": seoDescription,
             "startDate": match.date ? new Date(match.date).toISOString() : new Date().toISOString(),
             "eventStatus": "https://schema.org/EventScheduled",
             "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
             "location": {
               "@type": "VirtualLocation",
-              "url": `https://damitv.pro/match/${sportId}/${matchId}`
+              "url": canonicalUrl
             },
             "image": matchPosterUrl,
             "organizer": {
@@ -202,9 +208,9 @@ const Match = () => {
           <div className="flex items-center gap-2">
             <SocialShare
               title={matchTitle}
-              description={matchDescription}
+              description={seoDescription}
               image={matchPosterUrl}
-              url={`https://damitv.pro/match/${sportId}/${matchId}`}
+              url={canonicalUrl}
             />
           </div>
         }
@@ -213,8 +219,8 @@ const Match = () => {
       <div className="container mx-auto px-4 py-4 sm:py-8">
         <div className="w-full flex justify-center mb-4">
           <div className="text-center max-w-4xl px-4">
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{match.title}</h1>
-            <p className="text-sm md:text-base text-gray-400">{matchTitle} on damitv.pro</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{matchTitle} Live Stream</h1>
+            <p className="text-sm md:text-base text-gray-400">Watch {matchTitle} with HD quality on DamiTV</p>
           </div>
         </div>
         

@@ -5,6 +5,7 @@ import { Match } from '../types/sports';
 import { isMatchLive } from '../utils/matchUtils';
 import { teamLogoService } from '../services/teamLogoService';
 import { LiveViewerCount } from './LiveViewerCount';
+import { generateMatchSlug } from '../utils/matchSlug';
 
 interface MatchCardProps {
   match: Match;
@@ -249,8 +250,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
   }
 
   if (hasStream) {
+    const matchSlug = generateMatchSlug(home, away, match.title);
+    const matchUrl = `/match/${sportId || match.sportId || match.category}/${match.id}/${matchSlug}`;
     return (
-      <Link to={`/match/${sportId || match.sportId || match.category}/${match.id}`} className={`block ${className}`}>
+      <Link to={matchUrl} className={`block ${className}`}>
         {cardContent}
       </Link>
     );

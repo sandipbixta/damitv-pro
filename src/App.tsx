@@ -79,7 +79,7 @@ const App: React.FC = () => {
                   <Index />
                 </SEOPageTracker>
               } />
-              <Route path="/match/:sportId/:matchId" element={
+              <Route path="/match/:sportId/:matchId/:slug?" element={
                 <SEOPageTracker contentType="match">
                   <Match />
                 </SEOPageTracker>
