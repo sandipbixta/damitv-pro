@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useToast } from '../hooks/use-toast';
 import { Sport, Match } from '../types/sports';
-import { getAllMatches, getSports, getMatchesBySport, WeStreamMatch } from '../services/weStreamService';
+import { fetchSports, fetchMatches } from '../api/sportsApi';
 import SportsList from '../components/SportsList';
 import { Separator } from '../components/ui/separator';
-import { format, startOfDay, isSameDay } from 'date-fns';
+import { format, addDays, startOfDay } from 'date-fns';
 import MatchesList from '../components/MatchesList';
 import PageLayout from '../components/PageLayout';
 import PageHeader from '../components/PageHeader';
@@ -13,105 +14,33 @@ import PopularGames from '../components/PopularGames';
 import { isPopularLeague } from '../utils/popularLeagues';
 import { Helmet } from 'react-helmet-async';
 import TelegramBanner from '../components/TelegramBanner';
-import SportFilterPills from '../components/live/SportFilterPills';
-
-// Convert WeStream match to our Match type
-const convertWeStreamMatch = (wsMatch: WeStreamMatch): Match => ({
-  id: wsMatch.id,
-  title: wsMatch.title,
-  category: wsMatch.category,
-  date: wsMatch.date, // WeStream date is already a timestamp (number)
-  popular: wsMatch.popular,
-  teams: wsMatch.teams ? {
-    home: wsMatch.teams.home ? { name: wsMatch.teams.home.name, badge: wsMatch.teams.home.badge } : undefined,
-    away: wsMatch.teams.away ? { name: wsMatch.teams.away.name, badge: wsMatch.teams.away.badge } : undefined,
-  } : undefined,
-  sources: wsMatch.sources,
-  tournament: wsMatch.category,
-  isLive: wsMatch.isLive,
-  score: wsMatch.score,
-  progress: wsMatch.progress,
-});
+// import Advertisement from '../components/Advertisement';
 
 const Schedule = () => {
   const { toast } = useToast();
   const [sports, setSports] = useState<Sport[]>([]);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
-  const [allSportsMatches, setAllSportsMatches] = useState<Match[]>([]);
-  const [sportMatches, setSportMatches] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [popularMatches, setPopularMatches] = useState<Match[]>([]);
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
+  const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
   
   const [loadingSports, setLoadingSports] = useState(true);
   const [loadingMatches, setLoadingMatches] = useState(false);
-  const [activeTournamentFilter, setActiveTournamentFilter] = useState<string | null>(null);
 
-  // Extract unique dates from ALL sports matches (for date navigation)
-  const availableDates = useMemo(() => {
-    const dateSet = new Set<string>();
-    allSportsMatches.forEach(match => {
-      if (match.date) {
-        const dateStr = format(startOfDay(new Date(match.date)), 'yyyy-MM-dd');
-        dateSet.add(dateStr);
-      }
-    });
-    return Array.from(dateSet)
-      .map(d => startOfDay(new Date(d)))
-      .sort((a, b) => a.getTime() - b.getTime());
-  }, [allSportsMatches]);
-
-  // Filter matches by current date (from selected sport's matches)
-  const matchesForDate = useMemo(() => {
-    return sportMatches.filter(match => {
-      const matchDate = startOfDay(new Date(match.date));
-      return isSameDay(matchDate, currentDate);
-    });
-  }, [sportMatches, currentDate]);
-
-  // Apply search filter
-  const filteredMatches = useMemo(() => {
-    if (!searchTerm.trim()) return matchesForDate;
-    
-    const lowercaseSearch = searchTerm.toLowerCase();
-    return matchesForDate.filter(match => {
-      return match.title.toLowerCase().includes(lowercaseSearch) || 
-        match.teams?.home?.name?.toLowerCase().includes(lowercaseSearch) ||
-        match.teams?.away?.name?.toLowerCase().includes(lowercaseSearch);
-    });
-  }, [matchesForDate, searchTerm]);
-
-  // Apply tournament filter
-  const displayMatches = useMemo(() => {
-    if (!activeTournamentFilter) return filteredMatches;
-    return filteredMatches.filter(m => m.tournament === activeTournamentFilter);
-  }, [filteredMatches, activeTournamentFilter]);
-
-  // Get unique tournaments
-  const tournaments = useMemo(() => {
-    const tournamentSet = new Set<string>();
-    matchesForDate.forEach(match => {
-      if (match.tournament) {
-        tournamentSet.add(match.tournament);
-      }
-    });
-    return Array.from(tournamentSet).sort();
-  }, [matchesForDate]);
-
-  // Popular matches from major leagues
-  const popularMatches = useMemo(() => {
-    return displayMatches.filter(match => isPopularLeague(match.title));
-  }, [displayMatches]);
-
-  // Helper function to remove duplicates
+  // Helper function to remove duplicates more strictly
   const removeDuplicatesFromMatches = (matches: Match[]): Match[] => {
     const seen = new Set<string>();
     const uniqueMatches: Match[] = [];
     
     matches.forEach(match => {
+      // Create a unique key based on teams and date
       const homeTeam = match.teams?.home?.name || '';
       const awayTeam = match.teams?.away?.name || '';
-      const matchDate = format(new Date(match.date), 'yyyy-MM-dd');
+      const matchDate = new Date(match.date).toISOString().split('T')[0];
       
+      // Use teams and date for uniqueness, fallback to title if no teams
       const uniqueKey = homeTeam && awayTeam 
         ? `${homeTeam}-vs-${awayTeam}-${matchDate}`.toLowerCase()
         : `${match.title}-${matchDate}`.toLowerCase();
@@ -125,50 +54,17 @@ const Schedule = () => {
     return uniqueMatches;
   };
 
-  // Fetch sports and ALL matches on mount using WeStream API
+  // Fetch sports on mount
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadSports = async () => {
       setLoadingSports(true);
-      setLoadingMatches(true);
-      
       try {
-        // Fetch sports list from WeStream
-        const weStreamSports = await getSports();
-        const sportsData: Sport[] = weStreamSports.map(s => ({
-          id: s.id,
-          name: s.name,
-        }));
+        const sportsData = await fetchSports();
         setSports(sportsData);
-        
-        // Fetch ALL matches from WeStream
-        const weStreamMatches = await getAllMatches();
-        const allMatches = weStreamMatches.map(convertWeStreamMatch);
-        const uniqueAllMatches = removeDuplicatesFromMatches(allMatches);
-        setAllSportsMatches(uniqueAllMatches);
-        setSportMatches(uniqueAllMatches); // Show all matches initially
-        
-        // Auto-select first date with matches if today has none
-        if (uniqueAllMatches.length > 0) {
-          const today = startOfDay(new Date());
-          const todayHasMatches = uniqueAllMatches.some(m => 
-            isSameDay(startOfDay(new Date(m.date)), today)
-          );
-          
-          if (!todayHasMatches) {
-            const futureDates = uniqueAllMatches
-              .map(m => startOfDay(new Date(m.date)))
-              .filter(d => d >= today)
-              .sort((a, b) => a.getTime() - b.getTime());
-            
-            if (futureDates.length > 0) {
-              setCurrentDate(futureDates[0]);
-            }
-          }
-        }
         
         // Auto-select first sport
         if (sportsData.length > 0) {
-          setSelectedSport(sportsData[0].id);
+          handleSelectSport(sportsData[0].id);
         }
       } catch (error) {
         toast({
@@ -178,54 +74,79 @@ const Schedule = () => {
         });
       } finally {
         setLoadingSports(false);
-        setLoadingMatches(false);
       }
     };
 
-    loadInitialData();
+    loadSports();
   }, [toast]);
 
-  // Fetch matches for selected sport using WeStream API
+  // Fetch matches when a sport is selected or date changes
   useEffect(() => {
-    if (!selectedSport) return;
-    
-    const loadSportMatches = async () => {
-      setLoadingMatches(true);
-      try {
-        const weStreamMatches = await getMatchesBySport(selectedSport);
-        const matchesData = weStreamMatches.map(convertWeStreamMatch);
-        const uniqueMatches = removeDuplicatesFromMatches(matchesData);
-        setSportMatches(uniqueMatches);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load matches data.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingMatches(false);
-      }
-    };
-
-    loadSportMatches();
-  }, [selectedSport, toast]);
+    if (selectedSport) {
+      handleSelectSport(selectedSport);
+    }
+  }, [currentDate, selectedSport]);
 
   // Handle sport selection
-  const handleSelectSport = (sportId: string) => {
+  const handleSelectSport = async (sportId: string) => {
     setSelectedSport(sportId);
-    setActiveTournamentFilter(null);
+    setLoadingMatches(true);
+    
+    try {
+      const matchesData = await fetchMatches(sportId);
+      
+      // Remove duplicates from API data first
+      const uniqueMatches = removeDuplicatesFromMatches(matchesData);
+      
+      // Filter matches by date
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const filtered = uniqueMatches.filter(match => {
+        const matchDate = new Date(match.date);
+        return format(matchDate, 'yyyy-MM-dd') === dateStr;
+      });
+      
+      setMatches(filtered);
+      
+      // Set initial filtered matches
+      setFilteredMatches(filtered);
+      
+      // Identify popular matches from major leagues
+      const popular = filtered.filter(match => isPopularLeague(match.title));
+      setPopularMatches(popular);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load matches data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMatches(false);
+    }
   };
 
-  // Handle date navigation (fallback for when no available dates)
+  // Handle date navigation
   const navigateDate = (days: number) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + days);
-    setCurrentDate(startOfDay(newDate));
+    setCurrentDate(prev => startOfDay(addDays(prev, days)));
   };
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    if (!value.trim()) {
+      setFilteredMatches(matches);
+      return;
+    }
+    
+    const lowercaseSearch = value.toLowerCase();
+    const results = matches.filter(match => {
+      return match.title.toLowerCase().includes(lowercaseSearch) || 
+        match.teams?.home?.name.toLowerCase().includes(lowercaseSearch) ||
+        match.teams?.away?.name.toLowerCase().includes(lowercaseSearch);
+    });
+    
+    setFilteredMatches(results);
   };
 
   return (
@@ -287,12 +208,11 @@ const Schedule = () => {
           <DatePagination 
             currentDate={currentDate} 
             setCurrentDate={setCurrentDate} 
-            navigateDate={navigateDate}
-            availableDates={availableDates.length > 0 ? availableDates : undefined}
+            navigateDate={navigateDate} 
           />
         </div>
         
-        <div className="mb-4">
+        <div className="mb-8">
           <SportsList 
             sports={sports}
             onSelectSport={handleSelectSport}
@@ -300,33 +220,25 @@ const Schedule = () => {
             isLoading={loadingSports}
           />
         </div>
-        
-        {matchesForDate.length > 0 && (
-          <div className="mb-6">
-            <SportFilterPills
-              allMatches={matchesForDate}
-              sports={sports}
-              activeSportFilter="all"
-              onSportFilterChange={() => {}}
-              activeTournamentFilter={activeTournamentFilter || 'all'}
-              onTournamentFilterChange={(t) => setActiveTournamentFilter(t === 'all' ? null : t)}
-            />
-          </div>
-        )}
 
         <PopularGames 
           popularMatches={popularMatches}
           selectedSport={selectedSport}
         />
 
+        {/* Direct Link Advertisement removed */}
+        {/* <div className="my-6 sm:my-8">
+          <Advertisement type="direct-link" className="w-full" />
+        </div> */}
+
         {popularMatches.length > 0 && (
-          <Separator className="my-8 bg-border" />
+          <Separator className="my-8 bg-black dark:bg-white" />
         )}
         
         <div className="mb-8">
           {(selectedSport || loadingMatches) && (
             <MatchesList
-              matches={displayMatches}
+              matches={searchTerm ? filteredMatches : matches}
               sportId={selectedSport || ""}
               isLoading={loadingMatches}
             />

@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { Sport } from '../types/sports';
+import { Button } from './ui/button';
 
 interface SportsListProps {
   sports: Sport[];
@@ -11,34 +13,86 @@ interface SportsListProps {
 const SportsList: React.FC<SportsListProps> = ({ sports, onSelectSport, selectedSport, isLoading }) => {
   if (isLoading) {
     return (
-      <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-hide">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="h-9 w-24 bg-card animate-pulse rounded-lg flex-shrink-0"></div>
-        ))}
+      <div>
+        {/* Mobile: horizontal scroll */}
+        <div className="flex overflow-x-auto pb-3 space-x-3 scrollbar-none lg:hidden">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="w-32 h-8 bg-[#242836] animate-pulse rounded-lg flex-shrink-0"></div>
+          ))}
+        </div>
+        {/* Desktop: grid */}
+        <div className="hidden lg:grid lg:grid-cols-10 gap-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+            <div key={i} className="h-8 bg-[#242836] animate-pulse rounded-lg"></div>
+          ))}
+        </div>
       </div>
     );
   }
 
-  const allItems = [
-    { id: 'all', name: 'All Sports' },
-    ...sports
-  ];
-
   return (
-    <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-hide">
-      {allItems.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onSelectSport(item.id)}
-          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm font-medium flex-shrink-0 ${
-            selectedSport === item.id
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+    <div>
+      {/* Mobile: horizontal scroll */}
+      <div className="flex overflow-x-auto pb-3 space-x-3 scrollbar-none lg:hidden">
+        {/* All Sports button */}
+        <Button
+          onClick={() => onSelectSport('all')}
+          className={`px-4 py-1.5 rounded-full transition-all whitespace-nowrap text-sm flex-shrink-0 backdrop-blur-md shadow-lg ${
+            selectedSport === 'all'
+              ? 'bg-primary/30 text-white border border-primary/50 hover:bg-primary/40 shadow-primary/30'
+              : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
           }`}
+          variant={selectedSport === 'all' ? "default" : "outline"}
         >
-          {item.name}
-        </button>
-      ))}
+          All Sports
+        </Button>
+        
+        {sports.map((sport) => (
+          <Button
+            key={sport.id}
+            onClick={() => onSelectSport(sport.id)}
+            className={`px-4 py-1.5 rounded-full transition-all whitespace-nowrap text-sm flex-shrink-0 backdrop-blur-md shadow-lg ${
+              selectedSport === sport.id
+                ? 'bg-primary/30 text-white border border-primary/50 hover:bg-primary/40 shadow-primary/30'
+                : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+            }`}
+            variant={selectedSport === sport.id ? "default" : "outline"}
+          >
+            {sport.name}
+          </Button>
+        ))}
+      </div>
+
+      {/* Desktop: grid */}
+      <div className="hidden lg:grid lg:grid-cols-10 gap-2">
+        {/* All Sports button */}
+        <Button
+          onClick={() => onSelectSport('all')}
+          className={`px-4 py-1.5 rounded-full transition-all text-sm truncate backdrop-blur-md shadow-lg ${
+            selectedSport === 'all'
+              ? 'bg-primary/30 text-white border border-primary/50 hover:bg-primary/40 shadow-primary/30'
+              : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+          }`}
+          variant={selectedSport === 'all' ? "default" : "outline"}
+        >
+          All Sports
+        </Button>
+        
+        {sports.map((sport) => (
+          <Button
+            key={sport.id}
+            onClick={() => onSelectSport(sport.id)}
+            className={`px-4 py-1.5 rounded-full transition-all text-sm truncate backdrop-blur-md shadow-lg ${
+              selectedSport === sport.id
+                ? 'bg-primary/30 text-white border border-primary/50 hover:bg-primary/40 shadow-primary/30'
+                : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+            }`}
+            variant={selectedSport === sport.id ? "default" : "outline"}
+          >
+            {sport.name}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 };

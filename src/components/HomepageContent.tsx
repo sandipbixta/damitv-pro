@@ -29,7 +29,7 @@ const HomepageContent = () => {
             <Trophy className="h-12 w-12 text-primary mb-4" />
             <h3 className="text-xl font-bold mb-3">All Major Sports</h3>
             <p className="text-sm leading-relaxed">
-              Access live streams of football, basketball, baseball, cricket, rugby, 
+              Access live streams of football, basketball, tennis, baseball, cricket, rugby, hockey, 
               and more. We cover major leagues including Premier League, La Liga, Serie A, Bundesliga, 
               NBA, NFL, UFC, and international tournaments. Superior to other streaming alternatives.
             </p>
@@ -122,10 +122,12 @@ const HomepageContent = () => {
 
             <h3 className="text-xl font-bold mb-3 mt-6">Other Sports</h3>
             <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Tennis - Grand Slams, ATP, WTA tournaments</li>
               <li>American Football - NFL, NCAA Football</li>
               <li>Baseball - MLB, World Series</li>
               <li>Cricket - IPL, Test matches, ODI, T20</li>
               <li>Rugby - Six Nations, Rugby World Cup</li>
+              <li>Ice Hockey - NHL, IIHF competitions</li>
               <li>Combat Sports - UFC, Boxing, MMA</li>
               <li>Motorsports - Formula 1, MotoGP, NASCAR</li>
             </ul>
@@ -180,8 +182,8 @@ const HomepageContent = () => {
             <h3 className="text-lg font-bold mb-2">What sports can I watch on DamiTV?</h3>
             <p className="text-sm leading-relaxed">
               We offer a wide variety of sports including football (Premier League, Champions League, La Liga), 
-              basketball (NBA), American football (NFL), baseball (MLB), cricket, 
-              rugby, combat sports (UFC, boxing), and motorsports (Formula 1, MotoGP). 
+              basketball (NBA), tennis (Grand Slams), American football (NFL), baseball (MLB), cricket, 
+              rugby, ice hockey (NHL), combat sports (UFC, boxing), and motorsports (Formula 1, MotoGP). 
               Our coverage includes both live matches and sports news.
             </p>
           </div>

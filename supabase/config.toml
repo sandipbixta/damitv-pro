@@ -1,8 +1,5 @@
 project_id = "wxvsteaayxgygihpshoz"
 
-[functions.pwa-api]
-verify_jwt = false
-
 [functions.sitemap]
 verify_jwt = false
 
@@ -12,10 +9,10 @@ verify_jwt = false
 [functions.update-team-stats-scheduled]
 verify_jwt = false
 
-[functions.fetch-leagues]
+[functions.send-subscription-confirmation]
 verify_jwt = false
 
-[functions.fetch-football-leagues]
+[functions.fetch-leagues]
 verify_jwt = false
 
 [functions.fetch-league-teams]
@@ -40,28 +37,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.fetch-league-detail]
-verify_jwt = false
-
-[functions.fetch-popular-matches]
-verify_jwt = false
-
-[functions.fetch-livescores]
-verify_jwt = false
-
-[functions.fetch-team-data]
-verify_jwt = false
-
-[functions.sportsdb-proxy]
-verify_jwt = false
-
-[functions.api-matches]
-verify_jwt = false
-
-[functions.extract-hls]
-verify_jwt = false
-
-[functions.extract-match]
-verify_jwt = false
-
-[functions.fetch-external-matches]
 verify_jwt = false

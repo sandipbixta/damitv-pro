@@ -1,4 +1,5 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useToast } from '../hooks/use-toast';
 import { Match } from '../types/sports';
 import { Separator } from '../components/ui/separator';
@@ -7,25 +8,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Link, useSearchParams } from 'react-router-dom';
 import { Radio, Clock } from 'lucide-react';
 import PageLayout from '../components/PageLayout';
+import { generateCompetitorTitle, generateCompetitorDescription } from '../utils/competitorSEO';
+import CompetitorSEOContent from '../components/CompetitorSEOContent';
 import { Helmet } from 'react-helmet-async';
+import MatchDetails from '../components/MatchDetails';
 
 import { useLiveMatches } from '../hooks/useLiveMatches';
 import { useStreamPlayer } from '../hooks/useStreamPlayer';
-
-// Lazy load heavy components
-const LiveHeader = lazy(() => import('../components/live/LiveHeader'));
-const FeaturedPlayer = lazy(() => import('../components/live/FeaturedPlayer'));
-const SportFilterPills = lazy(() => import('../components/live/SportFilterPills'));
-const MatchesTabContent = lazy(() => import('../components/live/MatchesTabContent'));
-const MatchSection = lazy(() => import('../components/MatchSection'));
-const MatchDetails = lazy(() => import('../components/MatchDetails'));
-const TelegramBanner = lazy(() => import('../components/TelegramBanner'));
-const CompetitorSEOContent = lazy(() => import('../components/CompetitorSEOContent'));
-
-// Loading placeholder
-const LoadingPlaceholder = ({ height = "h-32" }: { height?: string }) => (
-  <div className={`${height} bg-card rounded-lg animate-pulse`} />
-);
+import LiveHeader from '../components/live/LiveHeader';
+import FeaturedPlayer from '../components/live/FeaturedPlayer';
+import SportFilterPills from '../components/live/SportFilterPills';
+import MatchesTabContent from '../components/live/MatchesTabContent';
+import MatchSection from '../components/MatchSection';
+import MatchCard from '../components/MatchCard';
+import TelegramBanner from '../components/TelegramBanner';
+import PopularMatches from '../components/PopularMatches';
 
 const Live = () => {
   const { toast } = useToast();
@@ -34,7 +31,6 @@ const Live = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<string>("all");
   const [activeSportFilter, setActiveSportFilter] = useState<string>("all");
-  const [activeTournamentFilter, setActiveTournamentFilter] = useState<string>("all");
   const [userSelectedMatch, setUserSelectedMatch] = useState<boolean>(false);
   
   // Custom hooks for data management
@@ -103,12 +99,6 @@ const Live = () => {
       });
       console.log(`🎯 Filtered to ${matchesToFilter.length} matches for sport: ${activeSportFilter}`);
     }
-
-    // Then filter by tournament if not "all"
-    if (activeTournamentFilter !== "all") {
-      matchesToFilter = matchesToFilter.filter(match => match.tournament === activeTournamentFilter);
-      console.log(`🏆 Filtered to ${matchesToFilter.length} matches for tournament: ${activeTournamentFilter}`);
-    }
     
     // Then filter by search query
     if (searchQuery.trim() === '') {
@@ -123,8 +113,8 @@ const Live = () => {
       setFilteredMatches(filtered);
     }
     
-    console.log(`📊 Total filtered matches: ${matchesToFilter.length} (tab: ${activeTab}, sport: ${activeSportFilter}, tournament: ${activeTournamentFilter})`);
-  }, [searchQuery, activeTab, activeSportFilter, activeTournamentFilter, allMatches, liveMatches, upcomingMatches]);
+    console.log(`📊 Total filtered matches: ${matchesToFilter.length} (tab: ${activeTab}, sport: ${activeSportFilter})`);
+  }, [searchQuery, activeTab, activeSportFilter, allMatches, liveMatches, upcomingMatches]);
 
   // Handle search form submit
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -195,52 +185,52 @@ const Live = () => {
       
       {/* Telegram Banner */}
       <div className="mb-6">
-        <Suspense fallback={<LoadingPlaceholder height="h-16" />}>
-          <TelegramBanner />
-        </Suspense>
+        <TelegramBanner />
       </div>
       
       <div className="mb-8">
-        <Suspense fallback={<LoadingPlaceholder height="h-24" />}>
-          <LiveHeader
-            liveMatchesCount={liveMatches.length}
-            searchQuery={searchQuery}
-            onSearchChange={(e) => setSearchQuery(e.target.value)}
-            onSearchSubmit={handleSearchSubmit}
-            onRefresh={handleRetryLoading}
-          />
-        </Suspense>
+        <LiveHeader
+          liveMatchesCount={liveMatches.length}
+          searchQuery={searchQuery}
+          onSearchChange={(e) => setSearchQuery(e.target.value)}
+          onSearchSubmit={handleSearchSubmit}
+          onRefresh={handleRetryLoading}
+        />
         
         {userSelectedMatch && featuredMatch && (
           <div id="stream-player">
-            <Suspense fallback={<LoadingPlaceholder height="h-96" />}>
-              <FeaturedPlayer
-                loading={loading}
-                featuredMatch={featuredMatch}
-                currentStream={currentStream}
-                streamLoading={streamLoading}
-                activeSource={activeSource}
-                onSourceChange={handleSourceChange}
-                onStreamRetry={handleStreamRetry}
-                onRetryLoading={handleRetryLoading}
-              />
-            </Suspense>
+            <FeaturedPlayer
+              loading={loading}
+              featuredMatch={featuredMatch}
+              currentStream={currentStream}
+              streamLoading={streamLoading}
+              activeSource={activeSource}
+              onSourceChange={handleSourceChange}
+              onStreamRetry={handleStreamRetry}
+              onRetryLoading={handleRetryLoading}
+            />
           </div>
         )}
       </div>
       
       <Separator className="my-8 bg-[#343a4d]" />
       
-      <Suspense fallback={<LoadingPlaceholder height="h-16" />}>
-        <SportFilterPills
-          allMatches={allMatches}
-          sports={sports}
-          activeSportFilter={activeSportFilter}
-          onSportFilterChange={setActiveSportFilter}
-          activeTournamentFilter={activeTournamentFilter}
-          onTournamentFilterChange={setActiveTournamentFilter}
-        />
-      </Suspense>
+      {/* Popular Matches Section - Sorted by Viewer Count */}
+      {!userSelectedMatch && liveMatches.length > 0 && (
+        <div className="mb-8">
+          <PopularMatches
+            popularMatches={liveMatches}
+            selectedSport={activeSportFilter === "all" ? null : activeSportFilter}
+          />
+        </div>
+      )}
+      
+      <SportFilterPills
+        allMatches={allMatches}
+        sports={sports}
+        activeSportFilter={activeSportFilter}
+        onSportFilterChange={setActiveSportFilter}
+      />
       
       {/* Tabs Navigation for All/Live/Upcoming */}
       <Tabs 
@@ -404,13 +394,11 @@ const Live = () => {
       {/* Match Details - Show at bottom if a match is selected */}
       {featuredMatch && (
         <div className="mt-8">
-          <Suspense fallback={<LoadingPlaceholder height="h-48" />}>
-            <MatchDetails 
-              match={featuredMatch}
-              isLive={featuredMatch.date ? Date.now() - featuredMatch.date > -30 * 60 * 1000 && Date.now() - featuredMatch.date < 3 * 60 * 60 * 1000 : false}
-              showCompact={false}
-            />
-          </Suspense>
+          <MatchDetails 
+            match={featuredMatch}
+            isLive={featuredMatch.date ? Date.now() - featuredMatch.date > -30 * 60 * 1000 && Date.now() - featuredMatch.date < 3 * 60 * 60 * 1000 : false}
+            showCompact={false}
+          />
         </div>
       )}
       
@@ -443,9 +431,7 @@ const Live = () => {
       </section>
       
       {/* Hidden SEO content for competitor targeting */}
-      <Suspense fallback={null}>
-        <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
-      </Suspense>
+      <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
     </PageLayout>
   );
 };

@@ -4,110 +4,70 @@
 @tailwind components;
 @tailwind utilities;
 
-/* =================================
-   Global Ad Blocking Styles
-   ================================= */
-
-/* Hide ad iframes based on URL patterns */
-iframe[src*="doubleclick"],
-iframe[src*="googleads"],
-iframe[src*="googlesyndication"],
-iframe[src*="advertising"],
-iframe[src*="adserver"],
-iframe[src*="adform"],
-iframe[src*="taboola"],
-iframe[src*="outbrain"],
-iframe[src*="popads"],
-iframe[src*="propellerads"] {
-  display: none !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  height: 0 !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-/* Hide popup overlays and ad containers */
-.popup-overlay,
-.ad-overlay,
-.interstitial-ad,
-[class*="popup-ad"],
-[class*="overlay-ad"],
-[id*="popup-ad"],
-[id*="overlay-ad"] {
-  display: none !important;
-  visibility: hidden !important;
-}
-
 @layer base {
   :root {
-    /* Dark mode colors (default) - FanCode inspired deep navy */
-    --background: 220 20% 7%;
+    /* Dark mode colors (default) */
+    --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --card: 220 18% 10%;
+    --card: 220 19% 16%;
     --card-foreground: 210 40% 98%;
-    --popover: 220 20% 7%;
+    --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 24 100% 50%;
-    --primary-foreground: 220 20% 7%;
-    --secondary: 220 18% 14%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 220 18% 14%;
-    --muted-foreground: 215 20% 55%;
-    --accent: 24 100% 50%;
-    --accent-foreground: 220 20% 7%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 220 14% 18%;
-    --input: 220 18% 14%;
-    --ring: 24 100% 50%;
-    --chart-1: 24 100% 50%;
+    --border: 220 14% 24%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     
-    /* Sports-specific colors - FanCode orange */
-    --sports-primary: 24 100% 50%;
-    --sports-secondary: 220 18% 14%;
-    --sports-accent: 24 100% 50%;
-    --sports-dark: 220 20% 7%;
-    --sports-light: 210 40% 98%;
-    
-    /* Section accent */
-    --section-accent: 24 100% 50%;
+    /* Sports-specific colors */
+    --sports-primary: 16 100% 60%;     /* #ff5a36 in HSL */
+    --sports-secondary: 200 69% 24%;   /* #0c4a6e in HSL */
+    --sports-accent: 16 100% 60%;      /* #ff5a36 in HSL */
+    --sports-dark: 220 39% 11%;        /* #111827 in HSL */
+    --sports-light: 210 40% 95%;       /* #f1f5f9 in HSL */
   }
 
   .light {
     /* Light mode colors */
-    --background: 210 20% 98%;
-    --foreground: 220 20% 10%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
-    --primary: 24 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 20% 94%;
-    --secondary-foreground: 220 20% 10%;
-    --muted: 210 20% 94%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 24 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 84% 4.9%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 24 100% 50%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
     
     /* Sports colors for light mode */
-    --sports-primary: 24 100% 50%;
-    --sports-secondary: 210 20% 94%;
-    --sports-accent: 24 100% 50%;
-    --sports-dark: 210 20% 98%;
-    --sports-light: 220 20% 10%;
-    
-    --section-accent: 24 100% 50%;
+    --sports-primary: 16 100% 60%;     /* Keep accent color same */
+    --sports-secondary: 200 69% 24%;   /* Keep secondary same */
+    --sports-accent: 16 100% 60%;      /* Keep accent same */
+    --sports-dark: 0 0% 100%;          /* White background in light mode */
+    --sports-light: 222.2 84% 4.9%;   /* Dark text in light mode */
   }
 }
 
@@ -179,20 +139,6 @@ iframe[src*="propellerads"] {
 
   .animate-counter-up {
     animation: counterUp 0.5s ease-out;
-  }
-
-  /* Ticker marquee animation */
-  @keyframes ticker {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-50%);
-    }
-  }
-
-  .animate-ticker {
-    animation: ticker linear infinite;
   }
 
   /* Hide scrollbar but keep functionality */

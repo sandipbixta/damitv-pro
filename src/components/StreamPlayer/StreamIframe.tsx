@@ -1,131 +1,100 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Match } from '../../types/sports';
-import { ManualMatch } from '../../types/manualMatch';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-import { Button } from '../ui/button';
-import { removeAdsFromIframe, setupDelayedAdBlocking, injectAdBlockStyles } from '../../utils/adBlocker';
+
+import React, { useEffect, useState } from 'react';
+import { useIsMobile } from '../../hooks/use-mobile';
 
 interface StreamIframeProps {
   src: string;
   onLoad: () => void;
   onError: () => void;
   videoRef: React.RefObject<HTMLIFrameElement>;
-  match?: Match | ManualMatch | null;
 }
 
-const StreamIframe: React.FC<StreamIframeProps> = ({ src, onLoad, onError, videoRef, match }) => {
+const StreamIframe: React.FC<StreamIframeProps> = ({ src, onLoad, onError, videoRef }) => {
+  const isMobile = useIsMobile();
   const [loaded, setLoaded] = useState(false);
-  const [loadingTime, setLoadingTime] = useState(0);
-  const [showSlowWarning, setShowSlowWarning] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<number>(Date.now());
+  const [hadError, setHadError] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+
+  // Handle iframe clicks on mobile to prevent automatic opening
+  const handleIframeClick = (e: React.MouseEvent) => {
+    if (isMobile) {
+      // Prevent default behavior that might cause automatic opening
+      e.preventDefault();
+      console.log('Mobile iframe click prevented');
+    }
+  };
 
   useEffect(() => {
     setLoaded(false);
-    setLoadingTime(0);
-    setShowSlowWarning(false);
-    setLoadError(false);
-    startTimeRef.current = Date.now();
-    
-    // Update loading time every second
-    timerRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      setLoadingTime(elapsed);
-      
-      // Show slow warning after 5 seconds
-      if (elapsed >= 5 && !showSlowWarning) {
-        setShowSlowWarning(true);
-      }
-      
-      // Trigger error state after 15 seconds
-      if (elapsed >= 15 && !loaded) {
-        setLoadError(true);
-        if (timerRef.current) clearInterval(timerRef.current);
-      }
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    setHadError(false);
+    setTimedOut(false);
+    const t = window.setTimeout(() => {
+      setTimedOut(true);
+    }, 8000);
+    return () => window.clearTimeout(t);
   }, [src]);
 
   const handleLoad = () => {
     setLoaded(true);
-    setLoadError(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-    
-    // Apply ad blocking on iframe load
-    if (videoRef.current) {
-      removeAdsFromIframe(videoRef.current);
-      injectAdBlockStyles(videoRef.current);
-      setupDelayedAdBlocking(videoRef.current);
-    }
-    
     onLoad?.();
   };
 
   const handleError = () => {
-    setLoadError(true);
-    if (timerRef.current) clearInterval(timerRef.current);
+    setHadError(true);
     onError?.();
   };
 
-  const handleRetry = () => {
-    setLoadError(false);
-    setLoaded(false);
-    setLoadingTime(0);
-    setShowSlowWarning(false);
-    startTimeRef.current = Date.now();
-    
-    // Force iframe reload
-    if (videoRef.current) {
-      const currentSrc = videoRef.current.src;
-      videoRef.current.src = '';
-      setTimeout(() => {
-        if (videoRef.current) videoRef.current.src = currentSrc;
-      }, 100);
-    }
-  };
+  const showOpenOverlay = isAndroid && (hadError || (timedOut && !loaded));
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-black">
-      {/* Error State Only */}
-      {loadError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted z-10">
-          <AlertCircle className="w-12 h-12 text-destructive mb-4" />
-          <p className="text-foreground font-medium mb-2">Stream unavailable</p>
-          <p className="text-muted-foreground text-sm mb-4 text-center max-w-xs">
-            Try another source or refresh the page
-          </p>
-          <Button
-            onClick={handleRetry}
-            variant="default"
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Retry
-          </Button>
-        </div>
-      )}
-      
+    <div className="absolute inset-0 w-full h-full">
       <iframe 
         ref={videoRef}
         src={src}
         className="w-full h-full"
+        width="1920"
+        height="1080"
         allowFullScreen
         title="Live Sports Stream - DAMITV"
         onLoad={handleLoad}
         onError={handleError}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-        referrerPolicy="no-referrer"
-        loading="lazy"
+        onClick={handleIframeClick}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; camera; microphone"
+        referrerPolicy="no-referrer-when-downgrade"
+        loading="eager"
+        frameBorder="0"
+        scrolling="no"
         style={{ 
           border: 'none',
-          width: '100%',
-          height: '100%'
+          pointerEvents: isMobile ? 'auto' : 'auto',
+          minWidth: '100%',
+          minHeight: '100%',
+          willChange: 'transform',
+          isolation: 'isolate',
+          ...(isMobile && {
+            touchAction: 'manipulation',
+            WebkitOverflowScrolling: 'touch',
+            WebkitTouchCallout: 'none',
+            WebkitUserSelect: 'none',
+            userSelect: 'none'
+          })
         }}
       />
+
+      {showOpenOverlay && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
+          <a
+            href={src}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center rounded-md px-4 py-2 text-white bg-white/10 hover:bg-white/20"
+            aria-label="Open stream in a new tab"
+          >
+            Open stream in new tab
+          </a>
+        </div>
+      )}
     </div>
   );
 };

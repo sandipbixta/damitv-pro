@@ -8,7 +8,7 @@ Allow: /live
 Allow: /live?*
 Allow: /channels
 Allow: /schedule
-
+Allow: /news
 Allow: /match/*
 Allow: /manual-match/*
 Allow: /channel/*

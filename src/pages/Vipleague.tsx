@@ -114,7 +114,7 @@ const Vipleague: React.FC = () => {
                 <h3 className="text-xl font-semibold">Select Your Sport or Match</h3>
               </div>
               <p className="text-muted-foreground">
-                Browse our organized categories for football, basketball, baseball, cricket, and more. Unlike Vipleague's cluttered interface, DamiTV offers intuitive navigation to find your match quickly.
+                Browse our organized categories for football, basketball, tennis, baseball, hockey, and more. Unlike Vipleague's cluttered interface, DamiTV offers intuitive navigation to find your match quickly.
               </p>
             </div>
 

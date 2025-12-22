@@ -1,8 +1,9 @@
 import { adConfig, isAdCooldownPassed, markAdTriggered } from './adConfig';
+import { adTracking } from './adTracking';
 
 /**
  * Triggers smartlink ad when changing streams
- * Uses direct navigation instead of popup to avoid blockers
+ * Respects cooldown period to prevent spam
  */
 export const triggerStreamChangeAd = (): void => {
   // Check if cooldown period has passed
@@ -11,18 +12,15 @@ export const triggerStreamChangeAd = (): void => {
     return;
   }
 
-  // Mark as triggered first to prevent multiple triggers
-  markAdTriggered(adConfig.directLink.sessionKey);
+  // Try to open the smartlink ad
+  const adWindow = window.open(adConfig.directLink.url, "_blank", "noopener noreferrer");
   
-  // Create a temporary anchor element and click it (bypasses popup blockers)
-  const link = document.createElement('a');
-  link.href = adConfig.directLink.url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  console.log('🎯 Stream change ad triggered via anchor click!');
+  // Only mark as triggered if the window opened successfully
+  if (adWindow && !adWindow.closed) {
+    markAdTriggered(adConfig.directLink.sessionKey);
+    adTracking.trackStreamChangeAd();
+    console.log('🎯 Stream change ad triggered!');
+  } else {
+    console.log('❌ Stream change ad blocked by popup blocker');
+  }
 };

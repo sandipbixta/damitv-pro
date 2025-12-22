@@ -1,13 +1,6 @@
+
 [build]
   publish = "dist"
-
-# Enable prerendering for search engine bots (Netlify's built-in feature)
-# This serves pre-rendered HTML to crawlers while serving the SPA to regular users
-[build.processing]
-  skip_processing = false
-
-[build.processing.html]
-  pretty_urls = true
 
 # Fix duplicate content with proper 301 redirects
 [[redirects]]
@@ -126,6 +119,11 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/news/"
+  to = "/news"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/dmca/"
@@ -215,6 +213,11 @@
     Link = "<https://damitv.pro/live>; rel=\"canonical\""
     X-Robots-Tag = "index, follow, max-image-preview:large"
 
+[[headers]]
+  for = "/news"
+  [headers.values]
+    Link = "<https://damitv.pro/news>; rel=\"canonical\""
+    X-Robots-Tag = "index, follow, max-snippet:-1, max-image-preview:large"
 
 [[headers]]
   for = "/schedule"

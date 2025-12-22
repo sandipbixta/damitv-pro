@@ -22,7 +22,7 @@
 /live/             /live          301!
 /channels/         /channels      301!
 /schedule/         /schedule      301!
-
+/news/             /news          301!
 /dmca/             /dmca          301!
 
 # Static sitemap - serve directly without SPA fallback

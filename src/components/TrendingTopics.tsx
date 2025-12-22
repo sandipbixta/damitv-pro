@@ -3,6 +3,7 @@ import { TrendingUp, Clock, Flame } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
+
 interface TrendingTopic {
   title: string;
   category: string;
@@ -11,65 +12,77 @@ interface TrendingTopic {
   url: string;
   timeAgo: string;
 }
+
 const TrendingTopics: React.FC = () => {
   const [trends, setTrends] = useState<TrendingTopic[]>([]);
+
   useEffect(() => {
     // Generate trending topics based on current popular searches and matches
     const generateTrends = () => {
-      const topics: TrendingTopic[] = [{
-        title: "Premier League Live Streams",
-        category: "Football",
-        views: 45632,
-        trend: 'hot',
-        url: "/live?filter=football",
-        timeAgo: "Now trending"
-      }, {
-        title: "Champions League Quarter Finals",
-        category: "Football",
-        views: 38924,
-        trend: 'up',
-        url: "/live?filter=football",
-        timeAgo: "2h ago"
-      }, {
-        title: "NBA Playoffs Live",
-        category: "Basketball",
-        views: 29847,
-        trend: 'hot',
-        url: "/live?filter=basketball",
-        timeAgo: "1h ago"
-      }, {
-        title: "La Liga El Clasico",
-        category: "Football",
-        views: 56789,
-        trend: 'hot',
-        url: "/live?filter=football",
-        timeAgo: "30m ago"
-      }, {
-        title: "UEFA Europa League",
-        category: "Football",
-        views: 22456,
-        trend: 'up',
-        url: "/live?filter=football",
-        timeAgo: "3h ago"
-      }, {
-        title: "Tennis Grand Slam Live",
-        category: "Tennis",
-        views: 18234,
-        trend: 'new',
-        url: "/live?filter=tennis",
-        timeAgo: "45m ago"
-      }];
+      const topics: TrendingTopic[] = [
+        {
+          title: "Premier League Live Streams",
+          category: "Football",
+          views: 45632,
+          trend: 'hot',
+          url: "/live?filter=football",
+          timeAgo: "Now trending"
+        },
+        {
+          title: "Champions League Quarter Finals",
+          category: "Football", 
+          views: 38924,
+          trend: 'up',
+          url: "/live?filter=football",
+          timeAgo: "2h ago"
+        },
+        {
+          title: "NBA Playoffs Live",
+          category: "Basketball",
+          views: 29847,
+          trend: 'hot',
+          url: "/live?filter=basketball",
+          timeAgo: "1h ago"
+        },
+        {
+          title: "La Liga El Clasico",
+          category: "Football",
+          views: 56789,
+          trend: 'hot',
+          url: "/live?filter=football",
+          timeAgo: "30m ago"
+        },
+        {
+          title: "UEFA Europa League",
+          category: "Football",
+          views: 22456,
+          trend: 'up',
+          url: "/live?filter=football",
+          timeAgo: "3h ago"
+        },
+        {
+          title: "Tennis Grand Slam Live",
+          category: "Tennis",
+          views: 18234,
+          trend: 'new',
+          url: "/live?filter=tennis",
+          timeAgo: "45m ago"
+        }
+      ];
 
       // Randomize order to make it feel dynamic
       const shuffled = topics.sort(() => Math.random() - 0.5);
       setTrends(shuffled.slice(0, 5));
     };
-    generateTrends();
 
+    generateTrends();
+    
     // Update trends every 5 minutes
     const interval = setInterval(generateTrends, 5 * 60 * 1000);
+    
     return () => clearInterval(interval);
   }, []);
+
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'hot':
@@ -82,6 +95,7 @@ const TrendingTopics: React.FC = () => {
         return null;
     }
   };
+
   const formatViews = (views: number) => {
     if (views >= 1000000) {
       return `${(views / 1000000).toFixed(1)}M`;
@@ -90,49 +104,58 @@ const TrendingTopics: React.FC = () => {
     }
     return views.toString();
   };
+
   return (
-    <Card className="bg-card border-border">
+    <Card className="bg-[#242836] border-[#343a4d]">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
+        <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-[#9b87f5]" />
           Trending Now
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent>
         <div className="space-y-3">
           {trends.map((topic, index) => (
             <Link 
-              key={index} 
+              key={index}
               to={topic.url}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+              className="block hover:bg-[#1A1F2C] p-2 rounded-lg transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-muted-foreground text-sm font-medium w-5">
-                  #{index + 1}
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                    {topic.title}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    {getTrendIcon(topic.trend)}
+                    <h4 className="text-sm font-medium text-white truncate">
+                      {topic.title}
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs px-1 py-0 bg-[#1A1F2C] border-[#343a4d] text-gray-300"
+                    >
                       {topic.category}
                     </Badge>
+                    <span>•</span>
                     <span>{topic.timeAgo}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                {getTrendIcon(topic.trend)}
-                <span className="text-xs text-muted-foreground">
-                  {formatViews(topic.views)}
-                </span>
-              </div>
             </Link>
           ))}
+        </div>
+        
+        <div className="mt-4 pt-3 border-t border-[#343a4d]">
+          <Link 
+            to="/live" 
+            className="text-xs text-[#9b87f5] hover:text-[#8a75e8] font-medium"
+          >
+            View all live matches →
+          </Link>
         </div>
       </CardContent>
     </Card>
   );
 };
+
 export default TrendingTopics;

@@ -3,7 +3,6 @@ import { Clock, Users } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import StreamPlayer from '@/components/StreamPlayer';
-import PreMatchCountdown from '@/components/StreamPlayer/PreMatchCountdown';
 import StreamSources from './StreamSources';
 import MatchCard from '@/components/MatchCard';
 import MatchDetails from '@/components/MatchDetails';
@@ -158,16 +157,6 @@ const StreamTab = ({
     );
   };
 
-  // Check if match hasn't started yet (more than 1 hour away)
-  const isMatchUpcoming = (): boolean => {
-    const matchTime = typeof match.date === 'number' ? match.date : new Date(match.date).getTime();
-    const now = Date.now();
-    const oneHourInMs = 60 * 60 * 1000;
-    return matchTime - now > oneHourInMs;
-  };
-
-  const [showCountdown, setShowCountdown] = useState(isMatchUpcoming());
-
   // Fetch viewer count for current active stream
   useEffect(() => {
     const fetchCurrentViewers = async () => {
@@ -178,10 +167,19 @@ const StreamTab = ({
       
       if (source && id) {
         try {
-          // Viewer count is now embedded in stream data from the new API
-          // Just use the match's viewer count if available
-          if (match.viewerCount) {
-            setCurrentStreamViewers(match.viewerCount);
+          const response = await fetch(`https://streamed.pk/api/stream/${source}/${id}`, {
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(5000)
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Sum up all viewers from this source
+            if (Array.isArray(data)) {
+              const total = data.reduce((sum: number, stream: any) => sum + (stream.viewers || 0), 0);
+              setCurrentStreamViewers(total);
+            }
           }
         } catch (error) {
           console.error('Failed to fetch viewer count:', error);
@@ -193,7 +191,7 @@ const StreamTab = ({
     // Refresh every 30 seconds
     const interval = setInterval(fetchCurrentViewers, 30000);
     return () => clearInterval(interval);
-  }, [activeSource, match.viewerCount]);
+  }, [activeSource]);
 
   const sortedPopularMatches = [...popularMatches].sort((a, b) => {
     const aTrending = isTrendingMatch(a.title);
@@ -203,26 +201,18 @@ const StreamTab = ({
 
   return (
     <div>
-      {/* Show countdown screen for upcoming matches, otherwise show stream player */}
-      {showCountdown ? (
-        <PreMatchCountdown 
-          match={match} 
-          onMatchStart={() => setShowCountdown(false)} 
-        />
-      ) : (
-        <StreamPlayer
-          stream={stream}
-          isLoading={loadingStream || isAutoRetrying}
-          onRetry={handleRetry}
-          onAutoFallback={handleAutoFallback}
-          title={match.title}
-          isManualChannel={false}
-          isTvChannel={false}
-          match={match}
-          allStreams={allStreams}
-          showMatchDetails={false}
-        />
-      )}
+      <StreamPlayer
+        stream={stream}
+        isLoading={loadingStream || isAutoRetrying}
+        onRetry={handleRetry}
+        onAutoFallback={handleAutoFallback}
+        title={match.title}
+        isManualChannel={false}
+        isTvChannel={false}
+        match={match}
+        allStreams={allStreams}
+        showMatchDetails={false}
+      />
       
       <StreamSources
         sources={match.sources}
@@ -254,6 +244,13 @@ const StreamTab = ({
         </div>
       )}
       
+      {!stream && !loadingStream && (
+        <Card className="bg-sports-card border-sports mt-6">
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-400">Stream will be available closer to match time.</p>
+          </CardContent>
+        </Card>
+      )}
       
       {/* Trending Matches */}
       {sortedPopularMatches.length > 0 && (

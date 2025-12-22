@@ -1,220 +1,139 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sport, Match } from '../types/sports';
-import { fetchSports } from '../api/sportsApi';
-import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
-import { isMatchLive } from '../services/viewerCountService';
-import { useLiveScoreUpdates } from '../hooks/useLiveScoreUpdates';
+import { fetchLiveMatches, fetchSports, fetchAllMatches } from '../api/sportsApi';
+import { consolidateMatches, filterCleanMatches, sortMatchesByViewers } from '../utils/matchUtils';
+import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
+import { filterMatchesWithImages } from '../utils/matchImageFilter';
 import MatchCard from './MatchCard';
 import { useToast } from '../hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import HighlightsSection from './HighlightsSection';
-
-// LocalStorage cache key for instant loading
-const CACHE_KEY_MATCHES = 'damitv_matches_cache_v2';
+import { TrendingUp } from 'lucide-react';
 
 interface AllSportsLiveMatchesProps {
   searchTerm?: string;
 }
 
-// Load cached data instantly
-const getCachedMatches = (): Match[] => {
-  try {
-    const cached = localStorage.getItem(CACHE_KEY_MATCHES);
-    if (!cached) return [];
-    const parsed = JSON.parse(cached);
-    return parsed.matches || [];
-  } catch {
-    return [];
-  }
-};
-
-const setCachedMatches = (matches: Match[]) => {
-  try {
-    localStorage.setItem(CACHE_KEY_MATCHES, JSON.stringify({
-      matches: matches.slice(0, 100),
-      timestamp: Date.now()
-    }));
-  } catch {
-    // Storage might be full
-  }
-};
-
-// Transform edge function match to our Match format
-const transformEdgeMatch = (m: any): Match => ({
-  id: m.id,
-  title: m.title,
-  category: m.category,
-  date: m.date,
-  poster: m.poster,
-  popular: m.popular,
-  teams: m.teams,
-  sources: m.sources,
-  tournament: m.tournament,
-  isLive: m.isLive,
-  score: m.score,
-  progress: m.progress,
-  priority: m.priority
-});
-
 const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm = '' }) => {
   const { toast } = useToast();
-  
-  // Initialize live score updates (slower since edge function provides scores)
-  useLiveScoreUpdates(60000);
-  
-  // Initialize with cached data immediately for instant display
-  const [allMatches, setAllMatches] = useState<Match[]>(() => getCachedMatches());
+  const [liveMatches, setLiveMatches] = useState<Match[]>([]);
+  const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
-  const [hasInitialized, setHasInitialized] = useState(() => getCachedMatches().length > 0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const initialLoadDone = useRef(false);
-
-  // Fetch ALL matches from edge function (already enriched with logos + scores)
-  const fetchMatchesFromEdge = async (): Promise<Match[]> => {
-    try {
-      console.log('⚡ Fetching matches from edge function...');
-      const startTime = Date.now();
-      
-      const { data, error } = await supabase.functions.invoke('fetch-popular-matches');
-      
-      if (error) {
-        console.error('Edge function error:', error);
-        return [];
-      }
-      
-      const matches = (data?.matches || []).map(transformEdgeMatch);
-      console.log(`✅ Edge function returned ${matches.length} matches in ${Date.now() - startTime}ms`);
-      
-      return matches;
-    } catch (error) {
-      console.error('Failed to fetch from edge:', error);
-      return [];
-    }
-  };
+  const [loading, setLoading] = useState(false); // Start with false - show skeletons
+  const [mostViewedMatches, setMostViewedMatches] = useState<Match[]>([]);
 
   useEffect(() => {
-    if (initialLoadDone.current) return;
-    initialLoadDone.current = true;
-    
-    const loadMatches = async () => {
+    const loadLiveMatches = async () => {
       try {
-        // Show refreshing indicator only if we have cached data
-        if (allMatches.length > 0) {
-          setIsRefreshing(true);
-        }
+        // NO setLoading(true) - let content render immediately
         
-        console.log('🔄 Loading matches...');
-        const startTime = Date.now();
-        
-        // Fetch sports and matches in parallel - edge function does all the heavy lifting
-        const [sportsData, matchesData] = await Promise.all([
+        // Fetch sports, live matches, and all matches in parallel
+        const [sportsData, liveMatchesData, allMatchesData] = await Promise.all([
           fetchSports(),
-          fetchMatchesFromEdge()
+          fetchLiveMatches(),
+          fetchAllMatches()
         ]);
         
         setSports(sportsData);
         
-        // Filter and consolidate matches
-        const cleanMatches = filterCleanMatches(
-          matchesData.filter(m => m.sources && m.sources.length > 0)
+        // Filter and consolidate live matches (remove matches without sources)
+        const cleanLiveMatches = filterCleanMatches(
+          liveMatchesData.filter(m => m.sources && m.sources.length > 0)
         );
-        const consolidatedMatches = consolidateMatches(cleanMatches);
+        const consolidatedLiveMatches = consolidateMatches(cleanLiveMatches);
+        setLiveMatches(consolidatedLiveMatches);
         
-        console.log(`✅ Loaded ${consolidatedMatches.length} matches in ${Date.now() - startTime}ms`);
+        // Filter and consolidate all matches (must have sources)
+        const cleanAllMatches = filterCleanMatches(
+          allMatchesData.filter(m => m.sources && m.sources.length > 0)
+        );
+        const consolidatedAllMatches = consolidateMatches(cleanAllMatches);
+        setAllMatches(consolidatedAllMatches);
         
-        setAllMatches(consolidatedMatches);
-        setCachedMatches(consolidatedMatches);
+        console.log(`✅ Loaded ${consolidatedLiveMatches.length} live matches and ${consolidatedAllMatches.length} total matches from all sports`);
+        console.log('Live matches by sport:', consolidatedLiveMatches.reduce((acc, match) => {
+          const sport = match.sportId || match.category || 'unknown';
+          acc[sport] = (acc[sport] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>));
+        
+        // Enrich all matches with viewer counts from stream API
+        const enrichedAllMatches = await enrichMatchesWithViewers(consolidatedAllMatches);
+        
+        // For "Popular by Viewers", only show live matches with viewers
+        const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
+          isMatchLive(m) && 
+          (m.viewerCount || 0) > 0
+        );
+        
+        // Sort by viewer count
+        const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
+          (b.viewerCount || 0) - (a.viewerCount || 0)
+        );
+        
+        console.log('🔥 Popular live matches with viewers:', sortedByViewers.map(m => ({ 
+          id: m.id, 
+          title: m.title, 
+          viewers: m.viewerCount 
+        })));
+        
+        setMostViewedMatches(sortedByViewers.slice(0, 12));
         
       } catch (error) {
         console.error('Error loading matches:', error);
-        if (allMatches.length === 0) {
-          toast({
-            title: "Error",
-            description: "Failed to load matches.",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        setHasInitialized(true);
-        setIsRefreshing(false);
+        toast({
+          title: "Error",
+          description: "Failed to load matches.",
+          variant: "destructive",
+        });
       }
+      // NO finally block - no loading state to manage
     };
 
-    loadMatches();
-  }, [toast, allMatches.length]);
+    loadLiveMatches();
+  }, [toast]);
 
-  // Refresh matches every 2 minutes
+  // Refresh viewer counts every 30 seconds
   useEffect(() => {
-    const refreshData = async () => {
+    const refreshViewerCounts = async () => {
       if (allMatches.length === 0) return;
       
       try {
-        console.log('🔄 Refreshing matches...');
-        const freshMatches = await fetchMatchesFromEdge();
+        console.log('🔄 Refreshing viewer counts for', allMatches.length, 'matches');
+        const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
         
-        if (freshMatches.length > 0) {
-          const cleanMatches = filterCleanMatches(
-            freshMatches.filter(m => m.sources && m.sources.length > 0)
-          );
-          const consolidatedMatches = consolidateMatches(cleanMatches);
-          
-          setAllMatches(consolidatedMatches);
-          setCachedMatches(consolidatedMatches);
-          console.log(`✅ Refreshed ${consolidatedMatches.length} matches`);
-        }
+        // Only show live matches with viewers
+        const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
+          isMatchLive(m) && 
+          (m.viewerCount || 0) > 0
+        );
+        
+        // Sort by viewer count
+        const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
+          (b.viewerCount || 0) - (a.viewerCount || 0)
+        );
+        
+        console.log('🔥 Refreshed - Popular live matches with viewers:', sortedByViewers.map(m => ({ 
+          id: m.id, 
+          title: m.title, 
+          viewers: m.viewerCount 
+        })));
+        
+        setMostViewedMatches(sortedByViewers.slice(0, 12));
       } catch (error) {
-        console.error('Error refreshing data:', error);
+        console.error('Error refreshing viewer counts:', error);
       }
     };
 
-    const interval = setInterval(refreshData, 2 * 60 * 1000); // Refresh every 2 minutes
+    const interval = setInterval(refreshViewerCounts, 30000); // Refresh every 30 seconds
     
     return () => clearInterval(interval);
-  }, [allMatches.length]);
+  }, [allMatches]);
 
-  // Define preferred sport order
-  const getSportPriority = (sportId: string): number => {
-    const sportOrder: { [key: string]: number } = {
-      'football': 1,
-      'basketball': 2, 
-      'american-football': 3,
-      'nfl': 3,
-      'baseball': 4,
-      'motor-sports': 5,
-      'motorsport': 5,
-      'fight': 6,
-      'fighting': 6,
-      'mma': 6,
-      'rugby': 7,
-      'cricket': 8,
-      'afl': 9
-    };
+  // Filter matches by search term (ended matches already filtered out in data loading)
+  const filteredMatches = React.useMemo(() => {
+    // Only show matches with images on home page
+    let matches = filterMatchesWithImages(liveMatches);
     
-    const normalizedSportId = sportId.toLowerCase();
-    
-    if (sportOrder[normalizedSportId] !== undefined) {
-      return sportOrder[normalizedSportId];
-    }
-    
-    for (const [sport, priority] of Object.entries(sportOrder)) {
-      if (normalizedSportId.includes(sport) || sport.includes(normalizedSportId)) {
-        return priority;
-      }
-    }
-    
-    return 14.5;
-  };
-
-  const getSportName = (sportId: string) => {
-    const sport = sports.find(s => s.id === sportId);
-    return sport?.name || sportId.charAt(0).toUpperCase() + sportId.slice(1).replace(/-/g, ' ');
-  };
-
-  // Filter live matches
-  const filteredLiveMatches = React.useMemo(() => {
-    let matches = allMatches.filter(m => m.isLive || isMatchLive(m));
-    
+    // Apply search filter if provided
     if (searchTerm.trim()) {
       const lowercaseSearch = searchTerm.toLowerCase();
       matches = matches.filter(match => {
@@ -224,179 +143,125 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       });
     }
     
-    // Sort by priority (from edge function)
-    return matches.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-  }, [allMatches, searchTerm]);
+    return matches;
+  }, [liveMatches, searchTerm]);
 
-  // Filter upcoming matches (not live)
-  const filteredUpcomingMatches = React.useMemo(() => {
-    let upcoming = allMatches.filter(match => !match.isLive && !isMatchLive(match));
+  // Group matches by sport and sort by date (newest first)
+  const matchesBySport = React.useMemo(() => {
+    const grouped: { [sportId: string]: Match[] } = {};
     
-    if (searchTerm.trim()) {
-      const lowercaseSearch = searchTerm.toLowerCase();
-      upcoming = upcoming.filter(match => {
-        return match.title.toLowerCase().includes(lowercaseSearch) || 
-          match.teams?.home?.name?.toLowerCase().includes(lowercaseSearch) ||
-          match.teams?.away?.name?.toLowerCase().includes(lowercaseSearch);
+    filteredMatches.forEach(match => {
+      const sportId = match.sportId || match.category || 'unknown';
+      if (!grouped[sportId]) {
+        grouped[sportId] = [];
+      }
+      grouped[sportId].push(match);
+    });
+    
+    // Sort matches within each sport by date (newest/most recent first)
+    Object.keys(grouped).forEach(sportId => {
+      grouped[sportId].sort((a, b) => {
+        // Sort by date descending (newest matches first)
+        return b.date - a.date;
       });
+    });
+    
+    return grouped;
+  }, [filteredMatches]);
+
+  const getSportName = (sportId: string) => {
+    const sport = sports.find(s => s.id === sportId);
+    return sport?.name || sportId.charAt(0).toUpperCase() + sportId.slice(1);
+  };
+
+  // Show skeleton while data is empty, but don't block - let it render
+  if (liveMatches.length === 0) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+          <div key={i} className="h-[280px] bg-[#242836] rounded-xl animate-pulse"></div>
+        ))}
+      </div>
+    );
+  }
+
+  if (filteredMatches.length === 0) {
+    return (
+      <div className="bg-[#242836] border-[#343a4d] rounded-xl p-8 text-center">
+        <div className="text-4xl mb-4">📺</div>
+        <h3 className="text-xl font-bold text-white mb-2">No Live Matches</h3>
+        <p className="text-gray-400">There are currently no live matches available.</p>
+      </div>
+    );
+  }
+
+  // Define preferred sport order with tennis at the end (excluded: golf, hockey, billiards)
+  const getSportPriority = (sportId: string): number => {
+    const sportOrder: { [key: string]: number } = {
+      'football': 1,
+      'basketball': 2, 
+      'american-football': 3,
+      'baseball': 4,
+      'motor-sports': 5,
+      'fight': 6,
+      'rugby': 7,
+      'cricket': 8,
+      'afl': 9,
+      'other': 10,
+      'tennis': 12  // Tennis moved to last position
+    };
+    
+    const normalizedSportId = sportId.toLowerCase();
+    
+    // Check for exact match first
+    if (sportOrder[normalizedSportId] !== undefined) {
+      return sportOrder[normalizedSportId];
     }
     
-    return upcoming.sort((a, b) => a.date - b.date);
-  }, [allMatches, searchTerm]);
-
-  // Group live matches by sport
-  const liveMatchesBySport = React.useMemo(() => {
-    const grouped: { [sportId: string]: Match[] } = {};
-    
-    filteredLiveMatches.forEach(match => {
-      const sportId = match.sportId || match.category || 'unknown';
-      if (!grouped[sportId]) {
-        grouped[sportId] = [];
+    // Check for partial matches
+    for (const [sport, priority] of Object.entries(sportOrder)) {
+      if (normalizedSportId.includes(sport) || sport.includes(normalizedSportId)) {
+        return priority;
       }
-      grouped[sportId].push(match);
-    });
+    }
     
-    Object.keys(grouped).forEach(sportId => {
-      grouped[sportId].sort((a, b) => (b.priority || 0) - (a.priority || 0));
-    });
-    
-    return grouped;
-  }, [filteredLiveMatches]);
+    // Unknown sports get high priority (but before tennis)
+    return 14.5;
+  };
 
-  // Group upcoming matches by sport
-  const upcomingMatchesBySport = React.useMemo(() => {
-    const grouped: { [sportId: string]: Match[] } = {};
-    
-    filteredUpcomingMatches.forEach(match => {
-      const sportId = match.sportId || match.category || 'unknown';
-      if (!grouped[sportId]) {
-        grouped[sportId] = [];
-      }
-      grouped[sportId].push(match);
-    });
-    
-    Object.keys(grouped).forEach(sportId => {
-      grouped[sportId].sort((a, b) => a.date - b.date);
-    });
-    
-    return grouped;
-  }, [filteredUpcomingMatches]);
-
-  // Sort sports by priority
-  const sortedLiveSports = React.useMemo(() => 
-    Object.entries(liveMatchesBySport).sort(([sportIdA], [sportIdB]) => {
-      return getSportPriority(sportIdA) - getSportPriority(sportIdB);
-    }), [liveMatchesBySport]);
-
-  const sortedUpcomingSports = React.useMemo(() => 
-    Object.entries(upcomingMatchesBySport).sort(([sportIdA], [sportIdB]) => {
-      return getSportPriority(sportIdA) - getSportPriority(sportIdB);
-    }), [upcomingMatchesBySport]);
-
-  const hasLiveMatches = filteredLiveMatches.length > 0;
-  const hasUpcomingMatches = filteredUpcomingMatches.length > 0;
-
-
-  // Show skeleton only during initial load with no cache
-  if (!hasInitialized && allMatches.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-5 h-5 text-primary animate-spin" />
-          <span className="text-muted-foreground text-sm">Loading matches...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Show message when no matches available
-  if (!hasLiveMatches && !hasUpcomingMatches) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p className="text-lg">No live matches available at the moment.</p>
-        <p className="text-sm mt-2">Check back later for upcoming matches.</p>
-      </div>
-    );
-  }
+  // Sort sports by priority with tennis at the end
+  const sortedSports = Object.entries(matchesBySport).sort(([sportIdA], [sportIdB]) => {
+    const priorityA = getSportPriority(sportIdA);
+    const priorityB = getSportPriority(sportIdB);
+    return priorityA - priorityB;
+  });
 
   return (
     <div className="space-y-8">
-      {/* Refreshing indicator */}
-      {isRefreshing && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span>Updating matches...</span>
-        </div>
-      )}
-
-
-
-      {/* Live Matches Sections */}
-      {hasLiveMatches && (
-        <>
-          {sortedLiveSports.map(([sportId, matches]) => (
-            <div key={sportId} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
-                  {getSportName(sportId)}
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-500 text-white animate-pulse">
-                    LIVE
-                  </span>
-                </h3>
-                <span className="text-sm text-muted-foreground">
-                  {matches.length} live match{matches.length !== 1 ? 'es' : ''}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-fr">
-                {matches.map((match) => (
-                  <div key={`live-${match.sportId || sportId}-${match.id}`} className="h-full">
-                    <MatchCard
-                      match={match}
-                      sportId={match.sportId || sportId}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* Match Highlights Section */}
-      <HighlightsSection />
-
-      {/* Upcoming Matches Sections */}
-      {hasUpcomingMatches && (
-        <>
-          <div className="border-t border-border pt-8">
-            <h2 className="text-2xl font-bold text-foreground mb-6">Upcoming Matches</h2>
+      {/* Sports Sections */}
+      {sortedSports.map(([sportId, matches]) => (
+        <div key={sportId} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white">
+              {getSportName(sportId)}
+            </h3>
+            <span className="text-sm text-gray-400">
+              {matches.length} live match{matches.length !== 1 ? 'es' : ''}
+            </span>
           </div>
-          {sortedUpcomingSports.map(([sportId, matches]) => (
-            <div key={`upcoming-${sportId}`} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-foreground">
-                  {getSportName(sportId)}
-                </h3>
-                <span className="text-sm text-muted-foreground">
-                  {matches.length} upcoming match{matches.length !== 1 ? 'es' : ''}
-                </span>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-fr">
+            {matches.map((match) => (
+              <div key={`${match.sportId || sportId}-${match.id}`} className="h-full">
+                <MatchCard
+                  match={match}
+                  sportId={match.sportId || sportId}
+                />
               </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-fr">
-                {matches.slice(0, 12).map((match) => (
-                  <div key={`upcoming-${match.sportId || sportId}-${match.id}`} className="h-full">
-                    <MatchCard
-                      match={match}
-                      sportId={match.sportId || sportId}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

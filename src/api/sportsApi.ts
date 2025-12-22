@@ -1,12 +1,7 @@
 
-import { Sport, Match, Stream, Source } from '../types/sports';
-import { enhanceMatchesWithLogos, enhanceMatchWithLogos } from '../services/teamLogoService';
-import { getLiveScoreByTeams } from '../hooks/useLiveScoreUpdates';
+import { Sport, Match, Stream } from '../types/sports';
 
-// API Base URLs
-const WESTREAM_API = 'https://westream.su';
-const CHANNELS_API = 'https://api.cdn-live.tv/api/v1/vip/damitv';
-const CDN_LIVE_API = 'https://cdn-live.tv/api/v1/vip/damitv';
+const API_BASE = 'https://streamed.pk/api';
 
 // Cache for API responses to avoid repeated calls
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -15,6 +10,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 // Helper function to clear cache (used for refresh)
 export const clearStreamCache = (matchId?: string) => {
   if (matchId) {
+    // Clear only caches related to this match
     const keysToDelete: string[] = [];
     cache.forEach((_, key) => {
       if (key.includes(matchId) || key.includes('stream')) {
@@ -24,9 +20,10 @@ export const clearStreamCache = (matchId?: string) => {
     keysToDelete.forEach(key => cache.delete(key));
     console.log(`🗑️ Cleared ${keysToDelete.length} cache entries for match: ${matchId}`);
   } else {
+    // Clear all stream-related caches
     const keysToDelete: string[] = [];
     cache.forEach((_, key) => {
-      if (key.includes('stream') || key.includes('match')) {
+      if (key.includes('stream')) {
         keysToDelete.push(key);
       }
     });
@@ -49,304 +46,311 @@ const setCachedData = (key: string, data: any) => {
   cache.set(key, { data, timestamp: Date.now() });
 };
 
-// Enhance match with live scores from TheSportsDB
-const enhanceMatchWithLiveScore = (match: Match): Match => {
-  if (!match.isLive && !isMatchCurrentlyLive(match)) return match;
+// Helper function to filter and reorder sports list
+const filterAndReorderSports = (sports: Sport[]): Sport[] => {
+  // Filter out unwanted sports: golf, hockey, billiards, darts
+  const excludedSports = ['golf', 'hockey', 'billiards', 'darts'];
+  const filteredSports = sports.filter(sport => 
+    !excludedSports.includes(sport.id.toLowerCase())
+  );
   
-  const homeTeam = match.teams?.home?.name || '';
-  const awayTeam = match.teams?.away?.name || '';
+  // Move tennis to the end
+  const tennisIndex = filteredSports.findIndex(sport => sport.id === 'tennis');
+  if (tennisIndex === -1) return filteredSports; // Tennis not found, return as is
   
-  if (!homeTeam || !awayTeam) return match;
+  const sportsWithoutTennis = filteredSports.filter(sport => sport.id !== 'tennis');
+  const tennisSport = filteredSports[tennisIndex];
   
-  const liveScore = getLiveScoreByTeams(homeTeam, awayTeam);
-  
-  if (liveScore) {
-    return {
-      ...match,
-      score: {
-        home: liveScore.homeScore,
-        away: liveScore.awayScore
-      },
-      progress: liveScore.progress,
-      isLive: true
-    };
-  }
-  
-  return match;
+  // Add tennis at the end
+  return [...sportsWithoutTennis, tennisSport];
 };
-
-// Check if match is currently live based on time
-const isMatchCurrentlyLive = (match: Match): boolean => {
-  const matchTime = typeof match.date === 'number' ? match.date : new Date(match.date).getTime();
-  const now = Date.now();
-  const threeHoursAgo = now - (3 * 60 * 60 * 1000);
-  const oneHourFromNow = now + (60 * 60 * 1000);
-  
-  return matchTime <= oneHourFromNow && matchTime > threeHoursAgo;
-};
-
-// Transform WeStream match to our Match format
-const transformWeStreamMatch = (match: any): Match => ({
-  id: match.id || String(match._id || ''),
-  title: match.title || (match.teams ? `${match.teams.home?.name || ''} vs ${match.teams.away?.name || ''}` : ''),
-  category: match.category || 'Unknown',
-  date: match.date ? new Date(match.date).getTime() : Date.now(),
-  poster: match.poster || match.image || undefined,
-  popular: match.popular || false,
-  teams: match.teams ? {
-    home: { 
-      name: match.teams.home?.name || '', 
-      badge: match.teams.home?.badge || match.teams.home?.logo || '' 
-    },
-    away: { 
-      name: match.teams.away?.name || '', 
-      badge: match.teams.away?.badge || match.teams.away?.logo || '' 
-    }
-  } : undefined,
-  sources: match.sources?.map((s: any) => ({
-    source: s.source,
-    id: s.id,
-    name: s.name || s.source
-  })) || [],
-  sportId: match.category?.toLowerCase().replace(/\s+/g, '-') || 'unknown',
-  isLive: match.isLive || match.status === 'live',
-  viewerCount: match.viewerCount || match.viewers || 0,
-  tournament: match.tournament || match.league || undefined,
-  country: match.country || undefined,
-  countryFlag: match.countryFlag || undefined
-});
-
-// ==================== WESTREAM API (Sports Matches) ====================
 
 export const fetchSports = async (): Promise<Sport[]> => {
-  const cacheKey = 'westream-sports';
+  const cacheKey = 'sports';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
+  // Detect mobile and adjust timeout
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const timeout = isMobile ? 15000 : 10000; // Longer timeout for mobile
+
   try {
-    const response = await fetch(`${WESTREAM_API}/sports`, {
-      headers: { 'Accept': 'application/json' }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(`${API_BASE}/sports`, {
+      signal: controller.signal,
+      headers: {
+'Accept': 'application/json'
+      }
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     const data = await response.json();
     
-    let sports: Sport[] = [];
-    
-    // Sports to exclude from the list
-    const EXCLUDED_SPORTS = ['tennis', 'golf', 'hockey', 'ice hockey', 'nhl', 'darts', 'billiards', 'snooker', 'pool', 'other'];
-    
-    if (Array.isArray(data)) {
-      sports = data
-        .map((sport: any) => ({
-          id: sport.id || sport.name?.toLowerCase().replace(/\s+/g, '-'),
-          name: sport.name || sport.id
-        }))
-        .filter((sport: Sport) => 
-          !EXCLUDED_SPORTS.some(excluded => 
-            sport.id.toLowerCase().includes(excluded) || 
-            sport.name.toLowerCase().includes(excluded)
-          )
-        );
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid sports data format');
     }
     
-    // Sort alphabetically but keep Football first
-    sports.sort((a, b) => {
-      if (a.id === 'football' || a.id === 'soccer') return -1;
-      if (b.id === 'football' || b.id === 'soccer') return 1;
-      return a.name.localeCompare(b.name);
-    });
-
-    setCachedData(cacheKey, sports);
-    console.log(`✅ Loaded ${sports.length} sports from WeStream API:`, sports.map(s => s.name).join(', '));
-    return sports;
+    // Filter and reorder sports
+    const reorderedData = filterAndReorderSports(data);
+    setCachedData(cacheKey, reorderedData);
+    console.log(`✅ Fetched ${reorderedData.length} sports from streamed.pk API`);
+    return reorderedData;
   } catch (error) {
-    console.error('❌ Error fetching sports from WeStream:', error);
-    // Fallback to basic sports list
-    const fallbackSports: Sport[] = [
-      { id: 'football', name: 'Football' },
-      { id: 'basketball', name: 'Basketball' },
-      { id: 'cricket', name: 'Cricket' }
-    ];
-    return fallbackSports;
-  }
-};
-
-// Sports to exclude from matches
-const EXCLUDED_MATCH_SPORTS = ['tennis', 'golf', 'hockey', 'ice hockey', 'nhl', 'darts', 'billiards', 'snooker', 'pool', 'other'];
-
-const isExcludedSport = (match: Match): boolean => {
-  const sportId = (match.sportId || '').toLowerCase();
-  const category = (match.category || '').toLowerCase();
-  const title = (match.title || '').toLowerCase();
-  
-  return EXCLUDED_MATCH_SPORTS.some(excluded => 
-    sportId.includes(excluded) || 
-    category.includes(excluded) ||
-    (excluded === 'hockey' && (sportId.includes('nhl') || category.includes('nhl'))) ||
-    (excluded === 'tennis' && (sportId.includes('atp') || sportId.includes('wta') || category.includes('atp') || category.includes('wta')))
-  );
-};
-
-export const fetchLiveMatches = async (): Promise<Match[]> => {
-  const cacheKey = 'westream-live-matches';
-  const cached = getCachedData(cacheKey);
-  if (cached) {
-    // Still enhance with live scores even if cached
-    return cached.filter(m => !isExcludedSport(m)).map(enhanceMatchWithLiveScore);
-  }
-
-  try {
-    const response = await fetch(`${WESTREAM_API}/matches/live`, {
-      headers: { 'Accept': 'application/json' }
-    });
+    console.error('❌ Error fetching sports from streamed.pk:', error);
     
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    const data = await response.json();
+    // On mobile, try one more time with a simpler request
+    if (isMobile && !error.message.includes('retry')) {
+      console.log('🔄 Retrying with mobile-optimized request...');
+      try {
+        const retryResponse = await fetch(`${API_BASE}/sports`, {
+          method: 'GET',
+          cache: 'no-cache'
+        });
+        
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          if (Array.isArray(retryData)) {
+            const reorderedRetryData = filterAndReorderSports(retryData);
+            setCachedData(cacheKey, reorderedRetryData);
+            console.log(`✅ Mobile retry successful: ${reorderedRetryData.length} sports`);
+            return reorderedRetryData;
+          }
+        }
+      } catch (retryError) {
+        console.error('❌ Mobile retry failed:', retryError);
+      }
+    }
     
-    let matches = Array.isArray(data) ? data.map(transformWeStreamMatch) : [];
-    
-    // Filter out excluded sports
-    matches = matches.filter(m => !isExcludedSport(m));
-    
-    // Enhance matches with team logos from TheSportsDB
-    matches = await enhanceMatchesWithLogos(matches);
-    
-    // Enhance with live scores
-    matches = matches.map(enhanceMatchWithLiveScore);
-    
-    setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} live matches from WeStream API`);
-    return matches;
-  } catch (error) {
-    console.error('❌ Error fetching live matches from WeStream:', error);
-    return [];
-  }
-};
-
-export const fetchAllMatches = async (): Promise<Match[]> => {
-  const cacheKey = 'westream-all-matches';
-  const cached = getCachedData(cacheKey);
-  if (cached) {
-    // Still enhance with live scores even if cached, and filter excluded sports
-    return cached.filter(m => !isExcludedSport(m)).map(enhanceMatchWithLiveScore);
-  }
-
-  try {
-    const response = await fetch(`${WESTREAM_API}/matches`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    const data = await response.json();
-    
-    let matches = Array.isArray(data) ? data.map(transformWeStreamMatch) : [];
-    
-    // Filter out excluded sports
-    matches = matches.filter(m => !isExcludedSport(m));
-    
-    // Sort by date (most recent first) and filter out old finished matches
-    matches = matches
-      .filter(m => m.isLive || new Date(m.date) > new Date(Date.now() - 3 * 60 * 60 * 1000))
-      .sort((a, b) => {
-        // Live matches first
-        if (a.isLive && !b.isLive) return -1;
-        if (!a.isLive && b.isLive) return 1;
-        // Then by date
-        return a.date - b.date;
-      });
-    
-    // Enhance matches with team logos from TheSportsDB
-    matches = await enhanceMatchesWithLogos(matches);
-    
-    // Enhance with live scores
-    matches = matches.map(enhanceMatchWithLiveScore);
-    
-    setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} matches from WeStream API`);
-    return matches;
-  } catch (error) {
-    console.error('❌ Error fetching all matches from WeStream:', error);
-    return [];
+    throw error;
   }
 };
 
 export const fetchMatches = async (sportId: string): Promise<Match[]> => {
-  // Don't fetch matches for excluded sports
-  if (EXCLUDED_MATCH_SPORTS.some(excluded => sportId.toLowerCase().includes(excluded))) {
-    return [];
-  }
-  
-  const cacheKey = `westream-matches-${sportId}`;
+  const cacheKey = `matches-${sportId}`;
   const cached = getCachedData(cacheKey);
-  if (cached) {
-    // Still enhance with live scores even if cached
-    return cached.filter(m => !isExcludedSport(m)).map(enhanceMatchWithLiveScore);
-  }
+  if (cached) return cached;
+
+  // Detect mobile and adjust timeout
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const timeout = isMobile ? 20000 : 15000; // Even longer timeout for mobile matches
 
   try {
-    const response = await fetch(`${WESTREAM_API}/matches/${sportId}`, {
-      headers: { 'Accept': 'application/json' }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(`${API_BASE}/matches/${sportId}`, {
+      signal: controller.signal,
+      headers: {
+'Accept': 'application/json'
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const matches = await response.json();
+    
+    if (!Array.isArray(matches)) {
+      throw new Error('Invalid matches data format');
+    }
+    
+    // Simple transform - no filtering
+    const validMatches = matches.filter(match => 
+      match && 
+      match.id && 
+      match.title && 
+      match.date &&
+      Array.isArray(match.sources)
+    ).map(match => ({
+      ...match,
+      sportId: match.category || sportId,
+      category: match.category || sportId
+    }));
+    
+    setCachedData(cacheKey, validMatches);
+    console.log(`✅ Fetched ${validMatches.length} matches for sport ${sportId} (filtered from ${matches.length} total matches)`);
+    return validMatches;
+  } catch (error) {
+    console.error(`❌ Error fetching matches for sport ${sportId} from streamed.pk:`, error);
+    
+    // On mobile, try one more time with a simpler request
+    if (isMobile && !error.message.includes('retry')) {
+      console.log(`🔄 Mobile retry for matches ${sportId}...`);
+      try {
+        const retryResponse = await fetch(`${API_BASE}/matches/${sportId}`, {
+          method: 'GET',
+          cache: 'no-cache',
+          headers: {
+            'Accept': 'application/json',
+          }
+        });
+        
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          if (Array.isArray(retryData)) {
+            const validMatches = retryData.filter(match => 
+              match && 
+              match.id && 
+              match.title && 
+              match.date &&
+              Array.isArray(match.sources)
+            ).map(match => ({
+              ...match,
+              sportId: match.category || sportId,
+              category: match.category || sportId
+            }))
+            // Apply same filtering logic for mobile retry
+            .filter(match => {
+              const matchCategory = (match.category || match.sportId || '').toLowerCase();
+              const requestedSport = sportId.toLowerCase();
+              
+              // If requesting 'all', include everything
+              if (requestedSport === 'all') {
+                return true;
+              }
+              
+              // Exact match first
+              if (matchCategory === requestedSport) {
+                return true;
+              }
+              
+              // Excluded: golf, hockey, billiards
+              const sportMapping: { [key: string]: string[] } = {
+                'football': ['football', 'soccer'],
+                'basketball': ['basketball', 'basket'],
+                'tennis': ['tennis'],
+                'baseball': ['baseball'],
+                'american-football': ['american-football', 'nfl', 'american football'],
+                'motor-sports': ['motor-sports', 'motorsports', 'racing', 'motogp', 'f1', 'formula'],
+                'fight': ['fight', 'boxing', 'mma', 'ufc', 'martial'],
+                'rugby': ['rugby'],
+                'cricket': ['cricket'],
+                'afl': ['afl', 'australian football'],
+                'other': ['other']
+              };
+              
+              const allowedCategories = sportMapping[requestedSport] || [requestedSport];
+              
+              // Check if the match category contains any of the allowed terms
+              return allowedCategories.some(cat => {
+                const categoryLower = cat.toLowerCase();
+                return matchCategory.includes(categoryLower) || categoryLower.includes(matchCategory);
+              });
+            });
+            setCachedData(cacheKey, validMatches);
+            console.log(`✅ Mobile retry successful: ${validMatches.length} matches for ${sportId} (filtered from ${retryData.length} total)`);
+            return validMatches;
+          }
+        }
+      } catch (retryError) {
+        console.error(`❌ Mobile retry failed for ${sportId}:`, retryError);
+      }
+    }
+    
+    throw error;
+  }
+};
+
+// New functions to support different match endpoints
+export const fetchLiveMatches = async (): Promise<Match[]> => {
+  const cacheKey = 'matches-live';
+  const cached = getCachedData(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(`${API_BASE}/matches/live`, {
+      headers: {
+'Accept': 'application/json'
+      }
     });
     
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    const data = await response.json();
+    const matches = await response.json();
     
-    let matches = Array.isArray(data) ? data.map(transformWeStreamMatch) : [];
+    if (!Array.isArray(matches)) {
+      throw new Error('Invalid matches data format');
+    }
     
-    // Filter out excluded sports
-    matches = matches.filter(m => !isExcludedSport(m));
+    const validMatches = matches.filter(match => 
+      match && match.id && match.title && match.date && Array.isArray(match.sources)
+    ).map(match => ({
+      ...match,
+      sportId: match.category
+    }));
     
-    // Enhance matches with team logos from TheSportsDB
-    matches = await enhanceMatchesWithLogos(matches);
-    
-    // Enhance with live scores
-    matches = matches.map(enhanceMatchWithLiveScore);
-    
-    setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} matches for sport ${sportId} from WeStream API`);
-    return matches;
+    setCachedData(cacheKey, validMatches);
+    console.log(`✅ Fetched ${validMatches.length} live matches from streamed.pk API`);
+    return validMatches;
   } catch (error) {
-    console.error(`❌ Error fetching matches for sport ${sportId} from WeStream:`, error);
-    return [];
+    console.error('❌ Error fetching live matches from streamed.pk:', error);
+    throw error;
+  }
+};
+
+export const fetchAllMatches = async (): Promise<Match[]> => {
+  const cacheKey = 'matches-all';
+  const cached = getCachedData(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(`${API_BASE}/matches/all`, {
+      headers: {
+'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const matches = await response.json();
+    
+    if (!Array.isArray(matches)) {
+      throw new Error('Invalid matches data format');
+    }
+    
+    const validMatches = matches.filter(match => 
+      match && match.id && match.title && match.date && Array.isArray(match.sources)
+    ).map(match => ({
+      ...match,
+      sportId: match.category
+    }));
+    
+    setCachedData(cacheKey, validMatches);
+    console.log(`✅ Fetched ${validMatches.length} matches from streamed.pk API`);
+    return validMatches;
+  } catch (error) {
+    console.error('❌ Error fetching all matches from streamed.pk:', error);
+    throw error;
   }
 };
 
 export const fetchMatch = async (sportId: string, matchId: string): Promise<Match> => {
-  const cacheKey = `westream-match-${sportId}-${matchId}`;
+  const cacheKey = `match-${sportId}-${matchId}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
     // First try to get from cached matches
-    const cachedMatches = getCachedData(`westream-matches-${sportId}`) || getCachedData('westream-all-matches');
+    const cachedMatches = getCachedData(`matches-${sportId}`);
     if (cachedMatches) {
       const match = cachedMatches.find((m: Match) => m.id === matchId);
       if (match) {
-        // Enhance with logos if not already present
-        const enhancedMatch = await enhanceMatchWithLogos(match);
-        setCachedData(cacheKey, enhancedMatch);
+        setCachedData(cacheKey, match);
         console.log(`✅ Found match ${matchId} in cache`);
-        return enhancedMatch;
+        return match;
       }
     }
 
-    // If not in cache, fetch all matches and find the specific match
-    const allMatches = await fetchAllMatches();
-    let match = allMatches.find(m => m.id === matchId);
-
-    // Some matches (especially niche/PPV events) can exist only in the sport-specific endpoint.
-    // Fallback to sport-specific fetch before failing.
-    if (!match) {
-      const sportMatches = await fetchMatches(sportId);
-      match = sportMatches.find(m => m.id === matchId);
-    }
+    // If not in cache, fetch all matches for this sport and find the specific match
+    const matches = await fetchMatches(sportId);
+    const match = matches.find(m => m.id === matchId);
     
     if (!match) {
       throw new Error(`Match ${matchId} not found`);
     }
     
-    // Match already enhanced by fetchAllMatches/fetchMatches
     setCachedData(cacheKey, match);
     console.log(`✅ Found match ${matchId} for sport ${sportId}`);
     return match;
@@ -356,158 +360,286 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
   }
 };
 
-// Fetch streams for a specific match from WeStream API
-export const fetchStream = async (source: string, id: string): Promise<Stream[]> => {
-  const cacheKey = `westream-stream-${source}-${id}`;
-  const cached = getCachedData(cacheKey);
-  if (cached) return cached;
-
+// Simple direct stream fetching like the HTML example
+export const fetchSimpleStream = async (source: string, id: string): Promise<Stream[]> => {
+  const cacheKey = `simple-stream-${source}-${id}`;
+  
   try {
-    console.log(`🎬 Fetching streams from WeStream: ${source}/${id}`);
+    // Check cache first
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
+    console.log(`🎬 Fetching streams for ${source}/${id}`);
     
-    const response = await fetch(`${WESTREAM_API}/stream/${source}/${id}`, {
-      headers: { 'Accept': 'application/json' }
+    // Direct API call like the HTML example
+    const response = await fetch(`${API_BASE}/stream/${source}/${id}`, {
+      headers: {
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(15000)
     });
+
+    if (!response.ok) {
+      throw new Error(`Stream API error: ${response.status}`);
+    }
+
+    const streams = await response.json();
     
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    const data = await response.json();
-    
-    const streams: Stream[] = Array.isArray(data) ? data.map((stream: any, index: number) => ({
-      id: stream.id || `${source}-${id}-${index}`,
-      streamNo: stream.streamNo || index + 1,
-      language: stream.language || 'EN',
-      hd: stream.hd !== false,
-      embedUrl: stream.embedUrl || stream.url || '',
-      source: stream.source || source,
-      name: stream.name || `Stream ${index + 1}`,
-      timestamp: Date.now()
-    })) : [];
-    
-    setCachedData(cacheKey, streams);
-    console.log(`✅ Found ${streams.length} streams from WeStream for ${source}/${id}`);
-    return streams;
+    if (!Array.isArray(streams)) {
+      console.warn('Invalid stream response format');
+      return [];
+    }
+
+    // Process streams - no filtering
+    const validStreams: Stream[] = streams
+      .map((stream: any, index: number) => ({
+        id: stream.id || `stream-${index}`,
+        streamNo: stream.streamNo || index + 1,
+        language: stream.language || 'EN',
+        hd: stream.hd || false,
+        embedUrl: stream.embedUrl || stream.url,
+        source: source,
+        timestamp: Date.now()
+      }))
+      .filter(stream => stream.embedUrl); // Only check if URL exists
+
+    // Cache the results
+    setCachedData(cacheKey, validStreams);
+
+    console.log(`✅ Found ${validStreams.length} valid streams`);
+    return validStreams;
+
   } catch (error) {
-    console.error(`❌ Error fetching streams from WeStream for ${source}/${id}:`, error);
+    console.error(`❌ Error fetching streams for ${source}/${id}:`, error);
     return [];
   }
 };
 
-// Alias for backward compatibility
-export const fetchSimpleStream = fetchStream;
-
+// Simple function to fetch all streams for a match (like HTML example)
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
   sourcesWithStreams: number;
   sourceNames: string[];
 }> => {
+  // All possible sources according to API documentation
+  const allPossibleSources = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'intel'];
+  
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
   
-  if (match.sources && match.sources.length > 0) {
-    // Fetch streams from each source in parallel
-    const streamPromises = match.sources.map(async (source) => {
-      try {
-        const streams = await fetchStream(source.source, source.id);
-        if (streams.length > 0) {
-          sourcesWithStreams.add(source.source);
-          return streams;
-        }
-      } catch (err) {
-        console.error(`Failed to fetch stream from ${source.source}:`, err);
+  // First, try the sources explicitly listed in match data
+  const listedSources = match.sources || [];
+  console.log(`🔍 Match has ${listedSources.length} listed sources:`, listedSources.map(s => s.source));
+  
+  // Build a list of source combinations to try
+  const sourcesToTry = new Set<string>();
+  
+  // Add listed sources
+  listedSources.forEach(source => {
+    sourcesToTry.add(`${source.source}:${source.id}`);
+  });
+  
+  // Also try all possible sources with the match ID
+  allPossibleSources.forEach(source => {
+    sourcesToTry.add(`${source}:${match.id}`);
+  });
+  
+  console.log(`🔍 Trying ${sourcesToTry.size} source combinations for match: ${match.title}`);
+
+  // Fetch streams from all sources concurrently
+  const streamPromises = Array.from(sourcesToTry).map(async (sourceCombo) => {
+    const [source, id] = sourceCombo.split(':');
+    try {
+      const streams = await fetchSimpleStream(source, id);
+      if (streams.length > 0) {
+        console.log(`✅ Found ${streams.length} streams from ${source}/${id}`);
+        sourcesWithStreams.add(source);
+        return streams;
       }
       return [];
+    } catch (error) {
+      // Silently ignore errors for sources that don't exist
+      return [];
+    }
+  });
+
+  const streamResults = await Promise.all(streamPromises);
+  
+  // Flatten and combine all streams, removing duplicates
+  const seenStreams = new Set<string>();
+  streamResults.forEach(streams => {
+    streams.forEach(stream => {
+      const streamKey = `${stream.source}-${stream.id}-${stream.streamNo}`;
+      if (!seenStreams.has(streamKey)) {
+        seenStreams.add(streamKey);
+        allStreams.push(stream);
+      }
     });
-    
-    const results = await Promise.all(streamPromises);
-    results.forEach(streams => allStreams.push(...streams));
-  }
+  });
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`🎬 Total streams found: ${allStreams.length} from ${sourceNames.length} sources`);
+  console.log(`🎬 Total unique streams found: ${allStreams.length} from ${sourceNames.length} sources (${sourceNames.join(', ')})`);
   
   return {
     streams: allStreams,
-    sourcesChecked: match.sources?.length || 0,
+    sourcesChecked: allPossibleSources.length,
     sourcesWithStreams: sourceNames.length,
     sourceNames
   };
 };
 
-// Fetch all streams from all available sources for a match
+// Legacy complex stream function (replaced by simpler approach above)
+// Keeping for backward compatibility, but not used anymore
+export const fetchStream_legacy = async (source: string, id: string, streamNo?: number): Promise<Stream | Stream[]> => {
+  // Allow all available sources as per API documentation
+  const allowedSources = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'intel'];
+  if (!allowedSources.includes(source.toLowerCase())) {
+    throw new Error(`Source "${source}" is not allowed. Supported sources: ${allowedSources.join(', ')}`);
+  }
+
+  const cacheKey = `stream-${source}-${id}-${streamNo || 'all'}`;
+  const cached = getCachedData(cacheKey);
+  if (cached) return cached;
+
+  try {
+    console.log(`📡 Fetching stream from streamed.pk: source=${source}, id=${id}, streamNo=${streamNo}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const suUrl = `https://streamed.su/api/stream/${source}/${id}`;
+    const pkUrl = `${API_BASE}/stream/${source}/${id}`;
+
+    let response: Response | null = null;
+
+    if (isMobile) {
+      try {
+        console.log('📡 Trying streamed.su for stream (mobile first)...');
+        response = await fetch(suUrl, {
+          signal: controller.signal,
+          headers: {
+'Accept': 'application/json'
+          },
+          cache: 'no-store',
+        });
+      } catch (e) {
+        console.warn('⚠️ streamed.su stream fetch failed, will fallback to streamed.pk', e);
+      }
+    }
+
+    if (!response || !response.ok) {
+      console.log('↩️ Falling back to streamed.pk for stream...');
+      response = await fetch(pkUrl, {
+        signal: controller.signal,
+        headers: {
+'Accept': 'application/json'
+        },
+        cache: 'no-store',
+      });
+    }
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('📺 Stream API response received:', { source, id, streamCount: Array.isArray(data) ? data.length : 1 });
+
+    // Normalize helper for embed URLs
+    const normalize = (url: string) => {
+      if (!url) return url as any;
+      if (url.startsWith('//')) return 'https:' + url;
+      if (url.startsWith('http://')) return url.replace(/^http:\/\//i, 'https://');
+      return url;
+    };
+    
+    // Handle response format with normalization
+    if (Array.isArray(data) && data.length > 0) {
+      const sanitized = data.map((stream: any) =>
+        stream && stream.embedUrl ? { ...stream, embedUrl: normalize(stream.embedUrl) } : stream
+      );
+      const validStreams = sanitized.filter(stream => stream && isValidStreamUrl(stream.embedUrl));
+      
+      if (validStreams.length === 0) {
+        throw new Error('No valid streams found in response');
+      }
+      
+      if (streamNo !== undefined) {
+        const specificStream = validStreams.find(stream => stream.streamNo === streamNo);
+        if (specificStream) {
+          setCachedData(cacheKey, specificStream);
+          console.log(`✅ Found specific stream ${streamNo} for ${source}/${id}`);
+          return specificStream;
+        }
+        // If specific stream not found, return the first valid stream
+        const firstStream = validStreams[0];
+        setCachedData(cacheKey, firstStream);
+        console.log(`⚠️ Stream ${streamNo} not found, returning first available stream`);
+        return firstStream;
+      }
+      
+      setCachedData(cacheKey, validStreams);
+      console.log(`✅ Fetched ${validStreams.length} valid streams for ${source}/${id}`);
+      return validStreams;
+    } else if (data && typeof data === 'object' && data.embedUrl) {
+      const single = { ...data, embedUrl: normalize(data.embedUrl) };
+      if (isValidStreamUrl(single.embedUrl)) {
+        setCachedData(cacheKey, single);
+        console.log(`✅ Fetched single stream for ${source}/${id}`);
+        return single;
+      }
+    }
+    
+    throw new Error('No valid streams found in API response');
+    
+  } catch (error) {
+    console.error(`❌ Error fetching stream ${source}/${id}:`, error);
+    throw error;
+  }
+};
+
+// Enhanced function to fetch ALL streams from ALL available sources for a match
 export const fetchAllStreams = async (match: Match): Promise<Record<string, Stream[]>> => {
   if (!match.sources || match.sources.length === 0) {
     throw new Error('No sources available for this match');
   }
 
   const allStreams: Record<string, Stream[]> = {};
-  
-  // Fetch streams from each source in parallel
-  const streamPromises = match.sources.map(async (source) => {
+  const fetchPromises = match.sources.map(async (source) => {
+    const sourceKey = `${source.source}/${source.id}`;
+    
     try {
-      const streams = await fetchStream(source.source, source.id);
-      const sourceKey = `${source.source}/${source.id}`;
-      if (streams.length > 0) {
-        allStreams[sourceKey] = streams;
+      console.log(`🔄 Fetching streams from ${source.source} for match: ${match.title}`);
+      const streamData = await fetchStream(source.source, source.id);
+      
+      if (Array.isArray(streamData)) {
+        allStreams[sourceKey] = streamData;
+      } else if (streamData) {
+        allStreams[sourceKey] = [streamData];
       }
-    } catch (err) {
-      console.error(`Failed to fetch stream from ${source.source}:`, err);
+      
+      console.log(`✅ Successfully fetched ${allStreams[sourceKey]?.length || 0} streams from ${source.source}`);
+    } catch (error) {
+      console.warn(`⚠️ Failed to fetch streams from ${source.source}:`, error);
+      // Continue with other sources even if one fails
     }
   });
-  
-  await Promise.all(streamPromises);
 
-  console.log(`🎯 Total streams from ${Object.keys(allStreams).length} sources for match: ${match.title}`);
+  // Wait for all sources to complete (with failures handled gracefully)
+  await Promise.allSettled(fetchPromises);
+
+  console.log(`🎯 Total streams fetched from ${Object.keys(allStreams).length} sources for match: ${match.title}`);
   return allStreams;
 };
 
-// ==================== CDN-LIVE.TV API (TV Channels Only) ====================
+// Simple URL check - no blocking
+function isValidStreamUrl(url: string): boolean {
+  return !!(url && typeof url === 'string');
+}
 
-// Fetch TV channels from cdn-live.tv
-export const fetchChannels = async (): Promise<any[]> => {
-  const cacheKey = 'cdn-channels';
-  const cached = getCachedData(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const response = await fetch(`${CHANNELS_API}/channels/`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    const data = await response.json();
-    
-    // Handle different response formats
-    let channels: any[] = [];
-    if (Array.isArray(data)) {
-      channels = data;
-    } else if (data.channels && Array.isArray(data.channels)) {
-      channels = data.channels;
-    } else if (data.data && Array.isArray(data.data)) {
-      channels = data.data;
-    }
-    
-    setCachedData(cacheKey, channels);
-    console.log(`✅ Fetched ${channels.length} channels from cdn-live.tv API`);
-    return channels;
-  } catch (error) {
-    console.error('❌ Error fetching channels from cdn-live.tv:', error);
-    return [];
-  }
-};
-
-// Fetch channel stream URL from cdn-live.tv
-export const fetchChannelStream = async (channelName: string, countryCode: string): Promise<string> => {
-  const cacheKey = `cdn-channel-stream-${channelName}-${countryCode}`;
-  const cached = getCachedData(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const streamUrl = `${CHANNELS_API}/channels/player/?name=${encodeURIComponent(channelName)}&code=${countryCode}`;
-    setCachedData(cacheKey, streamUrl);
-    return streamUrl;
-  } catch (error) {
-    console.error('❌ Error fetching channel stream:', error);
-    throw error;
-  }
-};
+// Export alias for backward compatibility
+export const fetchStream = fetchSimpleStream;

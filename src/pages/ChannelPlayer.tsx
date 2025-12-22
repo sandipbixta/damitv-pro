@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import ChannelPlayerSelector, { PlayerType } from '@/components/StreamPlayer/ChannelPlayerSelector';
-import { getChannelsByCountryAsync, Channel } from '@/data/tvChannels';
+import { getChannelsByCountry } from '@/data/tvChannels';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { ArrowLeft, Share, Star, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,60 +19,41 @@ const ChannelPlayer = () => {
   // Track viewer count for this channel
   useViewerTracking(channelId);
   
-  const [channel, setChannel] = useState<Channel | null>(null);
+  const [channel, setChannel] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [otherChannels, setOtherChannels] = useState<Channel[]>([]);
+  const [otherChannels, setOtherChannels] = useState<any[]>([]);
   const [playerType, setPlayerType] = useState<PlayerType>('simple');
   const [showPlayerSettings, setShowPlayerSettings] = useState(false);
-  const playerRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to player when channel loads
-  useEffect(() => {
-    if (channel && playerRef.current) {
-      playerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [channel]);
 
   useEffect(() => {
-    const loadChannel = async () => {
+    const loadChannel = () => {
       if (!country || !channelId) {
         navigate('/channels');
         return;
       }
 
-      try {
-        const channelsByCountry = await getChannelsByCountryAsync();
-        
-        // Find channel by countryCode and channelId
-        let foundChannel: Channel | null = null;
-        let countryChannels: Channel[] = [];
-        
-        // Search through all countries to find the channel with matching countryCode
-        for (const [countryName, channels] of Object.entries(channelsByCountry)) {
-          const matching = channels.find(ch => ch.countryCode === country && ch.id === channelId);
-          if (matching) {
-            foundChannel = matching;
-            countryChannels = channels;
-            break;
-          }
-        }
-        
-        if (!foundChannel) {
-          navigate('/channels');
-          return;
-        }
-
-        setChannel(foundChannel);
-        
-        // Set other channels from same country (excluding current one)
-        const otherChannelsList = countryChannels.filter(ch => ch.id !== channelId);
-        setOtherChannels(otherChannelsList);
-      } catch (error) {
-        console.error('Failed to load channel:', error);
+      const channelsByCountry = getChannelsByCountry();
+      const countryChannels = channelsByCountry[country];
+      
+      if (!countryChannels) {
         navigate('/channels');
-      } finally {
-        setIsLoading(false);
+        return;
       }
+
+      const foundChannel = countryChannels.find(ch => ch.id === channelId);
+      
+      if (!foundChannel) {
+        navigate('/channels');
+        return;
+      }
+
+      setChannel(foundChannel);
+      
+      // Set other channels (excluding current one)
+      const otherChannelsList = countryChannels.filter(ch => ch.id !== channelId);
+      setOtherChannels(otherChannelsList);
+      
+      setIsLoading(false);
     };
 
     loadChannel();
@@ -104,19 +85,13 @@ const ChannelPlayer = () => {
     );
   }
 
-  // Build stream object - use HLS URL if available
-  const streamUrl = channel.hlsUrl || channel.embedUrl;
-  const isHlsStream = !!channel.hlsUrl;
-  
   const stream = {
     id: channel.id,
     streamNo: 1,
     language: 'English',
     hd: true,
-    embedUrl: streamUrl,
-    source: 'TV Channel',
-    isHls: isHlsStream,
-    headers: channel.headers
+    embedUrl: channel.embedUrl,
+    source: 'TV Channel'
   };
 
   return (
@@ -175,7 +150,9 @@ const ChannelPlayer = () => {
                 { type: 'simple' as PlayerType, name: 'Smart Player', desc: 'Best working option (recommended)' },
                 { type: 'iframe' as PlayerType, name: 'Direct Embed', desc: 'Shows provider controls' },
                 { type: 'custom' as PlayerType, name: 'Custom Overlay', desc: 'Visual controls (limited function)' },
-                { type: 'basic' as PlayerType, name: 'Basic Player', desc: 'Simple iframe fallback' }
+                { type: 'basic' as PlayerType, name: 'Basic Player', desc: 'Simple iframe fallback' },
+                { type: 'extracted' as PlayerType, name: 'Stream Extractor', desc: 'Advanced (may not work with protected sites)' },
+                { type: 'html5' as PlayerType, name: 'HTML5 Player', desc: 'For direct video streams only' }
               ].map((player) => (
                 <button
                   key={player.type}
@@ -196,7 +173,7 @@ const ChannelPlayer = () => {
       )}
 
       {/* Video Player - Full width, optimized for mobile */}
-      <div ref={playerRef} className="w-full">
+      <div className="w-full">
         <ChannelPlayerSelector
           stream={stream}
           isLoading={false}
@@ -273,53 +250,51 @@ const ChannelPlayer = () => {
         </div>
 
         {/* Other Channels Sidebar */}
-        {otherChannels.length > 0 && (
-          <div className="lg:w-80">
-            <div className="bg-[#151922] rounded-xl border border-[#343a4d] overflow-hidden">
-              <div className="p-4 border-b border-[#343a4d]">
-                <h3 className="font-semibold text-white text-sm">Other Channels</h3>
-                <p className="text-xs text-gray-400 mt-1">Switch to another channel</p>
-              </div>
-              
-              <ScrollArea className="h-[400px]">
-                <div className="p-2">
-                  {otherChannels.map(otherChannel => (
-                    <div
-                      key={otherChannel.id}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#242836] cursor-pointer transition-colors group"
-                      onClick={() => handleChannelSwitch(otherChannel.id)}
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-[#343a4d] flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {otherChannel.logo ? (
-                          <img 
-                            src={otherChannel.logo} 
-                            alt={otherChannel.title}
-                            className="w-8 h-8 object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                        ) : null}
-                        <div className={`w-full h-full flex items-center justify-center text-xs font-bold text-white ${otherChannel.logo ? 'hidden' : ''}`}>
-                          {otherChannel.title.split(' ').map((word: string) => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-white truncate group-hover:text-[#ff5a36] transition-colors">
-                          {otherChannel.title}
-                        </h4>
-                      </div>
-                      
-                      <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#ff5a36] transition-colors" />
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+        <div className="lg:w-80">
+          <div className="bg-[#151922] rounded-xl border border-[#343a4d] overflow-hidden">
+            <div className="p-4 border-b border-[#343a4d]">
+              <h3 className="font-semibold text-white text-sm">Other Channels</h3>
+              <p className="text-xs text-gray-400 mt-1">Switch to another channel</p>
             </div>
+            
+            <ScrollArea className="h-[400px]">
+              <div className="p-2">
+                {otherChannels.map(otherChannel => (
+                  <div
+                    key={otherChannel.id}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#242836] cursor-pointer transition-colors group"
+                    onClick={() => handleChannelSwitch(otherChannel.id)}
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-[#343a4d] flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {otherChannel.logo ? (
+                        <img 
+                          src={otherChannel.logo} 
+                          alt={otherChannel.title}
+                          className="w-8 h-8 object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-full h-full flex items-center justify-center text-xs font-bold text-white ${otherChannel.logo ? 'hidden' : ''}`}>
+                        {otherChannel.title.split(' ').map((word: string) => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-white truncate group-hover:text-[#ff5a36] transition-colors">
+                        {otherChannel.title}
+                      </h4>
+                    </div>
+                    
+                    <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#ff5a36] transition-colors" />
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
-        )}
+        </div>
       </div>
 
     </div>

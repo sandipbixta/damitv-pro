@@ -5,13 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, MapPin, Users, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Safely parse dates coming from different match sources
-const safeDate = (value: string | number | Date | null | undefined): Date | null => {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  return isNaN(date.getTime()) ? null : date;
-};
-
 interface MatchDetailsProps {
   match?: Match | ManualMatch | null;
   isLive?: boolean;
@@ -30,16 +23,16 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({
   // Handle different match types
   const isManualMatch = 'links' in match;
   const matchTitle = isManualMatch ? match.title : match.title;
-  const matchDate = safeDate(match.date as any);
+  const matchDate = isManualMatch ? new Date(match.date) : new Date(match.date);
   const matchTeams = isManualMatch ? match.teams : match.teams;
   const matchCategory = isManualMatch ? match.seo?.category : match.category;
 
-  const formatTime = (date: Date | null) => {
-    return date ? format(date, 'HH:mm') : 'TBD';
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
   };
 
-  const formatDate = (date: Date | null) => {
-    return date ? format(date, 'MMM dd, yyyy') : 'TBD';
+  const formatDate = (date: Date) => {
+    return format(date, 'MMM dd, yyyy');
   };
 
   // Helper functions to handle team data safely

@@ -3,18 +3,18 @@
 export const adConfig = {
   directLink: {
     url: 'https://foreseehawancestor.com/umr66h0d?key=580a7a980918e6f2337c20ccf5d82054',
-    cooldownMinutes: 240, // 4 hours - reduced from 6 hours to increase volume
+    cooldownMinutes: 360, // 6 hours
     sessionKey: 'directLinkAdTriggered'
   },
   popunder: {
     scriptSrc: '//foreseehawancestor.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
-    cooldownMinutes: 240, // 4 hours - reduced from 6 hours to increase volume
-    sessionKey: 'popunderAdTriggered_v3', // Updated key to reset for new cooldown
+    cooldownMinutes: 360, // 6 hours
+    sessionKey: 'popunderAdTriggered_v2', // Updated key to reset stale entries
     delaySeconds: 3
   },
   sidebar: {
-    cooldownMinutes: 240, // 4 hours - reduced from 6 hours to increase volume
-    sessionKey: 'sidebarAdTriggered_v3' // Updated key to reset for new cooldown
+    cooldownMinutes: 360, // 6 hours - only show once per 6 hours
+    sessionKey: 'sidebarAdTriggered_v2' // New frequency cap for sidebar
   }
 };
 

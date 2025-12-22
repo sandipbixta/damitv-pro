@@ -1,205 +1,233 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import { Link } from 'react-router-dom';
-import { Play, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useFeaturedMatches } from '../hooks/useFeaturedMatches';
-import { getSportIcon } from '../services/sportsLogoService';
-import coverPhoto from '@/assets/damitv-cover.jpeg';
+import { Match } from '@/types/sports';
+import { fetchAllMatches } from '@/api/sportsApi';
+import { getCarouselMatches, isHotMatch, formatViewerCount } from '@/utils/heroCarouselFilter';
+import { isMatchLive } from '@/utils/matchUtils';
+import { ViewerCount } from './ViewerCount';
+import { Clock, Calendar, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import coverPhoto from '@/assets/damitv-cover.jpeg';
+
+const POSTER_BASE_URL = 'https://streamed.pk';
 
 export const HeroCarousel = () => {
-  const { matches, loading } = useFeaturedMatches(8);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { 
+      loop: true,
+      duration: 30
+    },
+    [Autoplay({ delay: 6000, stopOnInteraction: false })]
+  );
 
-  // Auto-rotate every 5 seconds
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [carouselMatches, setCarouselMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Static cover photo slide
+  const coverSlide = {
+    id: 'damitv-cover',
+    title: 'DamiTV - Your Home for Live Sports',
+    category: 'Featured',
+    poster: coverPhoto,
+    isCover: true
+  };
+  
+  // Helper to convert relative poster URL to absolute
+  const getAbsolutePosterUrl = (posterPath: string) => {
+    if (!posterPath) return '';
+    if (posterPath.startsWith('http')) return posterPath;
+    return `${POSTER_BASE_URL}${posterPath}`;
+  };
+  
+  // Fetch ELITE matches only (La Liga, Premier League, Champions League, UFC, WWE, top teams)
   useEffect(() => {
-    const total = matches.length + 1; // +1 for cover
-    if (total <= 1) return;
+    const loadMatches = async () => {
+      setLoading(true);
+      try {
+        const allMatches = await fetchAllMatches();
+        
+        // Get elite matches with viewer counts (filtered and sorted by importance)
+        const topMatches = await getCarouselMatches(allMatches, 8);
+        
+        setCarouselMatches(topMatches);
+        console.log(`🎬 Hero Carousel loaded ${topMatches.length} elite matches:`, 
+          topMatches.map(m => ({
+            title: m.title, 
+            viewers: m.viewerCount,
+            hot: isHotMatch(m)
+          }))
+        );
+      } catch (error) {
+        console.error('Error loading hero carousel matches:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMatches();
     
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % total);
-    }, 5000);
-    
-    return () => clearInterval(timer);
-  }, [matches.length]);
+    // Refresh carousel every 2 minutes to update viewer counts
+    const interval = setInterval(loadMatches, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const goToPrevious = () => {
-    const total = matches.length + 1;
-    setCurrentIndex((prev) => (prev - 1 + total) % total);
-  };
+  useEffect(() => {
+    if (!emblaApi) return;
 
-  const goToNext = () => {
-    const total = matches.length + 1;
-    setCurrentIndex((prev) => (prev + 1) % total);
-  };
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+    };
 
+    emblaApi.on('select', onSelect);
+    onSelect();
+
+    return () => {
+      emblaApi.off('select', onSelect);
+    };
+  }, [emblaApi]);
+
+  // Show loading state
   if (loading) {
     return (
-      <div className="w-full h-[280px] md:h-[400px] bg-muted animate-pulse rounded-xl" />
+      <div className="relative mb-6 rounded-xl overflow-hidden">
+        <div className="relative min-h-[200px] sm:min-h-[280px] md:min-h-[350px] bg-gradient-to-br from-background via-background/95 to-background/90 flex items-center justify-center animate-pulse">
+          <div className="text-muted-foreground text-sm">Loading elite matches...</div>
+        </div>
+      </div>
     );
   }
 
-  // Cover slide + match slides
-  const allSlides = [
-    { id: 'cover', isCover: true },
-    ...matches
-  ];
+  // Combine cover slide with elite match slides
+  const allSlides = [coverSlide as any, ...carouselMatches];
 
-  const currentSlide = allSlides[currentIndex] || allSlides[0];
-  const isCover = (currentSlide as any).isCover;
-
-  // Get background image - use banner, or gradient with team badges
-  const getBackgroundStyle = () => {
-    if (isCover) {
-      return { backgroundImage: `url(${coverPhoto})` };
-    }
-    if (currentSlide.banner) {
-      return { backgroundImage: `url(${currentSlide.banner})` };
-    }
-    // Gradient fallback based on sport
-    const sport = currentSlide.category || 'football';
-    const gradients: Record<string, string> = {
-      football: 'linear-gradient(135deg, #1a472a 0%, #2d5016 50%, #1a472a 100%)',
-      basketball: 'linear-gradient(135deg, #c9082a 0%, #17408b 50%, #c9082a 100%)',
-      hockey: 'linear-gradient(135deg, #041e42 0%, #a2aaad 50%, #041e42 100%)',
-      baseball: 'linear-gradient(135deg, #bf0d3e 0%, #002d72 50%, #bf0d3e 100%)',
-      golf: 'linear-gradient(135deg, #006747 0%, #ffc72c 50%, #006747 100%)',
-    };
-    return { background: gradients[sport] || gradients.football };
-  };
+  if (allSlides.length === 0) return null;
 
   return (
-    <div className="relative w-full h-[280px] md:h-[400px] rounded-xl overflow-hidden group">
-      {/* Background */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700"
-        style={getBackgroundStyle()}
-      />
-      
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
-      
-      {/* Team badges for matches without banner */}
-      {!isCover && !currentSlide.banner && (currentSlide.homeBadge || currentSlide.awayBadge) && (
-        <div className="absolute inset-0 flex items-center justify-center gap-8 opacity-20">
-          {currentSlide.homeBadge && (
-            <img src={currentSlide.homeBadge} alt="" className="w-32 h-32 md:w-48 md:h-48 object-contain" />
-          )}
-          {currentSlide.awayBadge && (
-            <img src={currentSlide.awayBadge} alt="" className="w-32 h-32 md:w-48 md:h-48 object-contain" />
-          )}
-        </div>
-      )}
-      
-      {/* Content */}
-      <div className="relative z-10 h-full flex flex-col justify-end p-4 md:p-8">
-        {isCover ? (
-          // Cover slide content
-          <>
-            <h2 className="text-white text-xl md:text-3xl font-bold mb-2">
-              Watch Live Sports Streaming Free
-            </h2>
-            <p className="text-white/70 text-sm md:text-base">
-              Champions League, Premier League, NBA, NFL, UFC & More
-            </p>
-          </>
-        ) : (
-          // Match slide content
-          <>
-            {/* Sport & Category */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl md:text-2xl">{getSportIcon(currentSlide.category || 'sports')}</span>
-              <span className="text-gray-300 text-xs md:text-sm font-medium uppercase tracking-wide">
-                {currentSlide.title?.split(':')[0] || currentSlide.category}
-              </span>
-            </div>
-            
-            {/* Teams */}
-            <div className="mb-3">
-              <div className="flex items-center gap-3 md:gap-4 flex-wrap">
-                {/* Home Team */}
-                <div className="flex items-center gap-2 md:gap-3">
-                  {currentSlide.homeBadge && (
-                    <img 
-                      src={currentSlide.homeBadge} 
-                      alt="" 
-                      className="w-8 h-8 md:w-12 md:h-12 object-contain"
-                    />
-                  )}
-                  <span className="text-white text-lg md:text-2xl font-bold">
-                    {currentSlide.homeTeam || currentSlide.teams?.home?.name}
-                  </span>
-                </div>
+    <div className="relative mb-6 rounded-xl overflow-hidden" ref={emblaRef}>
+      <div className="flex">
+        {allSlides.map((slide) => {
+          const isCover = (slide as any).isCover;
+          const posterUrl = isCover ? slide.poster : getAbsolutePosterUrl(slide.poster || '');
+          
+          return isCover ? (
+            // Cover photo slide - not clickable
+            <div
+              key={slide.id}
+              className="relative flex-[0_0_100%] min-w-0"
+            >
+              <div className="relative min-h-[200px] sm:min-h-[280px] md:min-h-[350px] flex items-center overflow-hidden">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${posterUrl})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/20" />
                 
-                <span className="text-gray-400 text-base md:text-xl font-light">vs</span>
-                
-                {/* Away Team */}
-                <div className="flex items-center gap-2 md:gap-3">
-                  <span className="text-white text-lg md:text-2xl font-bold">
-                    {currentSlide.awayTeam || currentSlide.teams?.away?.name}
-                  </span>
-                  {currentSlide.awayBadge && (
-                    <img 
-                      src={currentSlide.awayBadge} 
-                      alt="" 
-                      className="w-8 h-8 md:w-12 md:h-12 object-contain"
-                    />
-                  )}
+                {/* SEO-optimized header text - positioned at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 z-10 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-black/80 to-transparent">
+                  <h2 className="text-[10px] sm:text-xs md:text-sm font-medium text-white/95 mb-0.5 sm:mb-1 drop-shadow-lg leading-tight">
+                    Watch Live Sports Streaming Free - Champions League, Premier League, La Liga & More
+                  </h2>
+                  <p className="text-[9px] sm:text-[10px] md:text-xs text-white/75 drop-shadow-md leading-tight">
+                    Free HD sports streaming for football, basketball, tennis and all major leagues worldwide
+                  </p>
                 </div>
               </div>
             </div>
-            
-            {/* Match Time */}
-            {currentSlide.date && (
-              <p className="text-gray-400 text-sm mb-3">
-                {format(new Date(currentSlide.date), 'MMM d, yyyy • h:mm a')}
-              </p>
-            )}
-            
-            {/* Watch Button */}
+          ) : (
+            // Match slides - clickable
             <Link
-              to={`/match/${currentSlide.category || 'football'}/${currentSlide.id}`}
-              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors w-fit"
+              key={slide.id}
+              to={`/match/${slide.category}/${slide.id}`}
+              className="relative flex-[0_0_100%] min-w-0 cursor-pointer group"
             >
-              <Play className="w-4 h-4 fill-current" />
-              Watch Now
+              <div className="relative min-h-[200px] sm:min-h-[280px] md:min-h-[350px] flex items-center overflow-hidden">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${posterUrl})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 via-40% to-black/20" />
+                <div className="relative z-10 p-3 sm:p-5 md:p-8 max-w-xl">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3">
+                    <div className="inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded-full">
+                      {isMatchLive(slide) ? 'LIVE NOW' : 'UPCOMING'}
+                    </div>
+                    
+                    {/* HOT Badge for high-viewer matches (500+) */}
+                    {isHotMatch(slide) && (
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[10px] sm:text-xs font-bold rounded-full animate-pulse">
+                        🔥 HOT
+                      </div>
+                    )}
+                    
+                    {/* Viewer Count Badge */}
+                    {slide.viewerCount && slide.viewerCount > 0 && (
+                      <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-[10px] sm:text-xs font-semibold animate-fade-in">
+                        <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        {formatViewerCount(slide.viewerCount)} watching
+                      </div>
+                    )}
+                  </div>
+                  <h2 className="text-sm sm:text-base md:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4 leading-tight group-hover:text-primary transition-colors drop-shadow-2xl">
+                    {slide.title}
+                  </h2>
+                  <div className="space-y-1 sm:space-y-1.5 md:space-y-2 mb-2 sm:mb-3 md:mb-4">
+                    {slide.date && (
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3 text-white/90">
+                        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1.5">
+                          <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                          <span className="text-[10px] sm:text-xs md:text-sm font-medium">
+                            {format(new Date(slide.date), 'MMM d, yyyy')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1.5">
+                          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+                          <span className="text-[10px] sm:text-xs md:text-sm font-medium">
+                            {format(new Date(slide.date), 'h:mm a')}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] sm:text-xs md:text-sm lg:text-base text-white drop-shadow-xl">
+                    {slide.category && (
+                      <span className="uppercase font-semibold">{slide.category}</span>
+                    )}
+                    {slide.teams?.home?.name && slide.teams?.away?.name && (
+                      <span className="block mt-1 sm:mt-1.5 md:mt-2 text-[9px] sm:text-[10px] md:text-xs opacity-95">
+                        {slide.teams.home.name} vs {slide.teams.away.name}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
             </Link>
-          </>
-        )}
-        
-        {/* Dots Navigation */}
-        <div className="flex gap-1.5 mt-4">
-          {allSlides.map((_, idx) => (
+          );
+        })}
+      </div>
+
+      {/* Dots Navigation */}
+      {allSlides.length > 1 && (
+        <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-3 sm:left-5 md:left-8 flex gap-1 sm:gap-1.5 md:gap-2 z-20">
+          {allSlides.map((_, index) => (
             <button
-              key={idx}
-              onClick={() => setCurrentIndex(idx)}
-              className={`h-1 rounded-full transition-all ${
-                idx === currentIndex 
-                  ? 'bg-red-600 w-6' 
-                  : 'bg-gray-500 hover:bg-gray-400 w-4'
+              key={index}
+              className={`h-0.5 sm:h-1 rounded-full transition-all ${
+                index === selectedIndex
+                  ? 'bg-white w-6 sm:w-7 md:w-8'
+                  : 'bg-white/50 hover:bg-white/75 w-6 sm:w-7 md:w-8'
               }`}
-              aria-label={`Go to slide ${idx + 1}`}
+              onClick={(e) => {
+                e.preventDefault();
+                emblaApi?.scrollTo(index);
+              }}
+              aria-label={`Go to slide ${index + 1}`}
             />
           ))}
         </div>
-      </div>
-      
-      {/* Navigation Arrows */}
-      <button
-        onClick={goToPrevious}
-        className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 md:p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label="Previous slide"
-      >
-        <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
-      </button>
-      <button
-        onClick={goToNext}
-        className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 md:p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label="Next slide"
-      >
-        <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
-      </button>
+      )}
     </div>
   );
 };
-
-export default HeroCarousel;

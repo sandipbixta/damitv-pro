@@ -85,37 +85,6 @@ export const hesgoalFAQs = [
   }
 ];
 
-export const streameastFAQs = [
-  {
-    question: "What is the best StreamEast alternative in 2025?",
-    answer: "DamiTV is the top-rated StreamEast alternative in 2025, offering superior stream quality (1080p HD), 99% uptime, and minimal ads. Unlike streameast which experiences frequent domain changes and server overloads, DamiTV provides stable streams with multiple backup sources for every match."
-  },
-  {
-    question: "Why is StreamEast not working?",
-    answer: "StreamEast frequently experiences downtime due to domain changes, server overloads during major events, or ISP blocks. The site often becomes inaccessible during popular NFL, NBA, or UFC events. The best solution is to use reliable alternatives like DamiTV that offer better infrastructure and consistent uptime."
-  },
-  {
-    question: "Is DamiTV safer than StreamEast?",
-    answer: "Yes, DamiTV is significantly safer than StreamEast. While streameast has been flagged for aggressive pop-up ads and potential security risks, DamiTV uses SSL encryption, verified ad networks, and implements strict security measures to protect users from malware and phishing."
-  },
-  {
-    question: "Can I watch the same sports on DamiTV as StreamEast?",
-    answer: "Yes, and more! DamiTV covers all major sports including NFL, NBA, UFC, Premier League, Champions League, MLB, NHL, and more. We offer the same sports coverage as stream east but with better stream quality, more reliable uptime, and superior mobile experience."
-  },
-  {
-    question: "Does DamiTV have NFL and NBA streams like StreamEast?",
-    answer: "Absolutely! DamiTV provides comprehensive coverage of all NFL and NBA games, including playoffs and championship games. Unlike streameast which often struggles during high-traffic American sports events, DamiTV maintains 99% uptime with HD quality streams."
-  },
-  {
-    question: "Is StreamEast legal to use?",
-    answer: "The legality of streaming sites varies by country. Many users prefer DamiTV for its better security practices and respect for user privacy. Always check your local laws regarding streaming and consider using VPN services for additional privacy protection."
-  },
-  {
-    question: "Why does StreamEast have so many ads?",
-    answer: "StreamEast relies heavily on aggressive advertising including multiple pop-ups, redirects, and overlay ads. DamiTV offers a cleaner experience with minimal, non-intrusive advertising, making your sports viewing experience safer and more enjoyable."
-  }
-];
-
 export const generalStreamingFAQs = [
   {
     question: "What are the best free sports streaming sites?",

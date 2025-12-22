@@ -10,21 +10,8 @@ interface TeamDisplayProps {
 }
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ name, badge, logo, isHome = false, size = 'medium' }) => {
-  // Prioritize logo over badge - badge from new API is already a full URL
-  const getImageUrl = () => {
-    if (logo) return logo;
-    if (badge) {
-      // If badge is already a full URL, use it directly
-      if (badge.startsWith('http')) {
-        return badge;
-      }
-      // Otherwise construct the URL for legacy format
-      return `https://api.cdn-live.tv/api/v1/team/images/${badge}`;
-    }
-    return '';
-  };
-  
-  const imageUrl = getImageUrl();
+  // Prioritize logo over badge, then fall back to badge URL format
+  const imageUrl = logo || (badge ? `https://streamed.su/api/images/badge/${badge}.webp` : '');
   
   const getSizeClasses = () => {
     switch (size) {

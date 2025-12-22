@@ -7,6 +7,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import SearchBar from './SearchBar';
 import Clock from './Clock';
 import ThemeToggle from './ThemeToggle';
+import downloadBanner from '@/assets/download-banner.jpeg';
 
 
 interface PageLayoutProps {
@@ -26,20 +27,12 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
-      {/* Skip to main content link for accessibility */}
-      <a 
-        href="#main-content" 
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-md"
-      >
-        Skip to main content
-      </a>
-      
-      <header className="bg-[#ff5a36] shadow-md" role="banner">
+      <header className="bg-[#ff5a36] shadow-md">
         <div className="container mx-auto py-1 px-2">
           <div className="flex flex-row justify-between items-center gap-2">
             {isMobile ? (
               <>
-                <Link to="/" className="flex-shrink-0" aria-label="DamiTV Home">
+                <Link to="/" className="flex-shrink-0">
                   <h1 className="text-2xl font-bold text-white">
                     DAMITV
                   </h1>
@@ -78,12 +71,28 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         </div>
       </header>
 
+      {/* Download App Banner - 728x90 Ad Style - Homepage Only */}
+      {isHomePage && (
+        <div className="container mx-auto px-4 py-3">
+          <Link to="/install" className="block mx-auto max-w-[728px]">
+            <img 
+              src={downloadBanner} 
+              alt="Download DAMITV App for Android and iOS" 
+              width={728}
+              height={90}
+              loading="eager"
+              fetchPriority="high"
+              className="w-full h-auto md:h-[90px] object-contain md:object-cover rounded-lg shadow-md hover:shadow-lg transition-shadow"
+            />
+          </Link>
+        </div>
+      )}
 
-      <main id="main-content" className="container mx-auto py-4 px-2 pb-16 md:pb-4" role="main">
+      <main className="container mx-auto py-4 px-2 pb-16 md:pb-4">
         {children}
       </main>
       
-      <footer className="bg-white dark:bg-black text-black dark:text-white py-6 mt-10 pb-20 md:pb-6 border-t border-black dark:border-white" role="contentinfo">
+      <footer className="bg-white dark:bg-black text-black dark:text-white py-6 mt-10 pb-20 md:pb-6 border-t border-black dark:border-white">
         <div className="container mx-auto px-2">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>

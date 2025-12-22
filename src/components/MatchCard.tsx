@@ -1,81 +1,15 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Clock, Play, Users, Calendar, Tv, Globe } from 'lucide-react';
+import { Clock, Play, Users, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Match } from '../types/sports';
 import { isMatchLive } from '../utils/matchUtils';
-import { getLogoAsync, getLogoUrl, getSportIcon } from '../services/sportsLogoService';
-import { sportsDbService } from '../services/sportsDbService';
+import { teamLogoService } from '../services/teamLogoService';
+import defaultTvLogo from '@/assets/default-tv-logo.jpg';
 import { ViewerCount } from './ViewerCount';
 import { LiveViewerCount } from './LiveViewerCount';
-import TeamLogo from './TeamLogo';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useMatchScore } from '../hooks/useLiveScoreUpdates';
-import { preloadOnHover, cancelPreload } from '../utils/streamPreloader';
-import { usePrefetchMatch } from '../hooks/usePrefetch';
-import fallbackBg from '@/assets/match-card-fallback-bg.jpg';
-import cardBackground from '@/assets/card-background.webp';
-
-// Calculate real-time minutes based on match start time and current period
-const calculateLiveMinutes = (progress: string, matchStartTime?: number): string => {
-  if (!progress) return '';
-  const trimmed = progress.trim().toUpperCase();
-  
-  // Already in minutes format (e.g., "45'", "45")
-  if (/^\d+['′]?$/.test(trimmed)) {
-    return trimmed.replace(/['′]/g, '') + "'";
-  }
-  
-  // Half time
-  if (trimmed === 'HT' || trimmed === 'HALF TIME' || trimmed === 'HALFTIME') {
-    return "HT";
-  }
-  
-  // Full time / Match Finished
-  if (trimmed === 'FT' || trimmed === 'FULL TIME' || trimmed === 'FULLTIME' || 
-      trimmed === 'AET' || trimmed === 'MATCH FINISHED' || trimmed.includes('FINISHED')) {
-    return "FT";
-  }
-  
-  // Calculate elapsed time if we have match start time
-  if (matchStartTime) {
-    const now = Date.now();
-    const elapsedMs = now - matchStartTime;
-    const elapsedMinutes = Math.floor(elapsedMs / 60000);
-    
-    // First half (1H, 1ST HALF) - 0 to 45 minutes
-    if (trimmed === '1H' || trimmed === '1ST HALF' || trimmed === 'FIRST HALF') {
-      const minute = Math.min(elapsedMinutes, 45);
-      return minute > 45 ? "45+'" : `${Math.max(1, minute)}'`;
-    }
-    
-    // Second half (2H, 2ND HALF) - 45 to 90 minutes (started ~60 min after kickoff including HT)
-    if (trimmed === '2H' || trimmed === '2ND HALF' || trimmed === 'SECOND HALF') {
-      // Assume halftime is ~15 min, so 2H starts at ~60 min after kickoff
-      const secondHalfMinute = Math.max(0, elapsedMinutes - 60);
-      const minute = 45 + Math.min(secondHalfMinute, 45);
-      return minute >= 90 ? "90+'" : `${Math.max(46, minute)}'`;
-    }
-  }
-  
-  // Fallback for 1H/2H without start time - show period indicator
-  if (trimmed === '1H' || trimmed === '1ST HALF' || trimmed === 'FIRST HALF') {
-    return "1H";
-  }
-  if (trimmed === '2H' || trimmed === '2ND HALF' || trimmed === 'SECOND HALF') {
-    return "2H";
-  }
-  
-  // Extra time
-  if (trimmed === 'ET' || trimmed === 'EXTRA TIME') {
-    return "ET";
-  }
-  
-  // Return original if no conversion needed
-  return progress;
-};
 
 interface MatchCardProps {
   match: Match;
@@ -94,92 +28,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   preventNavigation,
   isPriority
 }) => {
-  const [countdown, setCountdown] = useState<string>('');
-  const [isMatchStarting, setIsMatchStarting] = useState(false);
-  const [sportsDbPoster, setSportsDbPoster] = useState<string | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [fetchedHomeBadge, setFetchedHomeBadge] = useState<string | null>(null);
-  const [fetchedAwayBadge, setFetchedAwayBadge] = useState<string | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  const home = match.teams?.home?.name || '';
-  const away = match.teams?.away?.name || '';
-  const sport = match.category || match.sportId || '';
-  const matchIsLive = isMatchLive(match) || match.isLive;
-  
-  // Get live score for this match
-  const liveScore = useMatchScore(home, away, !!matchIsLive);
-  const homeScore = liveScore?.home ?? match.score?.home;
-  const awayScore = liveScore?.away ?? match.score?.away;
-  const matchProgress = liveScore?.progress || match.progress;
-
-  // Prefetch match data on hover for faster navigation
-  const { prefetchMatch, cancelPrefetch } = usePrefetchMatch();
-
-  // Preload streams on hover for faster playback
-  const handleMouseEnter = useCallback(() => {
-    // Prefetch match data for React Query cache
-    prefetchMatch(match);
-    // Also preload streams
-    if (match.sources && match.sources.length > 0) {
-      preloadOnHover(match);
-    }
-  }, [match, prefetchMatch]);
-
-  const handleMouseLeave = useCallback(() => {
-    cancelPreload();
-    cancelPrefetch();
-  }, [cancelPrefetch]);
-
-  // Lazy load - only fetch poster when card is visible
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '100px' }
-    );
-
-    if (cardRef.current) {
-      observer.observe(cardRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  // Fetch poster and team logos from TheSportsDB when visible
-  useEffect(() => {
-    if (!isVisible) return;
-
-    const fetchData = async () => {
-      // Fetch poster if not exists
-      if (!match.poster && home && away) {
-        try {
-          const event = await sportsDbService.searchEvent(home, away);
-          const poster = sportsDbService.getEventPoster(event, 'medium');
-          if (poster) setSportsDbPoster(poster);
-        } catch (error) {
-          // Silent fail
-        }
-      }
-
-      // Fetch team logos if not provided in match data
-      if (home && !match.teams?.home?.badge) {
-        const logo = await getLogoAsync(home, sport);
-        if (logo) setFetchedHomeBadge(logo);
-      }
-      
-      if (away && !match.teams?.away?.badge) {
-        const logo = await getLogoAsync(away, sport);
-        if (logo) setFetchedAwayBadge(logo);
-      }
-    };
-
-    fetchData();
-  }, [isVisible, match.poster, home, away, match.teams?.home?.badge, match.teams?.away?.badge, sport]);
+  const [countdown, setCountdown] = React.useState<string>('');
+  const [isMatchStarting, setIsMatchStarting] = React.useState(false);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -217,15 +67,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
       const minutes = Math.floor((timeUntilMatch % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((timeUntilMatch % (1000 * 60)) / 1000);
 
-      // Format: "10h : 31m" or "46m : 50s"
       if (hours > 24) {
         const days = Math.floor(hours / 24);
-        const remainingHours = hours % 24;
-        setCountdown(`${days}d : ${remainingHours}h`);
+        setCountdown(`${days}d ${hours % 24}h`);
       } else if (hours > 0) {
-        setCountdown(`${hours}h : ${minutes.toString().padStart(2, '0')}m`);
+        setCountdown(`${hours}h ${minutes}m`);
       } else {
-        setCountdown(`${minutes}m : ${seconds.toString().padStart(2, '0')}s`);
+        setCountdown(`${minutes}m ${seconds}s`);
       }
     };
 
@@ -235,103 +83,39 @@ const MatchCard: React.FC<MatchCardProps> = ({
     return () => clearInterval(interval);
   }, [match.date]);
 
-  // Get team badge - prioritize match data, then fetched data
-  const getTeamBadge = (team: any, fetchedBadge: string | null) => {
-    // Check badge from match data first
+  // Get team badges with fallbacks
+  const getTeamBadge = (team: any) => {
     if (team?.badge) {
-      if (team.badge.startsWith('http')) {
-        return team.badge;
-      }
-      return `https://api.cdn-live.tv/api/v1/team/images/${team.badge}`;
+      return `https://streamed.pk/api/images/badge/${team.badge}.webp`;
     }
-    
-    // Check logo from match data
-    if (team?.logo) {
-      if (team.logo.startsWith('http')) {
-        return team.logo;
-      }
-      return `https://api.cdn-live.tv/api/v1/team/images/${team.logo}`;
-    }
-    
-    // Use fetched badge from TheSportsDB
-    return fetchedBadge || '';
+    // Try to get logo from team logo service
+    const logoFromService = teamLogoService.getTeamLogo(team?.name || '', team?.badge);
+    return logoFromService || '';
   };
 
-  const homeBadge = getTeamBadge(match.teams?.home, fetchedHomeBadge);
-  const awayBadge = getTeamBadge(match.teams?.away, fetchedAwayBadge);
+  const homeBadge = getTeamBadge(match.teams?.home);
+  const awayBadge = getTeamBadge(match.teams?.away);
 
+  const home = match.teams?.home?.name || '';
+  const away = match.teams?.away?.name || '';
   const hasStream = match.sources?.length > 0;
-  const isLive = matchIsLive;
-  const hasLiveScore = isLive && homeScore !== undefined && awayScore !== undefined;
+  const isLive = isMatchLive(match);
 
-  // Generate thumbnail background with priority: poster > sportsDbPoster > badges > default
+  // Generate thumbnail background with priority: poster > badges > default logo
   const generateThumbnail = () => {
-    // Helper function to create badge fallback - defined first to avoid hoisting issues
-    const badgeFallbackHTML = () => {
-      if (homeBadge || awayBadge) {
-        return badgeLayoutHTML();
-      }
-      return defaultImageHTML();
-    };
-
-    const createBadgeFallback = () => {
-      const div = document.createElement('div');
-      div.innerHTML = badgeFallbackHTML();
-      return div.firstElementChild as HTMLElement;
-    };
-
-    const badgeLayoutHTML = () => `
-      <div class="w-full h-full relative overflow-hidden">
-        <img src="${cardBackground}" alt="" class="absolute inset-0 w-full h-full object-cover" />
-        <div class="absolute inset-0 bg-black/20"></div>
-        <div class="flex items-center gap-4 z-10 relative h-full justify-center">
-          ${homeBadge ? badgeHTML(homeBadge, home || 'Home Team') : ''}
-          <span class="text-white font-bold text-lg drop-shadow-sm">VS</span>
-          ${awayBadge ? badgeHTML(awayBadge, away || 'Away Team') : ''}
-        </div>
-      </div>
-    `;
-
-    const defaultImageHTML = () => `
-      <div class="w-full h-full relative overflow-hidden">
-        <img src="${cardBackground}" alt="" class="absolute inset-0 w-full h-full object-cover" />
-        <div class="absolute inset-0 bg-black/20" />
-        <div class="absolute inset-0 flex items-center justify-center z-10">
-          <span class="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
-        </div>
-      </div>
-    `;
-
-    const badgeHTML = (badgeUrl: string, teamName: string) => `
-      <img 
-        src="${badgeUrl}" 
-        alt="${teamName}" 
-        class="w-12 h-12 object-contain drop-shadow-md"
-        onerror="this.style.display='none'"
-      />
-    `;
-
-    // Priority 1: Use API poster or SportsDB poster if available
-    const posterToUse = match.poster || sportsDbPoster;
-    
-    if (posterToUse && posterToUse.trim() !== '') {
-      const posterUrl = posterToUse.startsWith('http') 
-        ? posterToUse 
-        : `https://api.cdn-live.tv${posterToUse}`;
+    // Priority 1: Use API poster if available (as per API docs)
+    if (match.poster && match.poster.trim() !== '') {
+      const posterUrl = match.poster.startsWith('http') 
+        ? match.poster 
+        : `https://streamed.pk${match.poster}.webp`;
       
       return (
         <div className="w-full h-full relative">
           <img
-            src={cardBackground}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <img
             src={posterUrl}
-            alt={`${match.title || 'Sports match'} poster`}
-            className="w-full h-full object-cover relative z-10"
+            alt={match.title}
+            className="w-full h-full object-cover"
             loading="lazy"
-            decoding="async"
             onError={(e) => {
               console.error('Poster failed to load for:', match.title, 'URL:', posterUrl);
               // Hide the image and show badge fallback
@@ -346,17 +130,60 @@ const MatchCard: React.FC<MatchCardProps> = ({
       );
     }
 
+    // Helper function to create badge fallback
+    const createBadgeFallback = () => {
+      const div = document.createElement('div');
+      div.innerHTML = badgeFallbackHTML();
+      return div.firstElementChild as HTMLElement;
+    };
+
+    const badgeFallbackHTML = () => {
+      if (homeBadge || awayBadge) {
+        return badgeLayoutHTML();
+      }
+      return defaultImageHTML();
+    };
+
+    const badgeLayoutHTML = () => `
+      <div class="w-full h-full relative overflow-hidden bg-black">
+        <div class="flex items-center gap-4 z-10 relative h-full justify-center">
+          ${homeBadge ? badgeHTML(homeBadge, home || 'Home Team') : ''}
+          <span class="text-white font-bold text-lg drop-shadow-sm">VS</span>
+          ${awayBadge ? badgeHTML(awayBadge, away || 'Away Team') : ''}
+        </div>
+      </div>
+    `;
+
+    const badgeHTML = (badgeUrl: string, altText: string) => `
+      <div class="flex flex-col items-center">
+        <img 
+          src="${badgeUrl}" 
+          alt="${altText}" 
+          class="w-14 h-14 object-contain drop-shadow-md filter brightness-110" 
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" 
+        />
+        <div class="w-14 h-14 bg-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold" style="display:none;">
+          ${altText.substring(0, 2).toUpperCase()}
+        </div>
+        <span class="text-white text-xs font-medium mt-1 text-center truncate max-w-[60px] drop-shadow-sm">${altText}</span>
+      </div>
+    `;
+
+    const defaultImageHTML = () => {
+      return `
+        <div class="w-full h-full relative overflow-hidden bg-black">
+          <div class="absolute inset-0 flex items-center justify-center z-10">
+            <span class="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
+          </div>
+        </div>
+      `;
+    };
 
     // Priority 2: Use team badges with plain black background if available
     if (homeBadge || awayBadge) {
       return (
-        <div className="w-full h-full relative overflow-hidden">
-          <img
-            src={cardBackground}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/20" />
+        <div className="w-full h-full relative overflow-hidden bg-black">
+          
           {/* Teams display with enhanced badges */}
           <div className="flex items-center gap-4 z-10 relative h-full justify-center">
             {homeBadge ? (
@@ -423,15 +250,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
       );
     }
 
-    // Priority 3: Use orange gradient background with DAMITV text for matches without logos/badges or posters
+    // Priority 3: Use plain black background with DAMITV text for matches without logos/badges or posters
     return (
-      <div className="w-full h-full relative overflow-hidden">
-        <img
-          src={cardBackground}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/20" />
+      <div className="w-full h-full relative overflow-hidden bg-black">
         {/* DAMITV Text */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <span className="text-white font-bold text-2xl drop-shadow-lg tracking-wide">DAMITV</span>
@@ -441,150 +262,81 @@ const MatchCard: React.FC<MatchCardProps> = ({
   };
 
   const cardContent = (
-    <div ref={cardRef} className="group cursor-pointer h-full">
-      <div className="relative overflow-hidden rounded-xl bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/20 h-full flex flex-col">
-        {/* Banner Image Section - 16:9 aspect ratio */}
-        <div className="relative aspect-video overflow-hidden rounded-t-xl flex-shrink-0">
+    <div className="group cursor-pointer h-full">
+      <div className="relative overflow-hidden rounded-lg border-2 border-border bg-card transition-all duration-300 hover:border-sports-primary h-full flex flex-col">
+        {/* Image Section - Fixed aspect ratio */}
+        <div className="relative aspect-video overflow-hidden bg-muted flex-shrink-0">
           {generateThumbnail()}
           
-          {/* FREE Badge - Top left */}
-          {hasStream && !isLive && !isMatchStarting && (
-            <div className="absolute top-2 left-2 z-10">
-              <span className="bg-green-500 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded">
-                FREE
+          {/* Simple Status Indicators */}
+          <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
+            <div className="flex items-center gap-2">
+              {isLive ? (
+                <span className="bg-red-500 text-primary-foreground text-[10px] font-black uppercase px-2 py-1 tracking-wider animate-pulse">
+                  ● Live
+                </span>
+              ) : match.sources && match.sources.length > 0 ? (
+                <span className="bg-blue-500/90 text-white text-[10px] font-bold uppercase px-2 py-1">
+                  Available
+                </span>
+              ) : match.date && match.date > Date.now() ? (
+                <span className="bg-muted/90 text-muted-foreground text-[10px] font-bold uppercase px-2 py-1">
+                  Upcoming
+                </span>
+              ) : null}
+              
+              {/* Popular badge for matches with high viewer counts */}
+              {isLive && match.viewerCount && match.viewerCount > 500 && (
+                <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[10px] font-black uppercase px-2 py-1 animate-pulse shadow-lg">
+                  🔥 {match.viewerCount > 10000 ? 'HOT' : 'Popular'}
+                </span>
+              )}
+            </div>
+            
+            {hasStream && (
+              <span className="bg-background/80 text-foreground text-[10px] font-bold px-2 py-1">
+                {match.sources.length} HD
               </span>
-            </div>
-          )}
-          
-           {/* LIVE Badge - Top right */}
-          {(isLive || isMatchStarting) && (
-            <div className="absolute top-2 right-2 z-10">
-              <span className="bg-red-600 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded animate-pulse">
-                ● LIVE
-              </span>
-            </div>
-          )}
-          
-          
-          {!isLive && !isMatchStarting && countdown && (
-            <div className="absolute bottom-2 left-2 z-10">
-              <div className="bg-[hsl(16,100%,60%)] text-white text-[10px] font-bold py-1 px-2.5 rounded italic tracking-wide">
-                WATCH IN {countdown}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Info Section */}
-        <div className="p-3 flex flex-col gap-2 flex-1 bg-card">
-          {/* Sport • Tournament • Channels */}
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground truncate flex-1">
-              {match.category || 'Sports'} • {match.tournament || match.title}
-            </p>
-            {/* Show channel logos if available */}
-            {match.channels && match.channels.length > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center -space-x-1.5 flex-shrink-0">
-                    {match.channels.slice(0, 2).map((channel, idx) => (
-                      channel.image ? (
-                        <img
-                          key={idx}
-                          src={channel.image}
-                          alt={channel.name}
-                          className="w-5 h-5 rounded-full border border-border bg-background object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div 
-                          key={idx}
-                          className="w-5 h-5 rounded-full border border-border bg-muted flex items-center justify-center"
-                        >
-                          <Tv className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                      )
-                    ))}
-                    {match.channels.length > 2 && (
-                      <div className="w-5 h-5 rounded-full border border-border bg-muted flex items-center justify-center text-[9px] font-medium text-muted-foreground">
-                        +{match.channels.length - 2}
-                      </div>
-                    )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <div className="text-xs">
-                    <p className="font-medium mb-1">Watch on:</p>
-                    {match.channels.map((ch, i) => (
-                      <span key={i}>{ch.name}{i < match.channels!.length - 1 ? ', ' : ''}</span>
-                    ))}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            )}
+        {/* Info Section - Fixed height */}
+        <div className="p-3 flex flex-col flex-1 min-h-[140px]">
+          {/* Title - Fixed 2 lines */}
+          <h3 className="font-bold text-foreground text-sm line-clamp-2 h-[2.5rem] mb-2">
+            {home && away ? `${home} vs ${away}` : match.title}
+          </h3>
+          
+          {/* Meta Info - Fixed height */}
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium flex-wrap mb-2">
+            <span>{match.date ? formatTime(match.date) : 'TBD'}</span>
+            <span className="w-1 h-1 bg-border rounded-full" />
+            <span>{match.date ? formatDateShort(match.date) : 'TBD'}</span>
           </div>
           
-          {/* Show match title if no team names, otherwise show teams */}
-          {home && away ? (
-            <>
-              {/* Home Team with Score */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <TeamLogo teamName={home} sport={sport} size="sm" showFallbackIcon={false} />
-                  <span className={`text-sm font-medium truncate ${hasLiveScore ? 'text-foreground' : 'text-foreground'}`}>
-                    {home}
-                  </span>
-                </div>
-                {hasLiveScore && (
-                  <span className="text-white font-bold text-lg ml-2 min-w-[28px] text-right tabular-nums">
-                    {homeScore}
-                  </span>
-                )}
-              </div>
-              
-              {/* Away Team with Score */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <TeamLogo teamName={away} sport={sport} size="sm" showFallbackIcon={false} />
-                  <span className={`text-sm font-medium truncate ${hasLiveScore ? 'text-foreground' : 'text-foreground'}`}>
-                    {away}
-                  </span>
-                </div>
-                {hasLiveScore && (
-                  <span className="text-white font-bold text-lg ml-2 min-w-[28px] text-right tabular-nums">
-                    {awayScore}
-                  </span>
-                )}
-              </div>
-            </>
-          ) : (
-            /* Show match title when team names are not available */
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <span className="text-sm font-medium text-foreground line-clamp-2">{match.title}</span>
+          {/* Viewer Count - Separate row above button */}
+          {isLive && (
+            <div className="mb-2">
+              <LiveViewerCount match={match} size="sm" />
             </div>
           )}
           
-          {/* Match Time/Progress */}
-          <div className="flex items-center justify-between mt-auto">
-            {isLive ? (
-              <>
-                {matchProgress && (
-                  <span className="text-xs text-red-500 font-medium animate-pulse">
-                    • {calculateLiveMinutes(matchProgress, match.date)}
-                  </span>
-                )}
-                <LiveViewerCount match={match} size="sm" showTrend={true} />
-              </>
-            ) : match.date ? (
-              <p className="text-xs text-red-500 font-medium">
-                {format(new Date(match.date), 'EEE, do MMM, h:mm a')}
-              </p>
-            ) : (
-              <p className="text-xs text-red-500 font-medium">Time TBD</p>
-            )}
-          </div>
+          {/* Action - Push to bottom */}
+          {hasStream && (
+            <div className="mt-auto">
+              {isLive || isMatchStarting ? (
+            <div className="bg-sports-primary text-primary-foreground font-bold text-xs py-2 text-center uppercase tracking-wide hover:bg-sports-primary/90 transition-colors">
+              Watch Now
+            </div>
+              ) : countdown ? (
+                <div className="bg-muted text-foreground border border-border font-bold text-xs py-2 text-center uppercase tracking-wide flex items-center justify-center gap-2">
+                  <Clock className="w-3.5 h-3.5" />
+                  Starts in {countdown}
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -592,28 +344,15 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   if (preventNavigation || onClick) {
     return (
-      <div 
-        className={className} 
-        onClick={onClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      <div className={className} onClick={onClick}>
         {cardContent}
       </div>
     );
   }
 
-  // Normalize sportId to lowercase for consistent routing
-  const normalizedSportId = (sportId || match.sportId || match.category || 'unknown').toLowerCase().replace(/\s+/g, '-');
-
   if (hasStream) {
     return (
-      <Link 
-        to={`/match/${normalizedSportId}/${match.id}`} 
-        className={`block ${className}`}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      <Link to={`/match/${sportId || match.sportId || match.category}/${match.id}`} className={`block ${className}`}>
         {cardContent}
       </Link>
     );
@@ -622,4 +361,4 @@ const MatchCard: React.FC<MatchCardProps> = ({
   return <div className={className}>{cardContent}</div>;
 };
 
-export default React.memo(MatchCard);
+export default MatchCard;

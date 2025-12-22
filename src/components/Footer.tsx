@@ -17,17 +17,17 @@ const Footer = () => {
               tennis, and more in HD quality.
             </p>
             <div className="flex gap-3">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors" aria-label="Visit DamiTV on Facebook">
-                <Facebook className="h-5 w-5" aria-hidden="true" />
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                <Facebook className="h-5 w-5" />
               </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors" aria-label="Visit DamiTV on Twitter">
-                <Twitter className="h-5 w-5" aria-hidden="true" />
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                <Twitter className="h-5 w-5" />
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors" aria-label="Visit DamiTV on Instagram">
-                <Instagram className="h-5 w-5" aria-hidden="true" />
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                <Instagram className="h-5 w-5" />
               </a>
-              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors" aria-label="Visit DamiTV on YouTube">
-                <Youtube className="h-5 w-5" aria-hidden="true" />
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                <Youtube className="h-5 w-5" />
               </a>
             </div>
           </div>
@@ -48,9 +48,33 @@ const Footer = () => {
               <li>
                 <Link to="/channels" className="hover:text-primary transition-colors">TV Channels</Link>
               </li>
+              <li>
+                <Link to="/news" className="hover:text-primary transition-colors">Sports News</Link>
+              </li>
             </ul>
           </div>
 
+          {/* Information */}
+          <div>
+            <h3 className="text-white font-bold text-lg mb-4">Information</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link to="/about" className="hover:text-primary transition-colors">About Us</Link>
+              </li>
+              <li>
+                <Link to="/contact" className="hover:text-primary transition-colors">Contact Us</Link>
+              </li>
+              <li>
+                <Link to="/dmca" className="hover:text-primary transition-colors">DMCA Policy</Link>
+              </li>
+              <li>
+                <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+              </li>
+            </ul>
+          </div>
 
           {/* Popular Sports */}
           <div>

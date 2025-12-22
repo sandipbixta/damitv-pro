@@ -100,6 +100,20 @@ export const SEO_CONFIG = {
   }
 };
 
+// Generate breadcrumb schema
+export function generateBreadcrumbSchema(items: Array<{ name: string; url: string }>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": items.map((item, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": item.name,
+      "item": `${SEO_CONFIG.siteUrl}${item.url}`
+    }))
+  };
+}
+
 // Generate FAQ schema
 export function generateFAQSchema(faqs: Array<{ question: string; answer: string }>) {
   return {
@@ -113,6 +127,43 @@ export function generateFAQSchema(faqs: Array<{ question: string; answer: string
         "text": faq.answer
       }
     }))
+  };
+}
+
+// Generate Organization schema
+export function generateOrganizationSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": SEO_CONFIG.siteName,
+    "url": SEO_CONFIG.siteUrl,
+    "logo": `${SEO_CONFIG.siteUrl}/favicon.png`,
+    "description": "Leading sports streaming site alternative offering free HD streams for all major sports",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.7",
+      "reviewCount": "15847",
+      "bestRating": "5",
+      "worstRating": "1"
+    },
+    "sameAs": [
+      "https://t.me/damitv_official"
+    ]
+  };
+}
+
+// Generate WebSite schema with search action
+export function generateWebSiteSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": `${SEO_CONFIG.siteName} - Best Sports Streaming Alternative`,
+    "url": SEO_CONFIG.siteUrl,
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": `${SEO_CONFIG.siteUrl}/live?q={search_term_string}`,
+      "query-input": "required name=search_term_string"
+    }
   };
 }
 

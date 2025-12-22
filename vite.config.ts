@@ -10,42 +10,6 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // React core - essential for all pages
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          
-          // Radix UI components - loaded on demand
-          'ui-radix': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toast',
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-select',
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-scroll-area',
-          ],
-          
-          // Query/State management
-          'query': ['@tanstack/react-query'],
-          
-          // Date utilities
-          'date-utils': ['date-fns'],
-          
-          // Charts - only loaded on analytics pages
-          'charts': ['recharts'],
-          
-          // Video player
-          'video': ['hls.js'],
-        },
-      },
-    },
-    chunkSizeWarningLimit: 500,
-  },
   plugins: [
     react(),
     mode === 'development' &&
@@ -79,38 +43,34 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
-        skipWaiting: true,
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB - increased for larger bundle
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
-            handler: 'StaleWhileRevalidate',
+            handler: 'CacheFirst',
             options: {
-              cacheName: 'images-cache-v1',
+              cacheName: 'images-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               }
             }
           },
           {
             urlPattern: /^https:\/\/.*\.(?:js|css)$/i,
-            handler: 'NetworkFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'assets-cache-v1',
+              cacheName: 'assets-cache',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 1 day
-              },
-              networkTimeoutSeconds: 3
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              }
             }
           }
         ]
       }
-    }),
+    })
   ].filter(Boolean),
   resolve: {
     alias: {

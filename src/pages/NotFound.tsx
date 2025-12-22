@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Tv, Calendar } from 'lucide-react';
+import { Home, Tv, Calendar, Newspaper } from 'lucide-react';
 
 const NotFound = () => {
   useEffect(() => {
@@ -28,6 +28,12 @@ const NotFound = () => {
       description: 'Upcoming fixtures',
       url: '/schedule',
       icon: Calendar
+    },
+    {
+      title: 'Sports News',
+      description: 'Latest updates',
+      url: '/news',
+      icon: Newspaper
     }
   ];
 

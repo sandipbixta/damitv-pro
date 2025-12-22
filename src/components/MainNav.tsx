@@ -1,5 +1,13 @@
+
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { Home, CalendarDays, Tv2, Radio, Download } from "lucide-react";
+import { Home, CalendarDays, Tv2, Radio, Trophy, Download } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useNavigate } from "react-router-dom";
 import Clock from "./Clock";
@@ -14,63 +22,61 @@ const MainNav = () => {
   const location = useLocation();
 
   const menuItems = [
-    { title: "HOME", icon: Home, path: "/" },
-    { title: "SCHEDULE", icon: CalendarDays, path: "/schedule" },
-    { title: "LIVE", icon: Tv2, path: "/live" },
-    { title: "CHANNELS", icon: Radio, path: "/channels" }
+    { title: "Home", icon: Home, path: "/" },
+    { title: "Schedule", icon: CalendarDays, path: "/schedule" },
+    { title: "Live", icon: Tv2, path: "/live" },
+    { title: "Channels", icon: Radio, path: "/channels" },
+    { title: "Leagues", icon: Trophy, path: "/leagues" }
   ];
 
   const handleNavigate = (path: string) => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
     navigate(path);
   };
 
   return (
-    <div className="flex items-center gap-6 w-full md:w-auto">
-      <button onClick={() => { window.scrollTo({ top: 0, behavior: 'instant' }); navigate("/"); }} className="cursor-pointer flex items-center gap-2 flex-shrink-0" aria-label="Go to homepage">
+    <div className="flex items-center gap-4 w-full md:w-auto">
+      <button onClick={() => navigate("/")} className="cursor-pointer flex items-center gap-2 flex-shrink-0">
         <img 
           src={damitvLogo} 
-          alt="DamiTV - Free Sports Streaming" 
-          width={48}
-          height={48}
-          loading="eager"
-          decoding="async"
-          className="h-12 w-12 object-cover" 
+          alt="DAMITV Logo" 
+          width={56}
+          height={56}
+          className="h-14 w-14 object-cover" 
         />
-        <span className="text-xl font-bold text-white tracking-tight">
+        <h1 className="text-xl font-bold text-foreground whitespace-nowrap">
           DAMITV
-        </span>
+        </h1>
       </button>
       
-      {/* FanCode-style horizontal nav */}
-      <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
-        {menuItems.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => handleNavigate(item.path)}
-            className={cn(
-              "px-4 py-2 text-sm font-semibold tracking-wide transition-colors text-white",
-              "hover:text-white/80",
-              location.pathname === item.path && "text-white underline underline-offset-4"
-            )}
-            aria-label={`Navigate to ${item.title}`}
-            aria-current={location.pathname === item.path ? 'page' : undefined}
-          >
-            {item.title}
-          </button>
-        ))}
-      </nav>
+      <NavigationMenu className="hidden md:flex">
+        <NavigationMenuList>
+          {menuItems.map((item) => (
+            <NavigationMenuItem key={item.path}>
+              <NavigationMenuLink 
+                className={cn(
+                  navigationMenuTriggerStyle(),
+                  "bg-transparent hover:bg-accent text-foreground cursor-pointer",
+                  location.pathname === item.path && "bg-accent"
+                )}
+                onClick={() => handleNavigate(item.path)}
+              >
+                <item.icon className="mr-2 h-4 w-4" />
+                {item.title}
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          ))}
+        </NavigationMenuList>
+      </NavigationMenu>
       
-      <div className="hidden md:flex items-center gap-3 ml-auto">
-        <span className="text-white/80 text-sm">Download the app:</span>
+      <div className="hidden md:flex items-center gap-2 ml-auto">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate("/install")}
-          className="text-white hover:text-white/80 hover:bg-white/10 p-2"
+          className="text-foreground hover:bg-accent"
           title="Install DamiTV App"
         >
-          <Download className="h-5 w-5" />
+          <Download className="h-4 w-4" />
         </Button>
         <PushNotifications />
         <ThemeToggle />

@@ -1,11 +1,13 @@
 import React from 'react';
 import { Stream } from '../../types/sports';
 import SimpleVideoPlayer from './SimpleVideoPlayer';
+import Html5VideoPlayer from './Html5VideoPlayer';
 import IframeVideoPlayer from './IframeVideoPlayer';
 import VideoPlayerSelector from './VideoPlayerSelector';
 import CustomChannelPlayer from './CustomChannelPlayer';
+import ExtractedVideoPlayer from './ExtractedVideoPlayer';
 
-export type PlayerType = 'simple' | 'iframe' | 'basic' | 'custom';
+export type PlayerType = 'simple' | 'html5' | 'iframe' | 'basic' | 'custom' | 'extracted';
 
 interface ChannelPlayerSelectorProps {
   stream: Stream | null;
@@ -28,6 +30,8 @@ const ChannelPlayerSelector: React.FC<ChannelPlayerSelectorProps> = ({
   title,
   matchStartTime
 }) => {
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
   const handleLoad = () => {
     console.log('✅ Channel player loaded successfully');
   };
@@ -64,6 +68,17 @@ const ChannelPlayerSelector: React.FC<ChannelPlayerSelectorProps> = ({
     : stream.embedUrl || '';
 
   switch (playerType) {
+    case 'extracted':
+      return (
+        <div className={`${isTheaterMode ? 'w-full max-w-none' : 'w-full max-w-5xl mx-auto'}`}>
+          <ExtractedVideoPlayer
+            embedUrl={embedUrl}
+            title={title}
+            onError={handleError}
+          />
+        </div>
+      );
+    
     case 'custom':
       return (
         <div className={`${isTheaterMode ? 'w-full max-w-none' : 'w-full max-w-5xl mx-auto'}`}>
@@ -71,6 +86,18 @@ const ChannelPlayerSelector: React.FC<ChannelPlayerSelectorProps> = ({
             embedUrl={embedUrl}
             title={title}
             onError={handleError}
+          />
+        </div>
+      );
+    
+    case 'html5':
+      return (
+        <div className={`relative ${isTheaterMode ? 'w-full max-w-none' : 'w-full max-w-5xl mx-auto'} aspect-video`}>
+          <Html5VideoPlayer
+            src={embedUrl}
+            onLoad={handleLoad}
+            onError={handleError}
+            videoRef={videoRef}
           />
         </div>
       );

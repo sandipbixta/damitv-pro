@@ -3,12 +3,21 @@ import Hls from 'hls.js';
 import { Stream, Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
 import { Button } from '../ui/button';
-import { Play, RotateCcw, Maximize, ExternalLink, Monitor, Clock, Users } from 'lucide-react';
+import { Play, RotateCcw, Maximize, ExternalLink, Monitor, Clock } from 'lucide-react';
 import StreamIframe from './StreamIframe';
 import StreamQualitySelector from '../StreamQualitySelector';
 import BufferIndicator from '../BufferIndicator';
-import { LiveViewerCount } from '../LiveViewerCount';
 import { getConnectionInfo, getOptimizedHLSConfig, detectCasting, onConnectionChange, detectGeographicLatency } from '../../utils/connectionOptimizer';
+import { 
+  trackVideoStart, 
+  trackVideoPause, 
+  trackVideoResume, 
+  trackVideoBuffering, 
+  trackVideoError, 
+  trackQualityChange, 
+  trackFullscreen,
+  createProgressTracker 
+} from '../../utils/videoAnalytics';
 
 
 interface SimpleVideoPlayerProps {
@@ -49,6 +58,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   const isM3U8 = !!stream?.embedUrl && /\.m3u8(\?|$)/i.test(stream.embedUrl || '');
   const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
   const isCasting = detectCasting();
+  const progressTrackerRef = useRef<ReturnType<typeof createProgressTracker> | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate countdown for upcoming matches
@@ -106,6 +116,13 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       setLastStreamUrl(stream.embedUrl);
       console.log('🎬 New stream loaded, resetting error state');
       
+      // Track video start event
+      const streamId = match?.id || stream.embedUrl;
+      const matchTitle = match?.title || 'Unknown Match';
+      trackVideoStart(streamId, stream.embedUrl, matchTitle);
+      
+      // Initialize progress tracker
+      progressTrackerRef.current = createProgressTracker(streamId);
     }
   }, [stream?.embedUrl, lastStreamUrl, match]);
 
@@ -146,6 +163,9 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     
     console.log(`❌ Stream error detected (count: ${newErrorCount})`);
     
+    // Track video error in GA4
+    trackVideoError('Stream failed to load', match?.id || stream?.embedUrl, 'load_error');
+    
     // Trigger auto-fallback after first error
     if (newErrorCount === 1 && onAutoFallback) {
       console.log('🔄 Triggering auto-fallback to next source...');
@@ -161,12 +181,14 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     if (!document.fullscreenElement) {
       containerRef.current.requestFullscreen().then(() => {
         setIsFullscreen(true);
+        trackFullscreen(true, match?.id || stream?.embedUrl);
       }).catch(() => {
         console.log('Fullscreen failed');
       });
     } else {
       document.exitFullscreen().then(() => {
         setIsFullscreen(false);
+        trackFullscreen(false, match?.id || stream?.embedUrl);
       });
     }
   };
@@ -350,6 +372,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       hlsRef.current.currentLevel = level === -1 ? -1 : level - 1; // Adjust for HLS indexing
       setCurrentQuality(level);
       console.log(`🎮 Manual quality change to: ${level === -1 ? 'Auto' : `Level ${level}`}`);
+      
+      // Track quality change in GA4
+      const qualityLabel = level === -1 ? 'Auto' : `${availableQualities[level - 1]?.height || level}p`;
+      trackQualityChange(qualityLabel, match?.id || stream?.embedUrl);
     }
   };
 
@@ -367,106 +393,32 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   if (!stream || error) {
     // Show countdown timer if match hasn't started yet
     if (!stream && countdown && match) {
-      // Parse countdown into separate parts
-      const countdownParts = countdown.split(/[hms\s]+/).filter(Boolean);
-      const hasHours = countdown.includes('h');
-      const hasMinutes = countdown.includes('m');
-      const hasDays = countdown.includes('d');
-      
-      // Extract time values
-      let hours = '00', minutes = '00', seconds = '00';
-      if (hasDays) {
-        // Format: "Xd Xh Xm"
-        hours = countdownParts[1]?.padStart(2, '0') || '00';
-        minutes = countdownParts[2]?.padStart(2, '0') || '00';
-        seconds = '00';
-      } else if (hasHours) {
-        // Format: "Xh Xm Xs"
-        hours = countdownParts[0]?.padStart(2, '0') || '00';
-        minutes = countdownParts[1]?.padStart(2, '0') || '00';
-        seconds = countdownParts[2]?.padStart(2, '0') || '00';
-      } else if (hasMinutes) {
-        // Format: "Xm Xs"
-        hours = '00';
-        minutes = countdownParts[0]?.padStart(2, '0') || '00';
-        seconds = countdownParts[1]?.padStart(2, '0') || '00';
-      } else {
-        // Just seconds
-        seconds = countdownParts[0]?.padStart(2, '0') || '00';
-      }
-
-      const homeTeam = (match as Match).teams?.home;
-      const awayTeam = (match as Match).teams?.away;
-      const tournament = (match as Match).tournament;
-
       return (
-        <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] rounded-lg sm:rounded-2xl flex items-center justify-center relative overflow-hidden`}>
-          {/* Background decoration - colorful blurs */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-20 -left-20 w-40 h-40 sm:w-64 sm:h-64 bg-blue-600/30 rounded-full blur-3xl" />
-            <div className="absolute -bottom-20 -right-20 w-40 h-40 sm:w-64 sm:h-64 bg-red-500/20 rounded-full blur-3xl" />
-            <div className="absolute top-1/2 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-purple-500/20 rounded-full blur-3xl" />
+        <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video bg-gradient-to-br from-gray-900 to-black rounded-2xl flex items-center justify-center relative overflow-hidden`}>
+          {/* Background decoration */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-32 h-32 bg-primary rounded-full blur-3xl" />
+            <div className="absolute bottom-10 right-10 w-32 h-32 bg-purple-500 rounded-full blur-3xl" />
           </div>
           
-          <div className="text-center text-white p-3 sm:p-6 z-10 w-full max-w-lg">
-            {/* Watch Live In */}
-            <p className="text-xs sm:text-sm text-gray-300 mb-2 sm:mb-3 tracking-wide">Watch Live In</p>
+          <div className="text-center text-white p-6 z-10">
+            <Clock className="w-20 h-20 mx-auto mb-6 text-primary animate-pulse" />
+            <h3 className="text-2xl font-bold mb-3">Match Starting Soon</h3>
+            <p className="text-gray-400 mb-6">Stream will be available when the match begins</p>
             
-            {/* Countdown Timer Boxes */}
-            <div className="flex items-center justify-center gap-1 sm:gap-2 mb-4 sm:mb-6">
-              <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
-                {hours}
+            {/* Countdown Display */}
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mb-4 inline-block">
+              <div className="text-5xl font-black text-white mb-2 font-mono tracking-wider">
+                {countdown}
               </div>
-              <span className="text-white text-xl sm:text-3xl font-bold">:</span>
-              <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
-                {minutes}
-              </div>
-              <span className="text-white text-xl sm:text-3xl font-bold">:</span>
-              <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
-                {seconds}
-              </div>
+              <div className="text-sm text-gray-400 uppercase tracking-widest">Until Kickoff</div>
             </div>
-
-            {/* Tournament/League Name */}
-            {tournament && (
-              <p className="text-xs sm:text-sm text-gray-300 mb-3 sm:mb-4">{tournament}</p>
+            
+            {match.title && (
+              <p className="text-lg text-white/80 mt-4 font-semibold">
+                {match.title}
+              </p>
             )}
-
-            {/* Team Names and Logos */}
-            <div className="flex items-center justify-center gap-2 sm:gap-4">
-              {/* Home Team */}
-              <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1">
-                {homeTeam?.badge && (
-                  <img 
-                    src={homeTeam.badge} 
-                    alt={homeTeam.name || 'Home team'} 
-                    className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                )}
-                <span className="text-xs sm:text-sm md:text-base font-semibold text-white truncate max-w-[100px] sm:max-w-[150px]">
-                  {homeTeam?.name || 'Home'}
-                </span>
-              </div>
-
-              {/* VS */}
-              <span className="text-[hsl(16,100%,60%)] font-bold text-sm sm:text-lg mx-1 sm:mx-2">Vs</span>
-
-              {/* Away Team */}
-              <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1">
-                {awayTeam?.badge && (
-                  <img 
-                    src={awayTeam.badge} 
-                    alt={awayTeam.name || 'Away team'} 
-                    className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                )}
-                <span className="text-xs sm:text-sm md:text-base font-semibold text-white truncate max-w-[100px] sm:max-w-[150px]">
-                  {awayTeam?.name || 'Away'}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       );
@@ -515,107 +467,35 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
         }`}
       >
       {/* Countdown Overlay - Show over everything when match hasn't started */}
-      {countdown && match && (() => {
-        // Parse countdown into separate parts
-        const countdownParts = countdown.split(/[hms\s]+/).filter(Boolean);
-        const hasHours = countdown.includes('h');
-        const hasMinutes = countdown.includes('m');
-        const hasDays = countdown.includes('d');
-        
-        // Extract time values
-        let hours = '00', minutes = '00', seconds = '00';
-        if (hasDays) {
-          hours = countdownParts[1]?.padStart(2, '0') || '00';
-          minutes = countdownParts[2]?.padStart(2, '0') || '00';
-          seconds = '00';
-        } else if (hasHours) {
-          hours = countdownParts[0]?.padStart(2, '0') || '00';
-          minutes = countdownParts[1]?.padStart(2, '0') || '00';
-          seconds = countdownParts[2]?.padStart(2, '0') || '00';
-        } else if (hasMinutes) {
-          hours = '00';
-          minutes = countdownParts[0]?.padStart(2, '0') || '00';
-          seconds = countdownParts[1]?.padStart(2, '0') || '00';
-        } else {
-          seconds = countdownParts[0]?.padStart(2, '0') || '00';
-        }
-
-        const homeTeam = (match as Match).teams?.home;
-        const awayTeam = (match as Match).teams?.away;
-        const tournament = (match as Match).tournament;
-
-        return (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]">
-            {/* Background decoration */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-20 -left-20 w-40 h-40 sm:w-64 sm:h-64 bg-blue-600/30 rounded-full blur-3xl" />
-              <div className="absolute -bottom-20 -right-20 w-40 h-40 sm:w-64 sm:h-64 bg-red-500/20 rounded-full blur-3xl" />
-              <div className="absolute top-1/2 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-purple-500/20 rounded-full blur-3xl" />
+      {countdown && match && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+          {/* Background decoration */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-32 h-32 bg-primary rounded-full blur-3xl" />
+            <div className="absolute bottom-10 right-10 w-32 h-32 bg-purple-500 rounded-full blur-3xl" />
+          </div>
+          
+          <div className="text-center text-white p-6 z-10">
+            <Clock className="w-20 h-20 mx-auto mb-6 text-primary animate-pulse" />
+            <h3 className="text-2xl font-bold mb-3">Match Starting Soon</h3>
+            <p className="text-gray-400 mb-6">Stream will be available when the match begins</p>
+            
+            {/* Countdown Display */}
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mb-4 inline-block">
+              <div className="text-5xl font-black text-white mb-2 font-mono tracking-wider">
+                {countdown}
+              </div>
+              <div className="text-sm text-gray-400 uppercase tracking-widest">Until Kickoff</div>
             </div>
             
-            <div className="text-center text-white p-3 sm:p-6 z-10 w-full max-w-lg">
-              {/* Watch Live In */}
-              <p className="text-xs sm:text-sm text-gray-300 mb-2 sm:mb-3 tracking-wide">Watch Live In</p>
-              
-              {/* Countdown Timer Boxes */}
-              <div className="flex items-center justify-center gap-1 sm:gap-2 mb-4 sm:mb-6">
-                <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
-                  {hours}
-                </div>
-                <span className="text-white text-xl sm:text-3xl font-bold">:</span>
-                <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
-                  {minutes}
-                </div>
-                <span className="text-white text-xl sm:text-3xl font-bold">:</span>
-                <div className="bg-white text-black font-bold text-xl sm:text-3xl md:text-4xl px-2 sm:px-4 py-1 sm:py-2 rounded-md min-w-[40px] sm:min-w-[60px]">
-                  {seconds}
-                </div>
-              </div>
-
-              {/* Tournament/League Name */}
-              {tournament && (
-                <p className="text-xs sm:text-sm text-gray-300 mb-3 sm:mb-4">{tournament}</p>
-              )}
-
-              {/* Team Names and Logos */}
-              <div className="flex items-center justify-center gap-2 sm:gap-4">
-                {/* Home Team */}
-                <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1">
-                  {homeTeam?.badge && (
-                    <img 
-                      src={homeTeam.badge} 
-                      alt={homeTeam.name || 'Home team'} 
-                      className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  )}
-                  <span className="text-xs sm:text-sm md:text-base font-semibold text-white truncate max-w-[100px] sm:max-w-[150px]">
-                    {homeTeam?.name || 'Home'}
-                  </span>
-                </div>
-
-                {/* VS */}
-                <span className="text-[hsl(16,100%,60%)] font-bold text-sm sm:text-lg mx-1 sm:mx-2">Vs</span>
-
-                {/* Away Team */}
-                <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1">
-                  {awayTeam?.badge && (
-                    <img 
-                      src={awayTeam.badge} 
-                      alt={awayTeam.name || 'Away team'} 
-                      className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  )}
-                  <span className="text-xs sm:text-sm md:text-base font-semibold text-white truncate max-w-[100px] sm:max-w-[150px]">
-                    {awayTeam?.name || 'Away'}
-                  </span>
-                </div>
-              </div>
-            </div>
+            {match.title && (
+              <p className="text-lg text-white/80 mt-4 font-semibold">
+                {match.title}
+              </p>
+            )}
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {isM3U8 ? (
         <video
@@ -636,10 +516,16 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           onPlaying={() => {
             console.log('Video playing');
             setIsBuffering(false);
-            // Progress tracking removed
+            // Start progress tracking
+            if (progressTrackerRef.current && !progressIntervalRef.current) {
+              progressIntervalRef.current = setInterval(() => {
+                progressTrackerRef.current?.tick();
+              }, 1000);
+            }
           }}
           onPause={() => {
             console.log('Video paused');
+            trackVideoPause(match?.id || stream?.embedUrl || 'unknown');
             // Stop progress tracking
             if (progressIntervalRef.current) {
               clearInterval(progressIntervalRef.current);
@@ -648,16 +534,18 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           }}
           onPlay={() => {
             console.log('Video resumed');
+            trackVideoResume(match?.id || stream?.embedUrl || 'unknown');
             // Resume progress tracking
-            if (!progressIntervalRef.current) {
+            if (progressTrackerRef.current && !progressIntervalRef.current) {
               progressIntervalRef.current = setInterval(() => {
-                // Progress tracking placeholder
+                progressTrackerRef.current?.tick();
               }, 1000);
             }
           }}
           onWaiting={() => {
             console.log('Video buffering...');
             setIsBuffering(true);
+            trackVideoBuffering(match?.id || stream?.embedUrl);
           }}
           onLoadedData={() => {
             console.log('Video data loaded');
@@ -677,7 +565,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           src={stream.embedUrl.startsWith('http://') ? stream.embedUrl.replace(/^http:\/\//i, 'https://') : stream.embedUrl}
           onLoad={() => setError(false)}
           onError={handleError}
-          match={match}
         />
       )}
       {/* External open fallback on Android for non-m3u8 embeds */}
@@ -726,17 +613,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
 
       </div>
       
-      {/* Viewer Count - Below Player */}
-      {match && (
-        <div className="flex items-center justify-end mt-2 px-1">
-          <LiveViewerCount 
-            match={match as Match} 
-            size="md" 
-            showTrend={true}
-            className="text-muted-foreground" 
-          />
-        </div>
-      )}
     </div>
   );
 };

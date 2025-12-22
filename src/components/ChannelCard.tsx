@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Tv } from 'lucide-react';
 import { triggerStreamChangeAd } from '@/utils/streamAdTrigger';
 
@@ -40,30 +42,17 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
           : 'bg-card/50 border-border hover:bg-card/80 hover:border-sports-primary/30'
       }`}
       onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      aria-label={`Watch ${title} channel`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
     >
-      <CardContent className="p-1.5">
-        <div className="flex items-center gap-1.5">
+      <CardContent className="p-2">
+        <div className="flex items-center gap-2">
           <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${
             isActive ? 'ring-2 ring-sports-primary' : ''
           } ${logo ? 'bg-background p-0.5' : (isActive ? 'bg-sports-primary' : 'bg-muted')}`}>
             {logo ? (
               <img 
                 src={logo} 
-                alt={`${title} channel logo`}
+                alt={title}
                 className="w-full h-full object-contain rounded-full"
-                loading="lazy"
-                decoding="async"
-                width={32}
-                height={32}
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                   const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
@@ -77,15 +66,15 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
             ) : null}
             <div className={`w-full h-full flex items-center justify-center ${logo ? 'hidden' : ''}`}>
               {isActive ? (
-                <Tv className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary-foreground" aria-hidden="true" />
+                <Tv className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground" />
               ) : (
-                <div className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex items-center justify-center text-xs font-bold text-muted-foreground">
                   {generateInitials()}
                 </div>
               )}
             </div>
           </div>
-          <div className="font-medium text-[10px] sm:text-xs text-foreground truncate">{title}</div>
+          <div className="font-medium text-xs sm:text-sm text-foreground truncate">{title}</div>
         </div>
       </CardContent>
     </Card>

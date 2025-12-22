@@ -1,53 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { Match, Stream, Source } from '../types/sports';
 import { fetchSimpleStream, fetchAllMatchStreams } from '../api/sportsApi';
-
-import { getPreloadedStreams } from '@/utils/streamPreloader';
-
-const STREAM_CACHE_KEY = 'damitv_stream_cache';
-const STREAM_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
-
-// Get cached streams from localStorage
-const getCachedStreams = (matchId: string): { streams: Record<string, Stream[]>; firstStream: Stream | null } | null => {
-  try {
-    const cached = localStorage.getItem(`${STREAM_CACHE_KEY}_${matchId}`);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Date.now() - parsed.timestamp < STREAM_CACHE_DURATION) {
-        return { streams: parsed.streams, firstStream: parsed.firstStream };
-      }
-    }
-    
-    // Check preloaded streams as fallback
-    const preloaded = getPreloadedStreams(matchId);
-    if (preloaded && preloaded.length > 0) {
-      const streams: Record<string, Stream[]> = {};
-      preloaded.forEach(stream => {
-        const sourceKey = `${stream.source}/${stream.id}`;
-        if (!streams[sourceKey]) streams[sourceKey] = [];
-        streams[sourceKey].push(stream);
-      });
-      return { streams, firstStream: preloaded[0] };
-    }
-  } catch (e) {
-    console.error('Error reading stream cache:', e);
-  }
-  return null;
-};
-
-// Set cached streams to localStorage
-const setCachedStreams = (matchId: string, streams: Record<string, Stream[]>, firstStream: Stream | null) => {
-  try {
-    localStorage.setItem(`${STREAM_CACHE_KEY}_${matchId}`, JSON.stringify({
-      streams,
-      firstStream,
-      timestamp: Date.now()
-    }));
-  } catch (e) {
-    console.error('Error setting stream cache:', e);
-  }
-};
+import { trackMatchSelect, trackSourceChange } from '@/utils/videoAnalytics';
 
 export const useStreamPlayer = () => {
   const { toast } = useToast();
@@ -62,40 +17,31 @@ export const useStreamPlayer = () => {
     sourceNames: string[];
   }>({ sourcesChecked: 0, sourcesWithStreams: 0, sourceNames: [] });
 
-  // Fetch ALL streams with caching
-  const fetchAllStreamsForMatch = useCallback(async (match: Match, forceRefresh = false) => {
-    // Check cache first (unless forced refresh)
-    if (!forceRefresh) {
-      const cached = getCachedStreams(match.id);
-      if (cached && Object.keys(cached.streams).length > 0) {
-        console.log(`✅ Using cached streams for match: ${match.title}`);
-        setAllStreams(cached.streams);
-        
-        if (cached.firstStream) {
-          setCurrentStream({ ...cached.firstStream, timestamp: Date.now() });
-          setActiveSource(`${cached.firstStream.source}/${cached.firstStream.id}/${cached.firstStream.streamNo || 1}`);
-        }
-        
-        setStreamLoading(false);
-        return;
-      }
-    }
-
+  // Simple function to fetch ALL streams from ALL sources (like HTML example)
+  const fetchAllStreamsForMatch = useCallback(async (match: Match) => {
     setStreamLoading(true);
     
     try {
-      console.log(`🎯 Fetching streams for match: ${match.title}`);
+      console.log(`🎯 Fetching ALL streams for match: ${match.title}`);
       
+      // Clear cache before fetching to ensure fresh data
+      const { clearStreamCache } = await import('@/api/sportsApi');
+      clearStreamCache(match.id);
+      
+      // Use the simple stream fetching approach but maintain compatibility
       const result = await fetchAllMatchStreams(match);
       
+      // Store discovery metadata
       setStreamDiscovery({
         sourcesChecked: result.sourcesChecked,
         sourcesWithStreams: result.sourcesWithStreams,
         sourceNames: result.sourceNames
       });
       
-      // Convert to Record format
+      // Convert simple array back to Record format for compatibility
       const streamsData: Record<string, Stream[]> = {};
+      
+      // Group streams by source
       result.streams.forEach(stream => {
         const sourceKey = `${stream.source}/${stream.id}`;
         if (!streamsData[sourceKey]) {
@@ -106,54 +52,65 @@ export const useStreamPlayer = () => {
       
       setAllStreams(streamsData);
       
-      // Auto-select first stream
-      let firstStream: Stream | null = null;
+      // Auto-select first available stream (like HTML example)
       const sourceKeys = Object.keys(streamsData);
       if (sourceKeys.length > 0 && streamsData[sourceKeys[0]].length > 0) {
-        firstStream = streamsData[sourceKeys[0]][0];
-        setCurrentStream({ ...firstStream, timestamp: Date.now() });
+        const firstStream = streamsData[sourceKeys[0]][0];
+        setCurrentStream({
+          ...firstStream,
+          timestamp: Date.now()
+        });
+        // Set active source with streamNo for proper button highlighting
         setActiveSource(`${firstStream.source}/${firstStream.id}/${firstStream.streamNo || 1}`);
-        console.log(`✅ Auto-selected stream: ${firstStream.source} Stream ${firstStream.streamNo}`);
+        console.log(`✅ Auto-selected first stream: ${firstStream.source} Stream ${firstStream.streamNo}`);
       }
       
-      // Cache the result
-      setCachedStreams(match.id, streamsData, firstStream);
-      
-      console.log(`🎬 Total streams: ${result.streams.length} from ${result.sourcesWithStreams} sources`);
+      console.log(`🎬 Total streams loaded: ${result.streams.length} from ${result.sourcesWithStreams} sources`);
       
     } catch (error) {
-      console.error('❌ Error fetching streams:', error);
+      console.error('❌ Error fetching all streams:', error);
       setAllStreams({});
       setCurrentStream(null);
+      setStreamDiscovery({ sourcesChecked: 0, sourcesWithStreams: 0, sourceNames: [] });
     } finally {
       setStreamLoading(false);
     }
   }, []);
 
-  // Fetch single stream source
+  // Simplified stream fetching (like HTML example)
   const fetchStreamData = useCallback(async (source: Source, streamNo?: number) => {
     setStreamLoading(true);
     const sourceKey = `${source.source}/${source.id}`;
     setActiveSource(sourceKey);
     
     try {
-      console.log(`🎯 Fetching stream: ${source.source}/${source.id}`);
+      console.log(`🎯 Fetching stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
       
+      // Simple direct API call like HTML example
       const streams = await fetchSimpleStream(source.source, source.id);
+      
+      console.log(`📺 Received ${streams.length} streams from API`);
       
       if (streams.length > 0) {
         const selectedStream = streamNo 
           ? streams.find(s => s.streamNo === streamNo)
-          : streams[0];
+          : streams[0]; // Just pick first one like HTML example
         
         if (selectedStream) {
+          const freshStream: Stream = {
+            ...selectedStream,
+            timestamp: Date.now()
+          };
+          
+          // Update active source to include streamNo for proper matching
           setActiveSource(`${source.source}/${source.id}/${selectedStream.streamNo || 1}`);
-          setCurrentStream({ ...selectedStream, timestamp: Date.now() });
-          console.log(`✅ Stream loaded: Stream ${selectedStream.streamNo}`);
+          
+          setCurrentStream(freshStream);
+          console.log(`✅ Stream loaded successfully: Stream ${selectedStream.streamNo}`, selectedStream);
         }
       }
       
-      // Scroll to player
+      // Smooth scroll to player
       setTimeout(() => {
         const playerElement = document.getElementById('stream-player');
         if (playerElement) {
@@ -168,31 +125,38 @@ export const useStreamPlayer = () => {
     }
   }, []);
 
-  // Match selection with caching
+  // Match selection with comprehensive stream loading
   const handleMatchSelect = useCallback(async (match: Match) => {
     console.log(`🎯 Selected match: ${match.title}`);
     setFeaturedMatch(match);
     
+    // Track match selection in GA4
+    trackMatchSelect(match.title, match.id, match.category || 'unknown');
     
+    // Fetch all streams for this match from all sources
+    await fetchAllStreamsForMatch(match);
     
-    // Use cached streams if available, fetch in background
-    await fetchAllStreamsForMatch(match, false);
-    
-    // Scroll to player
+    // Smooth scroll to player
     setTimeout(() => {
       const playerElement = document.getElementById('stream-player');
       if (playerElement) {
-        playerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        playerElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
       }
     }, 100);
   }, [fetchAllStreamsForMatch]);
 
   const handleSourceChange = async (source: string, id: string, streamNo?: number) => {
-    console.log(`🔄 Source change: ${source}/${id}/${streamNo || 'default'}`);
+    console.log(`🔄 Source change requested: ${source}/${id}/${streamNo || 'default'}`);
+    setCurrentStream(null); // Clear current stream first
     
-    setCurrentStream(null);
+    // Track source change in GA4
+    trackSourceChange(source, id);
     
     if (featuredMatch) {
+      // Force fresh load with delay
       setTimeout(() => {
         fetchStreamData({ source, id }, streamNo);
       }, 100);
@@ -201,23 +165,17 @@ export const useStreamPlayer = () => {
 
   const handleStreamRetry = () => {
     console.log('🔄 Retrying stream...');
-    setCurrentStream(null);
+    setCurrentStream(null); // Clear current stream first
     
     if (featuredMatch?.sources && featuredMatch.sources.length > 0) {
+      // Force fresh load with delay
       setTimeout(() => {
         fetchStreamData(featuredMatch.sources[0]);
       }, 100);
     }
   };
 
-  const handleRefreshStreams = useCallback(async (match?: Match) => {
-    const targetMatch = match || featuredMatch;
-    if (targetMatch) {
-      // Force refresh - skip cache
-      await fetchAllStreamsForMatch(targetMatch, true);
-    }
-  }, [featuredMatch, fetchAllStreamsForMatch]);
-
+  // Export hook values and functions
   return {
     featuredMatch,
     currentStream,
@@ -228,7 +186,7 @@ export const useStreamPlayer = () => {
     handleMatchSelect,
     handleSourceChange,
     handleStreamRetry,
-    handleRefreshStreams,
+    handleRefreshStreams: fetchAllStreamsForMatch,
     setFeaturedMatch,
     fetchStreamData,
     fetchAllMatchStreams: fetchAllStreamsForMatch

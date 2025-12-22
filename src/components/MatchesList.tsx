@@ -5,14 +5,14 @@ import { consolidateMatches, filterCleanMatches, isMatchLive, sortMatchesByViewe
 import { enrichMatchesWithViewerCounts } from '../utils/viewerCount';
 import MatchSection from './MatchSection';
 import LoadingGrid from './LoadingGrid';
-import AllChannelsGrid from './AllChannelsGrid';
+import EmptyState from './EmptyState';
 
 interface MatchesListProps {
   matches: Match[];
   sportId: string;
   isLoading: boolean;
   onMatchesDisplayed?: (matchIds: string[]) => void;
-  trendingSection?: React.ReactNode;
+  trendingSection?: React.ReactNode; // Optional trending section to render between live and upcoming
 }
 
 const MatchesList: React.FC<MatchesListProps> = ({ 
@@ -24,21 +24,25 @@ const MatchesList: React.FC<MatchesListProps> = ({
 }) => {
   const [enrichedMatches, setEnrichedMatches] = React.useState<Match[]>([]);
   const [isEnriching, setIsEnriching] = React.useState(false);
-  const [hasInitialized, setHasInitialized] = React.useState(false);
 
+  // Filter out matches without sources, advertisements, and ended matches, then consolidate duplicates
+  // Use useMemo to prevent infinite loop - only recalculate when matches change
   const consolidatedMatches = React.useMemo(() => {
+    // CRITICAL: First filter - MUST have stream sources
     const matchesWithSources = matches.filter(m => m.sources && m.sources.length > 0);
+    // Second filter: clean matches
     const cleanMatches = filterCleanMatches(matchesWithSources);
+    // Third: consolidate duplicates
     const consolidated = consolidateMatches(cleanMatches);
     console.log(`📊 MatchesList: ${matches.length} → ${matchesWithSources.length} (with sources) → ${consolidated.length} (final)`);
     return consolidated;
   }, [matches]);
 
+  // Enrich matches with viewer counts and sort by viewers
   React.useEffect(() => {
     const enrichMatches = async () => {
       if (consolidatedMatches.length === 0) {
         setEnrichedMatches([]);
-        setHasInitialized(true);
         return;
       }
 
@@ -52,7 +56,6 @@ const MatchesList: React.FC<MatchesListProps> = ({
         setEnrichedMatches(consolidatedMatches);
       } finally {
         setIsEnriching(false);
-        setHasInitialized(true);
       }
     };
 
@@ -61,6 +64,7 @@ const MatchesList: React.FC<MatchesListProps> = ({
 
   const filteredMatches = enrichedMatches;
   
+  // Report displayed match IDs to parent component
   React.useEffect(() => {
     if (onMatchesDisplayed && filteredMatches.length > 0) {
       const displayedIds = filteredMatches.map(match => match.id);
@@ -68,26 +72,21 @@ const MatchesList: React.FC<MatchesListProps> = ({
     }
   }, [filteredMatches, onMatchesDisplayed]);
 
+  // Separate matches into live and upcoming
   const liveMatches = filteredMatches.filter(match => isMatchLive(match));
   const upcomingMatches = filteredMatches.filter(match => !isMatchLive(match));
 
-  // Show loading only on initial load, not during enriching to prevent blinking
-  if (isLoading && !hasInitialized) {
+  if (isLoading || isEnriching) {
     return <LoadingGrid />;
   }
 
-  // Show TV channels when no matches are available
-  if (hasInitialized && filteredMatches.length === 0) {
-    return (
-      <div>
-        <p className="text-muted-foreground text-sm mb-4">No live matches available right now. Watch live TV channels instead!</p>
-        <AllChannelsGrid />
-      </div>
-    );
+  if (filteredMatches.length === 0) {
+    return <EmptyState />;
   }
 
   return (
     <div>
+      {/* Live Matches Section */}
       <MatchSection
         matches={liveMatches}
         sportId={sportId}
@@ -97,8 +96,10 @@ const MatchesList: React.FC<MatchesListProps> = ({
         emptyMessage="No live matches available right now."
       />
       
+      {/* Trending Section (if provided) */}
       {trendingSection}
       
+      {/* Upcoming Matches Section */}
       <MatchSection
         matches={upcomingMatches}
         sportId={sportId}
