@@ -8,7 +8,7 @@ import { Helmet } from 'react-helmet-async';
 import SocialBar from '../components/SocialBar';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Share } from 'lucide-react';
-import TelegramBanner from '../components/TelegramBanner';
+
 
 const News = () => {
   const { toast } = useToast();
@@ -86,11 +86,6 @@ const News = () => {
           >
             <RefreshCw className="h-4 w-4 mr-2" /> Refresh News
           </Button>
-        </div>
-        
-        {/* Telegram Banner */}
-        <div className="mb-6">
-          <TelegramBanner />
         </div>
         
         {/* Email signup for returning visitors */}

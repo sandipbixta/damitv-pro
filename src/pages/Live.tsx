@@ -21,7 +21,7 @@ import SportFilterPills from '../components/live/SportFilterPills';
 import MatchesTabContent from '../components/live/MatchesTabContent';
 import MatchSection from '../components/MatchSection';
 import MatchCard from '../components/MatchCard';
-import TelegramBanner from '../components/TelegramBanner';
+
 import PopularMatches from '../components/PopularMatches';
 
 const Live = () => {
@@ -182,11 +182,6 @@ const Live = () => {
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Live Sports Streaming</h1>
         <p className="text-muted-foreground">Watch live football, basketball, tennis and more. HD streams updated in real-time. Discover the <a href="https://damitv.pro/" className="text-primary hover:underline font-medium">best sports streaming site alternatives</a> for reliable free streaming.</p>
       </header>
-      
-      {/* Telegram Banner */}
-      <div className="mb-6">
-        <TelegramBanner />
-      </div>
       
       <div className="mb-8">
         <LiveHeader
