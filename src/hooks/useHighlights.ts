@@ -9,16 +9,19 @@ export interface Highlight {
   awayScore: string | null;
   date: string;
   league: string;
+  sport: string;
   leagueBadge: string | null;
   homeTeamBadge: string | null;
   awayTeamBadge: string | null;
   thumbnail: string | null;
   video: string;
+  embedUrl: string;
   venue: string | null;
 }
 
 export const useHighlights = () => {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [sports, setSports] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +37,7 @@ export const useHighlights = () => {
 
         if (data?.success && data?.highlights) {
           setHighlights(data.highlights);
+          setSports(data.sports || []);
         } else {
           setError('No highlights available');
         }
@@ -48,5 +52,5 @@ export const useHighlights = () => {
     fetchHighlights();
   }, []);
 
-  return { highlights, loading, error };
+  return { highlights, sports, loading, error };
 };
