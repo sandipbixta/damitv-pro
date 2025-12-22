@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import ChannelPlayerSelector, { PlayerType } from '@/components/StreamPlayer/ChannelPlayerSelector';
-import { getChannelsByCountry } from '@/data/tvChannels';
+import { useCDNChannel } from '@/hooks/useCDNChannels';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { ArrowLeft, Share, Star, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,54 +19,26 @@ const ChannelPlayer = () => {
   // Track viewer count for this channel
   useViewerTracking(channelId);
   
-  const [channel, setChannel] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [otherChannels, setOtherChannels] = useState<any[]>([]);
+  // Use CDN channels API
+  const { channel, otherChannels, isLoading, error } = useCDNChannel(country, channelId);
+  
   const [playerType, setPlayerType] = useState<PlayerType>('simple');
   const [showPlayerSettings, setShowPlayerSettings] = useState(false);
 
+  // Navigate to channels if not found
   useEffect(() => {
-    const loadChannel = () => {
-      if (!country || !channelId) {
-        navigate('/channels');
-        return;
-      }
-
-      const channelsByCountry = getChannelsByCountry();
-      const countryChannels = channelsByCountry[country];
-      
-      if (!countryChannels) {
-        navigate('/channels');
-        return;
-      }
-
-      const foundChannel = countryChannels.find(ch => ch.id === channelId);
-      
-      if (!foundChannel) {
-        navigate('/channels');
-        return;
-      }
-
-      setChannel(foundChannel);
-      
-      // Set other channels (excluding current one)
-      const otherChannelsList = countryChannels.filter(ch => ch.id !== channelId);
-      setOtherChannels(otherChannelsList);
-      
-      setIsLoading(false);
-    };
-
-    loadChannel();
-  }, [country, channelId, navigate]);
+    if (!isLoading && error) {
+      navigate('/channels');
+    }
+  }, [isLoading, error, navigate]);
 
   const handleGoBack = () => {
     navigate('/channels');
   };
 
   const handleRetry = () => {
-    // Force reload the channel
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
+    // Force reload by navigating to same page
+    window.location.reload();
   };
 
   const handleChannelSwitch = (newChannelId: string) => {
