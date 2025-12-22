@@ -5,6 +5,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Sports categories with their TheSportsDB league IDs
+const SPORTS_LEAGUES = {
+  'Football': [
+    '4328', // Premier League
+    '4331', // Bundesliga
+    '4332', // Serie A
+    '4335', // La Liga
+    '4334', // Ligue 1
+    '4480', // Champions League
+  ],
+  'Basketball': [
+    '4387', // NBA
+    '4424', // EuroLeague
+  ],
+  'American Football': [
+    '4391', // NFL
+  ],
+  'Ice Hockey': [
+    '4380', // NHL
+  ],
+  'Baseball': [
+    '4424', // MLB
+  ],
+  'Tennis': [
+    '4464', // ATP Tour
+  ],
+  'Motorsport': [
+    '4370', // Formula 1
+  ],
+  'Rugby': [
+    '4401', // Super Rugby
+  ],
+};
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -15,61 +49,91 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('THESPORTSDB_API_KEY') || '3';
     const baseUrl = `https://www.thesportsdb.com/api/v1/json/${apiKey}`;
 
-    // Fetch latest events that have video highlights
-    // We'll use eventslast.php for popular leagues to get recent matches with highlights
-    const popularLeagues = [
-      '4328', // Premier League
-      '4331', // Bundesliga
-      '4332', // Serie A
-      '4335', // La Liga
-      '4334', // Ligue 1
-      '4480', // Champions League
-    ];
+    const allHighlights: any[] = [];
 
-    const highlightsPromises = popularLeagues.map(async (leagueId) => {
-      try {
-        const response = await fetch(`${baseUrl}/eventspastleague.php?id=${leagueId}`);
-        if (!response.ok) return [];
-        const data = await response.json();
-        return data.events || [];
-      } catch (e) {
-        console.log(`Failed to fetch events for league ${leagueId}:`, e);
-        return [];
+    // Fetch highlights from all sports leagues in parallel
+    const fetchPromises: Promise<any[]>[] = [];
+
+    for (const [sport, leagueIds] of Object.entries(SPORTS_LEAGUES)) {
+      for (const leagueId of leagueIds) {
+        fetchPromises.push(
+          (async () => {
+            try {
+              const response = await fetch(`${baseUrl}/eventspastleague.php?id=${leagueId}`);
+              if (!response.ok) return [];
+              const data = await response.json();
+              const events = data.events || [];
+              
+              // Add sport category to each event
+              return events.map((event: any) => ({
+                ...event,
+                sportCategory: sport,
+              }));
+            } catch (e) {
+              console.log(`Failed to fetch events for league ${leagueId}:`, e);
+              return [];
+            }
+          })()
+        );
       }
-    });
+    }
 
-    const allEventsArrays = await Promise.all(highlightsPromises);
+    const allEventsArrays = await Promise.all(fetchPromises);
     const allEvents = allEventsArrays.flat();
 
     // Filter events that have video highlights (strVideo is not null)
     const eventsWithHighlights = allEvents
       .filter((event: any) => event.strVideo && event.strVideo.trim() !== '')
-      .map((event: any) => ({
-        id: event.idEvent,
-        homeTeam: event.strHomeTeam,
-        awayTeam: event.strAwayTeam,
-        homeScore: event.intHomeScore,
-        awayScore: event.intAwayScore,
-        date: event.dateEvent,
-        league: event.strLeague,
-        leagueBadge: event.strLeagueBadge,
-        homeTeamBadge: event.strHomeTeamBadge,
-        awayTeamBadge: event.strAwayTeamBadge,
-        thumbnail: event.strThumb || event.strPoster,
-        video: event.strVideo,
-        venue: event.strVenue,
-      }))
+      .map((event: any) => {
+        // Convert YouTube URL to embed format
+        let videoUrl = event.strVideo;
+        let embedUrl = '';
+        
+        if (videoUrl.includes('youtube.com/watch')) {
+          const videoId = videoUrl.split('v=')[1]?.split('&')[0];
+          if (videoId) {
+            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+          }
+        } else if (videoUrl.includes('youtu.be/')) {
+          const videoId = videoUrl.split('youtu.be/')[1]?.split('?')[0];
+          if (videoId) {
+            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+          }
+        }
+
+        return {
+          id: event.idEvent,
+          homeTeam: event.strHomeTeam,
+          awayTeam: event.strAwayTeam,
+          homeScore: event.intHomeScore,
+          awayScore: event.intAwayScore,
+          date: event.dateEvent,
+          league: event.strLeague,
+          sport: event.sportCategory || event.strSport,
+          leagueBadge: event.strLeagueBadge,
+          homeTeamBadge: event.strHomeTeamBadge,
+          awayTeamBadge: event.strAwayTeamBadge,
+          thumbnail: event.strThumb || event.strPoster,
+          video: videoUrl,
+          embedUrl: embedUrl || videoUrl,
+          venue: event.strVenue,
+        };
+      })
       // Sort by date descending (most recent first)
       .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      // Limit to 12 highlights
-      .slice(0, 12);
+      // Limit to 24 highlights
+      .slice(0, 24);
 
-    console.log(`Found ${eventsWithHighlights.length} highlights from ${allEvents.length} total events`);
+    // Get unique sports for filtering
+    const sports = [...new Set(eventsWithHighlights.map((h: any) => h.sport))].filter(Boolean);
+
+    console.log(`Found ${eventsWithHighlights.length} highlights from ${allEvents.length} total events across ${sports.length} sports`);
 
     return new Response(
       JSON.stringify({
         success: true,
         highlights: eventsWithHighlights,
+        sports: sports,
         count: eventsWithHighlights.length,
       }),
       {
@@ -83,6 +147,7 @@ Deno.serve(async (req) => {
         success: false,
         error: error.message,
         highlights: [],
+        sports: [],
       }),
       {
         status: 500,

@@ -1,166 +1,142 @@
 import React, { useState, useMemo } from 'react';
-import { Play, Calendar, Filter } from 'lucide-react';
-import { useHighlights } from '@/hooks/useHighlights';
-import { Card, CardContent } from '@/components/ui/card';
+import { Play, X } from 'lucide-react';
+import { useHighlights, Highlight } from '@/hooks/useHighlights';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 
-const LEAGUE_FILTERS = [
-  { id: 'all', label: 'All Leagues' },
-  { id: 'English Premier League', label: 'Premier League' },
-  { id: 'Spanish La Liga', label: 'La Liga' },
-  { id: 'UEFA Champions League', label: 'Champions League' },
-  { id: 'German Bundesliga', label: 'Bundesliga' },
-  { id: 'Italian Serie A', label: 'Serie A' },
-  { id: 'French Ligue 1', label: 'Ligue 1' },
-];
-
 const HighlightCard: React.FC<{
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: string | null;
-  awayScore: string | null;
-  date: string;
-  league: string;
-  homeTeamBadge: string | null;
-  awayTeamBadge: string | null;
-  thumbnail: string | null;
-  video: string;
-}> = ({
-  homeTeam,
-  awayTeam,
-  homeScore,
-  awayScore,
-  date,
-  league,
-  homeTeamBadge,
-  awayTeamBadge,
-  thumbnail,
-  video,
-}) => {
-  const handleClick = () => {
-    window.open(video, '_blank', 'noopener,noreferrer');
-  };
-
-  const formattedDate = date ? format(new Date(date), 'MMM d, yyyy') : '';
+  highlight: Highlight;
+  onPlay: (highlight: Highlight) => void;
+}> = ({ highlight, onPlay }) => {
+  const formattedDate = highlight.date ? format(new Date(highlight.date), 'MMM d') : '';
 
   return (
-    <Card
-      className="group cursor-pointer bg-card hover:bg-accent/50 border-border transition-all duration-300 hover:scale-[1.02] hover:shadow-xl overflow-hidden"
-      onClick={handleClick}
+    <div
+      className="group cursor-pointer h-full"
+      onClick={() => onPlay(highlight)}
     >
-      {/* Thumbnail */}
-      <div className="relative aspect-video bg-muted overflow-hidden">
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt={`${homeTeam} vs ${awayTeam}`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-            <div className="flex items-center gap-4">
-              {homeTeamBadge && (
-                <img src={homeTeamBadge} alt={homeTeam} className="w-12 h-12 object-contain" />
+      <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
+        {/* Thumbnail Section */}
+        <div className="relative aspect-video overflow-hidden flex-shrink-0">
+          {highlight.thumbnail ? (
+            <img
+              src={highlight.thumbnail}
+              alt={`${highlight.homeTeam} vs ${highlight.awayTeam}`}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center gap-4">
+              {highlight.homeTeamBadge && (
+                <img src={highlight.homeTeamBadge} alt={highlight.homeTeam} className="w-10 h-10 object-contain" />
               )}
-              <span className="text-2xl font-bold text-muted-foreground">VS</span>
-              {awayTeamBadge && (
-                <img src={awayTeamBadge} alt={awayTeam} className="w-12 h-12 object-contain" />
+              <span className="text-muted-foreground font-bold text-sm">vs</span>
+              {highlight.awayTeamBadge && (
+                <img src={highlight.awayTeamBadge} alt={highlight.awayTeam} className="w-10 h-10 object-contain" />
               )}
             </div>
+          )}
+
+          {/* Gradient overlay */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+
+          {/* Play button overlay */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="bg-primary rounded-full p-3 shadow-lg">
+              <Play className="h-5 w-5 text-primary-foreground fill-current" />
+            </div>
           </div>
-        )}
-        
-        {/* Play button overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="bg-primary rounded-full p-4 shadow-lg">
-            <Play className="h-8 w-8 text-primary-foreground fill-current" />
+
+          {/* Score badge */}
+          {highlight.homeScore !== null && highlight.awayScore !== null && (
+            <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded">
+              {highlight.homeScore} - {highlight.awayScore}
+            </div>
+          )}
+
+          {/* Highlight badge */}
+          <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground text-[9px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wide flex items-center gap-1">
+            <Play className="h-2.5 w-2.5 fill-current" />
+            Highlights
           </div>
         </div>
 
-        {/* Score badge */}
-        {homeScore !== null && awayScore !== null && (
-          <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground font-bold text-sm px-2 py-1">
-            {homeScore} - {awayScore}
-          </Badge>
-        )}
+        {/* Info Section */}
+        <div className="p-3 flex flex-col flex-1 gap-2">
+          {/* Sport & League */}
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold truncate">
+            {highlight.sport} • {highlight.league}
+          </p>
+
+          {/* Teams */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
+                {highlight.homeTeamBadge ? (
+                  <img src={highlight.homeTeamBadge} alt={highlight.homeTeam} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-[8px] font-bold text-muted-foreground">{highlight.homeTeam?.substring(0, 2).toUpperCase()}</span>
+                )}
+              </div>
+              <span className="text-foreground font-bold text-xs truncate">{highlight.homeTeam}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
+                {highlight.awayTeamBadge ? (
+                  <img src={highlight.awayTeamBadge} alt={highlight.awayTeam} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-[8px] font-bold text-muted-foreground">{highlight.awayTeam?.substring(0, 2).toUpperCase()}</span>
+                )}
+              </div>
+              <span className="text-foreground font-bold text-xs truncate">{highlight.awayTeam}</span>
+            </div>
+          </div>
+
+          {/* Date */}
+          <div className="mt-auto pt-2 border-t border-border/40">
+            <p className="text-[10px] text-muted-foreground font-medium">{formattedDate}</p>
+          </div>
+        </div>
       </div>
-
-      <CardContent className="p-4">
-        {/* Teams */}
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            {homeTeamBadge && (
-              <img src={homeTeamBadge} alt={homeTeam} className="w-6 h-6 object-contain flex-shrink-0" />
-            )}
-            <span className="font-semibold text-foreground truncate text-sm">{homeTeam}</span>
-          </div>
-          <span className="text-muted-foreground text-xs font-medium">vs</span>
-          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-            <span className="font-semibold text-foreground truncate text-sm text-right">{awayTeam}</span>
-            {awayTeamBadge && (
-              <img src={awayTeamBadge} alt={awayTeam} className="w-6 h-6 object-contain flex-shrink-0" />
-            )}
-          </div>
-        </div>
-
-        {/* League and date */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="truncate">{league}</span>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Calendar className="h-3 w-3" />
-            <span>{formattedDate}</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 };
 
 const LoadingSkeleton = () => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-    {[...Array(8)].map((_, i) => (
-      <Card key={i} className="bg-card border-border overflow-hidden">
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+    {[...Array(6)].map((_, i) => (
+      <div key={i} className="bg-card border border-border/40 rounded-lg overflow-hidden">
         <Skeleton className="aspect-video" />
-        <CardContent className="p-4">
-          <Skeleton className="h-4 w-full mb-2" />
+        <div className="p-3">
+          <Skeleton className="h-3 w-full mb-2" />
           <Skeleton className="h-3 w-3/4" />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     ))}
   </div>
 );
 
 const LatestHighlights: React.FC = () => {
-  const { highlights, loading, error } = useHighlights();
-  const [selectedLeague, setSelectedLeague] = useState('all');
+  const { highlights, sports, loading, error } = useHighlights();
+  const [selectedSport, setSelectedSport] = useState('all');
+  const [playingHighlight, setPlayingHighlight] = useState<Highlight | null>(null);
 
   const filteredHighlights = useMemo(() => {
-    if (selectedLeague === 'all') return highlights;
-    return highlights.filter((h) => h.league === selectedLeague);
-  }, [highlights, selectedLeague]);
-
-  // Get available leagues from the highlights
-  const availableLeagues = useMemo(() => {
-    const leagues = new Set(highlights.map((h) => h.league));
-    return LEAGUE_FILTERS.filter((f) => f.id === 'all' || leagues.has(f.id));
-  }, [highlights]);
+    if (selectedSport === 'all') return highlights;
+    return highlights.filter((h) => h.sport === selectedSport);
+  }, [highlights, selectedSport]);
 
   if (loading) {
     return (
       <section className="mb-10">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
-              Latest Highlights
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Watch the best moments from recent matches
-            </p>
-          </div>
+        <div className="flex flex-col gap-4 mb-4">
+          <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
+            <Play className="h-5 w-5 text-primary" />
+            Latest Highlights
+          </h2>
         </div>
         <LoadingSkeleton />
       </section>
@@ -168,72 +144,135 @@ const LatestHighlights: React.FC = () => {
   }
 
   if (error || highlights.length === 0) {
-    return null; // Don't show section if no highlights
+    return null;
   }
 
   return (
-    <section className="mb-10">
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-          <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
-            <Play className="h-6 w-6 text-primary" />
-            Latest Highlights
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Watch the best moments from recent matches
-          </p>
-        </div>
-          <Badge variant="secondary" className="hidden sm:flex">
-            {filteredHighlights.length} Videos
-          </Badge>
-        </div>
+    <>
+      <section className="mb-10">
+        <div className="flex flex-col gap-4 mb-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
+              <Play className="h-5 w-5 text-primary" />
+              Latest Highlights
+            </h2>
+            <Badge variant="secondary" className="hidden sm:flex text-xs">
+              {filteredHighlights.length} Videos
+            </Badge>
+          </div>
 
-        {/* League Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          {availableLeagues.map((league) => (
+          {/* Sport Filter Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <Button
-              key={league.id}
-              variant={selectedLeague === league.id ? 'default' : 'outline'}
+              variant={selectedSport === 'all' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSelectedLeague(league.id)}
-              className={`flex-shrink-0 text-xs font-semibold transition-all ${
-                selectedLeague === league.id
+              onClick={() => setSelectedSport('all')}
+              className={`flex-shrink-0 text-xs font-semibold h-7 px-3 ${
+                selectedSport === 'all'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card hover:bg-accent border-border'
               }`}
             >
-              {league.label}
+              All Sports
             </Button>
-          ))}
+            {sports.map((sport) => (
+              <Button
+                key={sport}
+                variant={selectedSport === sport ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedSport(sport)}
+                className={`flex-shrink-0 text-xs font-semibold h-7 px-3 ${
+                  selectedSport === sport
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card hover:bg-accent border-border'
+                }`}
+              >
+                {sport}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {filteredHighlights.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No highlights available for this league
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredHighlights.map((highlight) => (
-          <HighlightCard
-            key={highlight.id}
-            homeTeam={highlight.homeTeam}
-            awayTeam={highlight.awayTeam}
-            homeScore={highlight.homeScore}
-            awayScore={highlight.awayScore}
-            date={highlight.date}
-            league={highlight.league}
-            homeTeamBadge={highlight.homeTeamBadge}
-            awayTeamBadge={highlight.awayTeamBadge}
-            thumbnail={highlight.thumbnail}
-            video={highlight.video}
-          />
-          ))}
-        </div>
-      )}
-    </section>
+        {filteredHighlights.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No highlights available for this sport
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {filteredHighlights.map((highlight) => (
+              <HighlightCard
+                key={highlight.id}
+                highlight={highlight}
+                onPlay={setPlayingHighlight}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Video Player Modal */}
+      <Dialog open={!!playingHighlight} onOpenChange={() => setPlayingHighlight(null)}>
+        <DialogContent className="max-w-4xl w-full p-0 bg-black border-none overflow-hidden">
+          <DialogTitle className="sr-only">
+            {playingHighlight ? `${playingHighlight.homeTeam} vs ${playingHighlight.awayTeam} Highlights` : 'Match Highlights'}
+          </DialogTitle>
+          {playingHighlight && (
+            <div className="relative">
+              {/* Close button */}
+              <button
+                onClick={() => setPlayingHighlight(null)}
+                className="absolute top-2 right-2 z-10 bg-black/70 hover:bg-black/90 rounded-full p-2 text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              {/* Match info header */}
+              <div className="bg-card p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {playingHighlight.homeTeamBadge && (
+                    <img src={playingHighlight.homeTeamBadge} alt={playingHighlight.homeTeam} className="w-8 h-8 object-contain" />
+                  )}
+                  <span className="font-bold text-foreground text-sm">{playingHighlight.homeTeam}</span>
+                  <span className="text-primary font-bold">
+                    {playingHighlight.homeScore} - {playingHighlight.awayScore}
+                  </span>
+                  <span className="font-bold text-foreground text-sm">{playingHighlight.awayTeam}</span>
+                  {playingHighlight.awayTeamBadge && (
+                    <img src={playingHighlight.awayTeamBadge} alt={playingHighlight.awayTeam} className="w-8 h-8 object-contain" />
+                  )}
+                </div>
+                <Badge variant="outline" className="text-xs">{playingHighlight.league}</Badge>
+              </div>
+
+              {/* Video Player */}
+              <div className="aspect-video bg-black">
+                {playingHighlight.embedUrl.includes('youtube.com/embed') ? (
+                  <iframe
+                    src={`${playingHighlight.embedUrl}?autoplay=1&rel=0`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={`${playingHighlight.homeTeam} vs ${playingHighlight.awayTeam}`}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white">
+                    <a
+                      href={playingHighlight.video}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-primary hover:bg-primary/90 px-6 py-3 rounded-lg font-bold transition-colors"
+                    >
+                      <Play className="h-5 w-5" />
+                      Watch on External Site
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
