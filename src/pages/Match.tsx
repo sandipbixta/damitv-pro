@@ -231,8 +231,8 @@ const Match = () => {
               <div className="flex flex-col items-center gap-2">
                 <div className="flex items-center justify-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl md:text-3xl font-bold text-white">{homeTeam}</span>
                     <TeamLogoDisplay logo={homeLogo} teamName={homeTeam} size="lg" />
+                    <span className="text-2xl md:text-3xl font-bold text-white">{homeTeam}</span>
                   </div>
                   <span className="text-xl md:text-2xl font-medium text-gray-400">vs</span>
                   <div className="flex items-center gap-2">
