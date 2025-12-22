@@ -92,6 +92,37 @@ async function fetchSportsDBEventImage(homeTeam: string, awayTeam: string): Prom
   }
 }
 
+function normalizeMakeWebhookUrl(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+
+  // Already a full URL
+  if (v.startsWith('http://') || v.startsWith('https://')) return v;
+
+  // Common mis-entry: "<token>@hook.us2.make.com" → "https://hook.us2.make.com/<token>"
+  if (v.includes('@hook.')) {
+    const [token, host] = v.split('@');
+    if (token && host) return `https://${host}/${token}`;
+  }
+
+  // If only a token was provided, assume Make host
+  if (/^[a-zA-Z0-9]+$/.test(v)) {
+    return `https://hook.us2.make.com/${v}`;
+  }
+
+  // Best effort fallback
+  return v;
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -101,18 +132,19 @@ serve(async (req) => {
   try {
     console.log('📨 Social webhook triggered - forwarding to Make.com');
     
-    const MAKE_WEBHOOK_URL = Deno.env.get('MAKE_WEBHOOK_URL');
-    
-    if (!MAKE_WEBHOOK_URL) {
-      console.error('❌ MAKE_WEBHOOK_URL not configured');
+    const rawMakeWebhookUrl = Deno.env.get('MAKE_WEBHOOK_URL');
+    const MAKE_WEBHOOK_URL = rawMakeWebhookUrl ? normalizeMakeWebhookUrl(rawMakeWebhookUrl) : null;
+
+    if (!MAKE_WEBHOOK_URL || !isValidHttpUrl(MAKE_WEBHOOK_URL)) {
+      console.error('❌ MAKE_WEBHOOK_URL not configured or invalid');
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Make.com webhook URL not configured' 
+        JSON.stringify({
+          success: false,
+          error: 'Make.com webhook URL not configured or invalid. Expected: https://hook.us2.make.com/<token>'
         }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
