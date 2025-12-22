@@ -14,141 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
-      ad_performance: {
+      blog_posts: {
         Row: {
-          ad_type: string
-          ad_unit_id: string
-          country: string | null
-          created_at: string | null
-          device_type: string | null
-          event_type: string
-          id: string
-          page_path: string | null
-          session_id: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          ad_type: string
-          ad_unit_id: string
-          country?: string | null
-          created_at?: string | null
-          device_type?: string | null
-          event_type: string
-          id?: string
-          page_path?: string | null
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          ad_type?: string
-          ad_unit_id?: string
-          country?: string | null
-          created_at?: string | null
-          device_type?: string | null
-          event_type?: string
-          id?: string
-          page_path?: string | null
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      app_downloads: {
-        Row: {
+          author_name: string | null
+          content: string
           created_at: string
+          excerpt: string | null
+          featured_image: string | null
           id: string
-          platform: string
-          session_id: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          platform: string
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          platform?: string
-          session_id?: string | null
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      chat_messages: {
-        Row: {
-          created_at: string
-          display_name: string
-          id: string
-          is_deleted: boolean | null
-          match_id: string
-          message: string
-          session_id: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_deleted?: boolean | null
-          match_id: string
-          message: string
-          session_id: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_deleted?: boolean | null
-          match_id?: string
-          message?: string
-          session_id?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      email_subscriptions: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          is_active: boolean | null
-          subscribed_leagues: string[] | null
-          subscribed_teams: string[] | null
-          timezone: string | null
+          is_published: boolean | null
+          meta_description: string | null
+          meta_title: string | null
+          published_at: string | null
+          slug: string
+          tags: string[] | null
+          title: string
           updated_at: string
-          user_id: string | null
-          verification_token: string | null
-          verified: boolean | null
+          views: number | null
         }
         Insert: {
+          author_name?: string | null
+          content: string
           created_at?: string
-          email: string
+          excerpt?: string | null
+          featured_image?: string | null
           id?: string
-          is_active?: boolean | null
-          subscribed_leagues?: string[] | null
-          subscribed_teams?: string[] | null
-          timezone?: string | null
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          slug: string
+          tags?: string[] | null
+          title: string
           updated_at?: string
-          user_id?: string | null
-          verification_token?: string | null
-          verified?: boolean | null
+          views?: number | null
         }
         Update: {
+          author_name?: string | null
+          content?: string
           created_at?: string
-          email?: string
+          excerpt?: string | null
+          featured_image?: string | null
           id?: string
-          is_active?: boolean | null
-          subscribed_leagues?: string[] | null
-          subscribed_teams?: string[] | null
-          timezone?: string | null
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          slug?: string
+          tags?: string[] | null
+          title?: string
           updated_at?: string
-          user_id?: string | null
-          verification_token?: string | null
-          verified?: boolean | null
+          views?: number | null
         }
         Relationships: []
       }
@@ -161,10 +77,8 @@ export type Database = {
           last_match_date: string | null
           last_match_score: string | null
           sport: string
-          team_a_id: string
           team_a_name: string
           team_a_wins: number | null
-          team_b_id: string
           team_b_name: string
           team_b_wins: number | null
           total_matches: number | null
@@ -178,10 +92,8 @@ export type Database = {
           last_match_date?: string | null
           last_match_score?: string | null
           sport: string
-          team_a_id: string
           team_a_name: string
           team_a_wins?: number | null
-          team_b_id: string
           team_b_name: string
           team_b_wins?: number | null
           total_matches?: number | null
@@ -195,10 +107,8 @@ export type Database = {
           last_match_date?: string | null
           last_match_score?: string | null
           sport?: string
-          team_a_id?: string
           team_a_name?: string
           team_a_wins?: number | null
-          team_b_id?: string
           team_b_name?: string
           team_b_wins?: number | null
           total_matches?: number | null
@@ -335,54 +245,6 @@ export type Database = {
         }
         Relationships: []
       }
-      match_predictions: {
-        Row: {
-          confidence_level: string | null
-          created_at: string
-          display_name: string
-          id: string
-          is_correct: boolean | null
-          match_id: string
-          match_start_time: string
-          points_earned: number | null
-          predicted_score_away: number | null
-          predicted_score_home: number | null
-          predicted_winner: string
-          session_id: string
-          user_id: string | null
-        }
-        Insert: {
-          confidence_level?: string | null
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_correct?: boolean | null
-          match_id: string
-          match_start_time: string
-          points_earned?: number | null
-          predicted_score_away?: number | null
-          predicted_score_home?: number | null
-          predicted_winner: string
-          session_id: string
-          user_id?: string | null
-        }
-        Update: {
-          confidence_level?: string | null
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_correct?: boolean | null
-          match_id?: string
-          match_start_time?: string
-          points_earned?: number | null
-          predicted_score_away?: number | null
-          predicted_score_home?: number | null
-          predicted_winner?: string
-          session_id?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       page_views: {
         Row: {
           created_at: string
@@ -506,36 +368,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_favorites: {
-        Row: {
-          created_at: string
-          favorite_id: string
-          favorite_name: string
-          favorite_type: string
-          id: string
-          session_id: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          favorite_id: string
-          favorite_name: string
-          favorite_type: string
-          id?: string
-          session_id: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          favorite_id?: string
-          favorite_name?: string
-          favorite_type?: string
-          id?: string
-          session_id?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string
@@ -581,76 +413,12 @@ export type Database = {
         }
         Relationships: []
       }
-      watch_history: {
-        Row: {
-          created_at: string
-          id: string
-          last_watched_at: string
-          match_id: string
-          match_title: string
-          session_id: string
-          sport_id: string
-          user_id: string | null
-          watch_duration: number | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          last_watched_at?: string
-          match_id: string
-          match_title: string
-          session_id: string
-          sport_id: string
-          user_id?: string | null
-          watch_duration?: number | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          last_watched_at?: string
-          match_id?: string
-          match_title?: string
-          session_id?: string
-          sport_id?: string
-          user_id?: string | null
-          watch_duration?: number | null
-        }
-        Relationships: []
-      }
     }
     Views: {
-      prediction_leaderboard: {
-        Row: {
-          accuracy_percentage: number | null
-          correct_predictions: number | null
-          display_name: string | null
-          session_id: string | null
-          total_points: number | null
-          total_predictions: number | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       cleanup_stale_viewer_sessions: { Args: never; Returns: undefined }
-      get_ad_stats: {
-        Args: { end_date?: string; start_date?: string }
-        Returns: {
-          ad_type: string
-          clicks: number
-          ctr: number
-          estimated_revenue: number
-          impressions: number
-        }[]
-      }
-      get_download_stats: {
-        Args: never
-        Returns: {
-          platform: string
-          total_downloads: number
-        }[]
-      }
       get_page_views_stats: {
         Args: { end_date?: string; start_date?: string }
         Returns: {
