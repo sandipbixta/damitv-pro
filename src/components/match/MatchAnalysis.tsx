@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Match } from '@/types/sports';
-import { TrendingUp, Users, Trophy, Calendar } from 'lucide-react';
+import { TrendingUp, Users, Trophy, Calendar, AlertCircle, Search } from 'lucide-react';
+import { useSportsDBMatch } from '@/hooks/useSportsDBMatch';
+import LiveMatchData from './LiveMatchData';
+import MatchEventsTimeline from './MatchEventsTimeline';
+import TeamLineups from './TeamLineups';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface MatchAnalysisProps {
   match: Match;
@@ -11,8 +17,90 @@ const MatchAnalysis: React.FC<MatchAnalysisProps> = ({ match }) => {
   const awayTeam = match.teams?.away?.name || 'Away Team';
   const league = match.category || 'League';
 
+  // State for TheSportsDB event ID lookup
+  const [eventId, setEventId] = useState<string>('');
+  const [searchEventId, setSearchEventId] = useState<string | null>(null);
+
+  // Fetch real match data from TheSportsDB
+  const {
+    match: sportsDBMatch,
+    lineups,
+    timeline,
+    isLoading,
+    error,
+    lastUpdated,
+    refetch,
+  } = useSportsDBMatch(searchEventId, 60000); // Auto-refresh every 60 seconds
+
+  const handleEventSearch = () => {
+    if (eventId.trim()) {
+      setSearchEventId(eventId.trim());
+    }
+  };
+
   return (
     <div className="space-y-6 mt-8">
+      {/* TheSportsDB Integration */}
+      <section className="bg-card text-card-foreground rounded-lg p-6 border border-border">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-foreground">
+          <Search className="h-5 w-5 text-primary" />
+          Live Match Data
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Enter a TheSportsDB Event ID to load real-time scores, lineups, and match events.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            placeholder="e.g., 1234567"
+            value={eventId}
+            onChange={(e) => setEventId(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleEventSearch()}
+            className="max-w-xs"
+          />
+          <Button onClick={handleEventSearch} disabled={isLoading}>
+            {isLoading ? 'Loading...' : 'Load Match'}
+          </Button>
+        </div>
+        {error && (
+          <div className="mt-3 flex items-center gap-2 text-destructive text-sm">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </div>
+        )}
+      </section>
+
+      {/* Live Match Data Display */}
+      {sportsDBMatch && (
+        <LiveMatchData
+          match={sportsDBMatch}
+          lastUpdated={lastUpdated}
+          isLoading={isLoading}
+          onRefresh={refetch}
+        />
+      )}
+
+      {/* Team Lineups */}
+      {lineups && (lineups.home.length > 0 || lineups.away.length > 0) && (
+        <TeamLineups
+          lineups={lineups}
+          homeTeam={sportsDBMatch?.homeTeam || homeTeam}
+          awayTeam={sportsDBMatch?.awayTeam || awayTeam}
+          homeFormation={sportsDBMatch?.homeFormation}
+          awayFormation={sportsDBMatch?.awayFormation}
+        />
+      )}
+
+      {/* Match Events Timeline */}
+      {timeline && timeline.length > 0 && (
+        <MatchEventsTimeline
+          timeline={timeline}
+          homeTeam={sportsDBMatch?.homeTeam || homeTeam}
+          awayTeam={sportsDBMatch?.awayTeam || awayTeam}
+        />
+      )}
+
+      {/* Original Match Preview Content */}
       <section className="bg-card text-card-foreground rounded-lg p-6 border border-border">
         <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
           <TrendingUp className="h-6 w-6 text-primary" />
