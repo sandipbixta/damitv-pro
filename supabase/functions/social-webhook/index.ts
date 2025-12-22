@@ -6,16 +6,16 @@ const corsHeaders = {
 };
 
 interface MatchData {
-  matchId: string;
-  matchTitle: string;
+  matchId?: string;
+  matchTitle?: string;
   homeTeam: string;
   awayTeam: string;
   competition?: string;
   sport?: string;
-  streamUrl: string;
+  streamUrl?: string;
   kickoffTime?: string;
-  message?: string;
   poster?: string;
+  isTest?: boolean;
 }
 
 // Fetch event image from TheSportsDB
@@ -151,15 +151,15 @@ serve(async (req) => {
 
     const matchData: MatchData = await req.json();
     
-    console.log('Received match data:', JSON.stringify(matchData, null, 2));
+    console.log('📥 Received match data:', JSON.stringify(matchData, null, 2));
 
     // Validate required fields
-    if (!matchData.matchId || !matchData.matchTitle) {
-      console.error('❌ Missing required fields');
+    if (!matchData.homeTeam || !matchData.awayTeam) {
+      console.error('❌ Missing required fields: homeTeam and awayTeam');
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'matchId and matchTitle are required' 
+          error: 'homeTeam and awayTeam are required' 
         }),
         { 
           status: 400, 
@@ -167,6 +167,9 @@ serve(async (req) => {
         }
       );
     }
+
+    // Build matchTitle from teams
+    const matchTitle = matchData.matchTitle || `${matchData.homeTeam} vs ${matchData.awayTeam}`;
 
     // Fetch image from TheSportsDB if not provided
     let imageUrl = matchData.poster || '';
@@ -183,31 +186,27 @@ serve(async (req) => {
       imageUrl = 'https://i.imgur.com/m4nV9S8.png';
     }
 
-    const streamUrl = matchData.streamUrl || `https://damitv.netlify.app/match/${matchData.matchId}`;
+    // Build stream URL
+    const matchId = matchData.matchId || `${matchData.homeTeam.toLowerCase().replace(/\s+/g, '-')}-vs-${matchData.awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
+    const streamUrl = matchData.streamUrl || `https://damitv.netlify.app/match/${matchId}`;
 
-    // Prepare payload for Make.com
+    // Clean, structured payload for Make.com - EXACTLY what Telegram needs
     const makePayload = {
-      matchId: matchData.matchId,
-      matchTitle: matchData.matchTitle,
-      homeTeam: matchData.homeTeam || '',
-      awayTeam: matchData.awayTeam || '',
-      competition: matchData.competition || '',
-      sport: matchData.sport || 'Football',
-      streamUrl: streamUrl,
-      kickoffTime: matchData.kickoffTime || new Date().toISOString(),
+      homeTeam: matchData.homeTeam,
+      awayTeam: matchData.awayTeam,
+      matchTitle: matchTitle,
       imageUrl: imageUrl,
-      message: matchData.message || `🔴 LIVE NOW: ${matchData.matchTitle}\n\n📺 Watch free HD stream: ${streamUrl}\n\n🏆 ${matchData.competition || 'Live Sports'}\n\n#DamiTV #LiveSports #FreeStreaming #${matchData.homeTeam?.replace(/\s+/g, '') || 'Sports'} #${matchData.awayTeam?.replace(/\s+/g, '') || 'Live'}`,
-      timestamp: new Date().toISOString(),
-      isLive: true
+      streamUrl: streamUrl
     };
 
-    console.log('📤 Sending to Make.com:', JSON.stringify(makePayload, null, 2));
+    console.log('📤 Sending clean payload to Make.com:', JSON.stringify(makePayload, null, 2));
 
-    // Forward to Make.com webhook
+    // Forward to Make.com webhook with proper headers
     const makeResponse = await fetch(MAKE_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify(makePayload),
     });
@@ -218,7 +217,7 @@ serve(async (req) => {
     if (!makeResponse.ok) {
       console.error('❌ Make.com webhook failed:', makeResponse.status);
       
-      // Treat rate limiting / queue full as a soft failure - don't break the app
+      // Treat rate limiting / queue full as a soft failure
       const isRateLimited = makeResponse.status === 400 || makeResponse.status === 429;
       const isQueueFull = makeResponseText.toLowerCase().includes('queue is full');
       
@@ -228,8 +227,7 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             warning: 'Make.com queue is full - notification skipped',
-            matchId: matchData.matchId,
-            matchTitle: matchData.matchTitle
+            payload: makePayload
           }),
           { 
             status: 200, 
@@ -242,7 +240,8 @@ serve(async (req) => {
         JSON.stringify({ 
           success: false, 
           error: `Make.com webhook failed: ${makeResponse.status}`,
-          details: makeResponseText
+          details: makeResponseText,
+          payload: makePayload
         }),
         { 
           status: 502, 
@@ -251,15 +250,14 @@ serve(async (req) => {
       );
     }
 
-    console.log('✅ Successfully forwarded to Make.com with image:', imageUrl);
+    console.log('✅ Successfully forwarded to Make.com');
+    console.log('📦 Payload sent:', JSON.stringify(makePayload));
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Match data sent to Make.com for social posting',
-        matchId: matchData.matchId,
-        matchTitle: matchData.matchTitle,
-        imageUrl: imageUrl
+        message: 'Match data sent to Make.com for Telegram posting',
+        payload: makePayload
       }),
       { 
         status: 200, 
