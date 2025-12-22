@@ -147,7 +147,7 @@ export function generateOrganizationSchema() {
       "worstRating": "1"
     },
     "sameAs": [
-      "https://t.me/damitv_official"
+      "https://t.me/Sports_matches_bot"
     ]
   };
 }

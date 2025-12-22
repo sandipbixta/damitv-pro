@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const TelegramFAB = () => {
   return (
     <a
-      href="https://t.me/DamiTVUpdates"
+      href="https://t.me/Sports_matches_bot"
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
