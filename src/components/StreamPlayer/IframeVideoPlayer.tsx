@@ -355,74 +355,9 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         referrerPolicy="no-referrer"
         loading="lazy"
         style={{ 
-          border: 'none',
-          pointerEvents: showOverlay ? 'none' : 'auto'
+          border: 'none'
         }}
       />
-      
-      {/* Pop-up Blocker Overlay - Absorbs first clicks that trigger ads */}
-      {showOverlay && !isLoading && !countdown && (
-        <div 
-          className="absolute inset-0 z-40 cursor-pointer flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
-          onClick={handleOverlayClick}
-        >
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Shield className="w-8 h-8 text-green-400" />
-              <span className="text-white font-bold text-lg">Ad Blocker Active</span>
-            </div>
-            <div className="bg-primary/90 hover:bg-primary text-primary-foreground px-6 py-3 rounded-lg flex items-center gap-2 mx-auto cursor-pointer transition-colors">
-              <Play className="w-5 h-5" />
-              <span className="font-medium">{overlayMessage}</span>
-            </div>
-            <p className="text-white/60 text-xs mt-3">
-              {clicksAbsorbed > 0 ? `${CLICKS_TO_ABSORB - clicksAbsorbed} clicks remaining` : 'Blocking pop-up ads...'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Always Visible DAMITV Home Button - Top Center */}
-      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
-        <Button
-          variant="ghost"
-          onClick={handleHomeClick}
-          className="bg-black/80 hover:bg-black/90 text-white px-2 py-1 h-7 flex items-center gap-1 border border-white/20 shadow-lg"
-          title="Go to DAMITV Home"
-        >
-          <Home className="h-3 w-3" />
-          <span className="font-bold text-xs">DAMITV</span>
-        </Button>
-      </div>
-
-      {/* Match Title with Team Logos - Bottom of Player */}
-      {match && 'teams' in match && match.teams && (
-        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 z-40">
-          <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 border border-white/10">
-            {/* Home team logo */}
-            {typeof match.teams.home === 'object' && match.teams.home?.badge && (
-              <img 
-                src={match.teams.home.badge} 
-                alt={match.teams.home.name || 'Home'} 
-                className="w-5 h-5 object-contain"
-                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-              />
-            )}
-            <span className="text-white text-xs font-medium max-w-[200px] truncate">
-              {title || match.title}
-            </span>
-            {/* Away team logo */}
-            {typeof match.teams.away === 'object' && match.teams.away?.badge && (
-              <img 
-                src={match.teams.away.badge} 
-                alt={match.teams.away.name || 'Away'} 
-                className="w-5 h-5 object-contain"
-                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-              />
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
