@@ -1,36 +1,136 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Match } from '@/types/sports';
-import { TrendingUp, Users, Trophy, Calendar } from 'lucide-react';
+import { TrendingUp, Users, Trophy, Calendar, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { useSportsDBMatch } from '@/hooks/useSportsDBMatch';
+import LiveMatchData from './LiveMatchData';
+import MatchEventsTimeline from './MatchEventsTimeline';
+import TeamLineups from './TeamLineups';
 
 interface MatchAnalysisProps {
   match: Match;
 }
 
 const MatchAnalysis: React.FC<MatchAnalysisProps> = ({ match }) => {
-  const homeTeam = match.teams?.home?.name || 'Home Team';
-  const awayTeam = match.teams?.away?.name || 'Away Team';
+  const homeTeam = match.teams?.home?.name || '';
+  const awayTeam = match.teams?.away?.name || '';
+  const displayHomeTeam = homeTeam || 'Home Team';
+  const displayAwayTeam = awayTeam || 'Away Team';
   const league = match.category || 'League';
+
+  // Memoize search teams to prevent infinite re-renders
+  const searchTeams = useMemo(() => {
+    if (homeTeam && awayTeam) {
+      return { homeTeam, awayTeam };
+    }
+    return null;
+  }, [homeTeam, awayTeam]);
+
+  // Automatically fetch match data from TheSportsDB using team names
+  const {
+    match: sportsDBMatch,
+    lineups,
+    timeline,
+    isLoading,
+    error,
+    lastUpdated,
+    foundEventId,
+    refetch,
+  } = useSportsDBMatch({
+    searchTeams,
+    autoRefreshInterval: 60000, // Auto-refresh every 60 seconds
+  });
+
+  // Show loading state while searching
+  const [searchAttempted, setSearchAttempted] = useState(false);
+  
+  useEffect(() => {
+    if (searchTeams && !searchAttempted) {
+      setSearchAttempted(true);
+    }
+  }, [searchTeams, searchAttempted]);
 
   return (
     <div className="space-y-6 mt-8">
+      {/* Auto-matching status indicator */}
+      {searchTeams && (
+        <div className="bg-card text-card-foreground rounded-lg p-4 border border-border">
+          <div className="flex items-center gap-3">
+            {isLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">
+                  Searching TheSportsDB for {homeTeam} vs {awayTeam}...
+                </span>
+              </>
+            ) : sportsDBMatch ? (
+              <>
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <span className="text-sm text-foreground">
+                  Found match data from TheSportsDB
+                  {foundEventId && <span className="text-muted-foreground ml-1">(Event ID: {foundEventId})</span>}
+                </span>
+              </>
+            ) : error ? (
+              <>
+                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                <span className="text-sm text-muted-foreground">
+                  No match data found for {homeTeam} vs {awayTeam}. Showing preview content.
+                </span>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Live Match Data Display */}
+      {sportsDBMatch && (
+        <LiveMatchData
+          match={sportsDBMatch}
+          lastUpdated={lastUpdated}
+          isLoading={isLoading}
+          onRefresh={refetch}
+        />
+      )}
+
+      {/* Team Lineups */}
+      {lineups && (lineups.home.length > 0 || lineups.away.length > 0) && (
+        <TeamLineups
+          lineups={lineups}
+          homeTeam={sportsDBMatch?.homeTeam || displayHomeTeam}
+          awayTeam={sportsDBMatch?.awayTeam || displayAwayTeam}
+          homeFormation={sportsDBMatch?.homeFormation}
+          awayFormation={sportsDBMatch?.awayFormation}
+        />
+      )}
+
+      {/* Match Events Timeline */}
+      {timeline && timeline.length > 0 && (
+        <MatchEventsTimeline
+          timeline={timeline}
+          homeTeam={sportsDBMatch?.homeTeam || displayHomeTeam}
+          awayTeam={sportsDBMatch?.awayTeam || displayAwayTeam}
+        />
+      )}
+
+      {/* Original Match Preview Content */}
       <section className="bg-card text-card-foreground rounded-lg p-6 border border-border">
         <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
           <TrendingUp className="h-6 w-6 text-primary" />
-          Match Preview: {homeTeam} vs {awayTeam}
+          Match Preview: {displayHomeTeam} vs {displayAwayTeam}
         </h2>
         <div className="space-y-4">
           <p className="text-lg leading-relaxed text-foreground">
-            Get ready for an exciting {league} match as {homeTeam} host {awayTeam} in what promises 
+            Get ready for an exciting {league} match as {displayHomeTeam} host {displayAwayTeam} in what promises 
             to be a thrilling encounter. Both teams will be looking to secure crucial points in this 
             competitive fixture.
           </p>
           <p className="leading-relaxed text-muted-foreground">
-            {homeTeam} will rely on their home advantage and the support of their passionate fans 
+            {displayHomeTeam} will rely on their home advantage and the support of their passionate fans 
             to deliver a strong performance. With their tactical setup and key players in form, they 
             are expected to put up a solid challenge.
           </p>
           <p className="leading-relaxed text-muted-foreground">
-            Meanwhile, {awayTeam} come into this match with determination and a game plan designed 
+            Meanwhile, {displayAwayTeam} come into this match with determination and a game plan designed 
             to counter their opponents' strengths. Their away form and ability to perform under pressure 
             will be crucial factors in this encounter.
           </p>
@@ -44,7 +144,7 @@ const MatchAnalysis: React.FC<MatchAnalysisProps> = ({ match }) => {
         </h3>
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-bold text-lg mb-3 text-foreground">{homeTeam}</h4>
+            <h4 className="font-bold text-lg mb-3 text-foreground">{displayHomeTeam}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
@@ -61,7 +161,7 @@ const MatchAnalysis: React.FC<MatchAnalysisProps> = ({ match }) => {
             </ul>
           </div>
           <div>
-            <h4 className="font-bold text-lg mb-3 text-foreground">{awayTeam}</h4>
+            <h4 className="font-bold text-lg mb-3 text-foreground">{displayAwayTeam}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
@@ -87,7 +187,7 @@ const MatchAnalysis: React.FC<MatchAnalysisProps> = ({ match }) => {
         </h3>
         <div className="space-y-4">
           <p className="text-muted-foreground">
-            The historical encounters between {homeTeam} and {awayTeam} have produced memorable moments 
+            The historical encounters between {displayHomeTeam} and {displayAwayTeam} have produced memorable moments 
             and competitive matches. Both teams know each other well, making this fixture even more 
             intriguing for fans and neutral observers alike.
           </p>
@@ -118,7 +218,7 @@ const MatchAnalysis: React.FC<MatchAnalysisProps> = ({ match }) => {
           </ul>
           <p className="text-muted-foreground">
             Watch the match live on DamiTV with high-quality streaming and multiple source options. 
-            Don't miss this exciting {league} encounter between {homeTeam} and {awayTeam}!
+            Don't miss this exciting {league} encounter between {displayHomeTeam} and {displayAwayTeam}!
           </p>
         </div>
       </section>
