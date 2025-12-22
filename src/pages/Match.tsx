@@ -7,7 +7,7 @@ import { useStreamPlayer } from '@/hooks/useStreamPlayer';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { Helmet } from 'react-helmet-async';
 import { isTrendingMatch } from '@/utils/popularLeagues';
-import TelegramBanner from '@/components/TelegramBanner';
+
 import { teamLogoService } from '@/services/teamLogoService';
 import SEOMetaTags from '@/components/SEOMetaTags';
 import SocialShare from '@/components/SocialShare';
@@ -211,10 +211,6 @@ const Match = () => {
       />
       
       <div className="container mx-auto px-4 py-4 sm:py-8">
-        <div className="mb-4">
-          <TelegramBanner />
-        </div>
-        
         <div className="w-full flex justify-center mb-4">
           <div className="text-center max-w-4xl px-4">
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{match.title}</h1>

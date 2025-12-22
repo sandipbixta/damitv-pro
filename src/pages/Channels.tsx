@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Helmet } from 'react-helmet-async';
 import { Calendar } from 'lucide-react';
-import TelegramBanner from '../components/TelegramBanner';
+
 
 const Channels = () => {
   const isMobile = useIsMobile();
@@ -166,11 +166,6 @@ const Channels = () => {
             Access 70+ international sports channels streaming live in HD quality. Watch football, basketball, tennis and more. DamiTV is your trusted <a href="https://damitv.pro/" className="text-primary hover:underline font-medium">vipleague alternative with HD streams</a> for all major sports.
           </p>
         </header>
-        
-        {/* Telegram Banner */}
-        <div className="mb-4">
-          <TelegramBanner />
-        </div>
         
         <ChannelsGrid />
         

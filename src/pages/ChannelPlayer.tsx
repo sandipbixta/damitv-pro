@@ -8,7 +8,7 @@ import { ArrowLeft, Share, Star, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import TelegramBanner from '@/components/TelegramBanner';
+
 import MatchDetails from '@/components/MatchDetails';
 import { triggerStreamChangeAd } from '@/utils/streamAdTrigger';
 
@@ -107,10 +107,6 @@ const ChannelPlayer = () => {
         </div>
       </div>
 
-      {/* Telegram Banner */}
-      <div className="px-4 pt-4">
-        <TelegramBanner />
-      </div>
 
       {/* Player Settings Panel */}
       {showPlayerSettings && (
