@@ -45,6 +45,7 @@ import Sport365Live from "./pages/Sport365Live";
 import WatchPremierLeague from "./pages/WatchPremierLeague";
 import NbaStreaming from "./pages/NbaStreaming";
 import UfcStreaming from "./pages/UfcStreaming";
+import Highlights from "./pages/Highlights";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import TelegramFAB from "./components/TelegramFAB";
 
@@ -170,6 +171,11 @@ const App: React.FC = () => {
               <Route path="/ufc-streaming-free" element={
                 <SEOPageTracker pageTitle="UFC Streaming Free" contentType="home">
                   <UfcStreaming />
+                </SEOPageTracker>
+              } />
+              <Route path="/highlights" element={
+                <SEOPageTracker pageTitle="Sports Highlights - Watch Latest Match Videos" contentType="home">
+                  <Highlights />
                 </SEOPageTracker>
               } />
               <Route path="*" element={<NotFound />} />
