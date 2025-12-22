@@ -3,11 +3,10 @@ import {
   CDNChannel, 
   fetchCDNChannels, 
   getCDNChannelsByCountry,
-  getCDNChannelById,
   searchCDNChannels,
-  cdnChannelsApi
+  cdnChannelsApi,
+  getFeaturedCDNChannels
 } from '../services/cdnChannelsApi';
-import { getChannelsByCountry as getStaticChannelsByCountry, tvChannels } from '../data/tvChannels';
 
 export interface UseChannelsResult {
   channels: CDNChannel[];
@@ -35,27 +34,16 @@ export const useCDNChannels = (): UseChannelsResult => {
         getCDNChannelsByCountry()
       ]);
 
-      // If CDN API returns no data, fall back to static data
       if (allChannels.length === 0) {
-        console.log('📺 CDN API returned no data, using static channels');
-        const staticByCountry = getStaticChannelsByCountry();
-        setChannelsByCountry(staticByCountry);
-        setChannels(tvChannels);
-        setCountries(Object.keys(staticByCountry).sort());
-      } else {
-        setChannels(allChannels);
-        setChannelsByCountry(grouped);
-        setCountries(Object.keys(grouped).sort());
+        setError('No channels available');
       }
+      
+      setChannels(allChannels);
+      setChannelsByCountry(grouped);
+      setCountries(Object.keys(grouped).sort());
     } catch (err) {
       console.error('📺 Error loading channels:', err);
       setError('Failed to load channels');
-      
-      // Fall back to static data on error
-      const staticByCountry = getStaticChannelsByCountry();
-      setChannelsByCountry(staticByCountry);
-      setChannels(tvChannels);
-      setCountries(Object.keys(staticByCountry).sort());
     } finally {
       setIsLoading(false);
     }
@@ -102,20 +90,17 @@ export const useCDNChannel = (country: string | undefined, channelId: string | u
         const countryChannels = channelsByCountry[country];
 
         if (!countryChannels || countryChannels.length === 0) {
-          // Fall back to static data
-          const staticByCountry = getStaticChannelsByCountry();
-          const staticCountryChannels = staticByCountry[country];
+          // Try to find channel in all channels
+          const allChannels = await fetchCDNChannels();
+          const foundChannel = allChannels.find(ch => ch.id === channelId);
           
-          if (staticCountryChannels) {
-            const foundChannel = staticCountryChannels.find(ch => ch.id === channelId);
-            if (foundChannel) {
-              setChannel(foundChannel);
-              setOtherChannels(staticCountryChannels.filter(ch => ch.id !== channelId));
-            } else {
-              setError('Channel not found');
-            }
+          if (foundChannel) {
+            setChannel(foundChannel);
+            // Get other channels from same country or all channels
+            const sameCountry = allChannels.filter(ch => ch.country === foundChannel.country && ch.id !== channelId);
+            setOtherChannels(sameCountry.length > 0 ? sameCountry : allChannels.filter(ch => ch.id !== channelId).slice(0, 20));
           } else {
-            setError('Country not found');
+            setError('Channel not found');
           }
         } else {
           const foundChannel = countryChannels.find(ch => ch.id === channelId);
@@ -130,18 +115,6 @@ export const useCDNChannel = (country: string | undefined, channelId: string | u
       } catch (err) {
         console.error('📺 Error loading channel:', err);
         setError('Failed to load channel');
-        
-        // Try static data as fallback
-        const staticByCountry = getStaticChannelsByCountry();
-        const staticCountryChannels = staticByCountry[country];
-        if (staticCountryChannels) {
-          const foundChannel = staticCountryChannels.find(ch => ch.id === channelId);
-          if (foundChannel) {
-            setChannel(foundChannel);
-            setOtherChannels(staticCountryChannels.filter(ch => ch.id !== channelId));
-            setError(null);
-          }
-        }
       } finally {
         setIsLoading(false);
       }
@@ -168,25 +141,10 @@ export const useChannelSearch = (query: string) => {
       setIsSearching(true);
       try {
         const searchResults = await searchCDNChannels(query);
-        
-        // If no CDN results, search static data
-        if (searchResults.length === 0) {
-          const lowerQuery = query.toLowerCase();
-          const staticResults = tvChannels.filter(ch => 
-            ch.title.toLowerCase().includes(lowerQuery)
-          );
-          setResults(staticResults);
-        } else {
-          setResults(searchResults);
-        }
+        setResults(searchResults);
       } catch (err) {
         console.error('📺 Search error:', err);
-        // Fall back to static search
-        const lowerQuery = query.toLowerCase();
-        const staticResults = tvChannels.filter(ch => 
-          ch.title.toLowerCase().includes(lowerQuery)
-        );
-        setResults(staticResults);
+        setResults([]);
       } finally {
         setIsSearching(false);
       }
@@ -197,4 +155,29 @@ export const useChannelSearch = (query: string) => {
   }, [query]);
 
   return { results, isSearching };
+};
+
+// Hook for featured channels
+export const useFeaturedChannels = (limit: number = 12) => {
+  const [channels, setChannels] = useState<CDNChannel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFeatured = async () => {
+      setIsLoading(true);
+      try {
+        const featured = await getFeaturedCDNChannels(limit);
+        setChannels(featured);
+      } catch (err) {
+        console.error('📺 Error loading featured channels:', err);
+        setChannels([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFeatured();
+  }, [limit]);
+
+  return { channels, isLoading };
 };

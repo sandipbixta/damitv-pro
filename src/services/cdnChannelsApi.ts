@@ -1,5 +1,5 @@
 // CDN Channels API Service
-// Fetches live TV channels from cdn-live.tv API
+// Fetches live TV channels from api.cdn-live.tv API
 
 export interface CDNChannel {
   id: string;
@@ -11,34 +11,43 @@ export interface CDNChannel {
 }
 
 interface CDNApiChannel {
-  id: string;
-  name: string;
-  country: string;
-  url: string;
+  id?: string | number;
+  name?: string;
+  title?: string;
+  country?: string;
+  region?: string;
+  url?: string;
+  embed_url?: string;
+  embedUrl?: string;
   logo?: string;
+  image?: string;
   category?: string;
-}
-
-interface CDNApiResponse {
-  channels: CDNApiChannel[];
-  total?: number;
+  type?: string;
 }
 
 class CDNChannelsApiService {
-  private baseUrl = 'https://cdn-live.tv/api';
+  private baseUrl = 'https://api.cdn-live.tv/api/v1/vip/damitv/channels/';
   private cache: { data: CDNChannel[] | null; timestamp: number } = { data: null, timestamp: 0 };
   private cacheExpiry = 10 * 60 * 1000; // 10 minutes
   private isFetching = false;
   private fetchPromise: Promise<CDNChannel[]> | null = null;
 
-  private transformChannel(apiChannel: CDNApiChannel): CDNChannel {
+  private transformChannel(apiChannel: CDNApiChannel, index: number): CDNChannel {
+    // Handle various possible API response formats
+    const name = apiChannel.name || apiChannel.title || `Channel ${index + 1}`;
+    const id = apiChannel.id?.toString() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const country = apiChannel.country || apiChannel.region || 'International';
+    const embedUrl = apiChannel.url || apiChannel.embed_url || apiChannel.embedUrl || '';
+    const logo = apiChannel.logo || apiChannel.image;
+    const category = apiChannel.category || apiChannel.type;
+
     return {
-      id: apiChannel.id || apiChannel.name.toLowerCase().replace(/\s+/g, '-'),
-      title: apiChannel.name,
-      country: apiChannel.country || 'Unknown',
-      embedUrl: apiChannel.url,
-      logo: apiChannel.logo,
-      category: apiChannel.category
+      id,
+      title: name,
+      country,
+      embedUrl,
+      logo,
+      category
     };
   }
 
@@ -68,9 +77,9 @@ class CDNChannelsApiService {
 
   private async doFetch(): Promise<CDNChannel[]> {
     try {
-      console.log('📺 Fetching channels from CDN API...');
+      console.log('📺 Fetching channels from CDN API:', this.baseUrl);
       
-      const response = await fetch(`${this.baseUrl}/channels`, {
+      const response = await fetch(this.baseUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -81,23 +90,44 @@ class CDNChannelsApiService {
         throw new Error(`CDN API returned ${response.status}`);
       }
 
-      const data: CDNApiResponse = await response.json();
+      const data = await response.json();
       
-      if (!data.channels || !Array.isArray(data.channels)) {
-        console.warn('📺 Invalid CDN API response format');
+      // Handle different possible response formats
+      let channelsArray: CDNApiChannel[] = [];
+      
+      if (Array.isArray(data)) {
+        channelsArray = data;
+      } else if (data.channels && Array.isArray(data.channels)) {
+        channelsArray = data.channels;
+      } else if (data.data && Array.isArray(data.data)) {
+        channelsArray = data.data;
+      } else if (typeof data === 'object') {
+        // If it's an object with country keys containing arrays
+        Object.values(data).forEach(value => {
+          if (Array.isArray(value)) {
+            channelsArray.push(...(value as CDNApiChannel[]));
+          }
+        });
+      }
+
+      if (channelsArray.length === 0) {
+        console.warn('📺 No channels found in API response');
         return this.cache.data || [];
       }
 
-      const channels = data.channels.map(ch => this.transformChannel(ch));
+      const channels = channelsArray.map((ch, index) => this.transformChannel(ch, index));
       
+      // Filter out channels without embed URLs
+      const validChannels = channels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
+
       // Update cache
       this.cache = {
-        data: channels,
+        data: validChannels,
         timestamp: Date.now()
       };
 
-      console.log(`📺 Loaded ${channels.length} channels from CDN API`);
-      return channels;
+      console.log(`📺 Loaded ${validChannels.length} channels from CDN API`);
+      return validChannels;
     } catch (error) {
       console.error('📺 Error fetching CDN channels:', error);
       // Return cached data if available, otherwise empty array
@@ -109,7 +139,7 @@ class CDNChannelsApiService {
     const channels = await this.fetchChannels();
     
     return channels.reduce((acc, channel) => {
-      const country = channel.country || 'Unknown';
+      const country = channel.country || 'International';
       if (!acc[country]) {
         acc[country] = [];
       }
@@ -123,7 +153,9 @@ class CDNChannelsApiService {
     const countryChannels = channelsByCountry[country];
     
     if (!countryChannels) {
-      return null;
+      // Try to find in all channels
+      const allChannels = await this.fetchChannels();
+      return allChannels.find(ch => ch.id === channelId) || null;
     }
 
     return countryChannels.find(ch => ch.id === channelId) || null;
@@ -146,6 +178,12 @@ class CDNChannelsApiService {
     return Array.from(countries).sort();
   }
 
+  // Get featured channels (first few popular ones)
+  async getFeaturedChannels(limit: number = 12): Promise<CDNChannel[]> {
+    const channels = await this.fetchChannels();
+    return channels.slice(0, limit);
+  }
+
   // Clear cache (useful for force refresh)
   clearCache(): void {
     this.cache = { data: null, timestamp: 0 };
@@ -161,3 +199,4 @@ export const getCDNChannelsByCountry = () => cdnChannelsApi.getChannelsByCountry
 export const getCDNChannelById = (country: string, id: string) => cdnChannelsApi.getChannelById(country, id);
 export const searchCDNChannels = (query: string) => cdnChannelsApi.searchChannels(query);
 export const getCDNCountries = () => cdnChannelsApi.getCountries();
+export const getFeaturedCDNChannels = (limit?: number) => cdnChannelsApi.getFeaturedChannels(limit);
