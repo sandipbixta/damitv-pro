@@ -1,8 +1,9 @@
 
 import { cn } from "@/lib/utils";
-import { Home, CalendarDays, Tv2, Radio, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useNavigate } from "react-router-dom";
+import damitvLogo from "@/assets/damitv-logo.png";
 
 const MainNav = () => {
   const isMobile = useIsMobile();
@@ -25,10 +26,15 @@ const MainNav = () => {
       {/* Logo */}
       <button 
         onClick={() => navigate("/")} 
-        className="cursor-pointer flex items-center gap-2 flex-shrink-0"
+        className="cursor-pointer flex items-center gap-3 flex-shrink-0"
       >
-        <span className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
-          DAMI<span className="text-primary">TV</span>
+        <img 
+          src={damitvLogo} 
+          alt="DAMITV Logo" 
+          className="h-10 w-10 object-contain" 
+        />
+        <span className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight uppercase">
+          DAMITV
         </span>
       </button>
       
@@ -39,10 +45,10 @@ const MainNav = () => {
             key={item.path}
             onClick={() => handleNavigate(item.path)}
             className={cn(
-              "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+              "px-5 py-2 text-sm font-bold uppercase tracking-wide transition-colors",
               location.pathname === item.path 
                 ? "text-primary" 
-                : "text-muted-foreground hover:text-foreground"
+                : "text-foreground hover:text-primary"
             )}
           >
             {item.title}

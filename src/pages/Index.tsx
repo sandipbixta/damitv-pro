@@ -232,12 +232,12 @@ const Index = () => {
 
         <FeaturedMatches visibleManualMatches={visibleManualMatches} />
 
-        <div className="mb-8">
+        <div className="mb-10">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl md:text-2xl font-bold text-foreground uppercase tracking-wide">Featured Sports</h2>
+            <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">Featured Sports</h2>
             <div className="flex gap-2">
               <Link to="/schedule">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary font-bold uppercase text-xs">
                   <Calendar className="mr-2 h-4 w-4" /> Schedule
                 </Button>
               </Link>
@@ -276,10 +276,10 @@ const Index = () => {
                   {selectedSport === 'all' ? (
                     <div>
                       <div className="mb-6">
-                        <h2 className="text-xl md:text-2xl font-bold text-foreground uppercase tracking-wide">
+                        <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
                           Live Matches
                         </h2>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground mt-2">
                           Currently live across all sports
                         </p>
                       </div>
@@ -288,10 +288,10 @@ const Index = () => {
                   ) : (
                     <>
                       <div className="mb-6">
-                        <h2 className="text-xl md:text-2xl font-bold text-foreground uppercase tracking-wide">
+                        <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
                           {sports.find(s => s.id === selectedSport)?.name || 'Matches'}
                         </h2>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground mt-2">
                           {filteredMatches.length} matches available
                         </p>
                       </div>
@@ -311,21 +311,21 @@ const Index = () => {
             <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
             
             {/* Call to Action Section */}
-            <section className="mb-8 mt-8">
-              <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl p-6 md:p-8 border border-primary/20">
+            <section className="mb-10 mt-10">
+              <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl p-8 md:p-10 border border-primary/30">
                 <div className="max-w-2xl">
-                  <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Start Watching Now</h2>
-                  <p className="text-muted-foreground mb-6">
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-foreground mb-4 uppercase tracking-wide">Start Watching Now</h2>
+                  <p className="text-muted-foreground mb-8 text-lg">
                     Join thousands of sports fans streaming live matches in HD quality.
                   </p>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-4">
                     <Link to="/live">
-                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase px-6">
                         <Tv className="mr-2 h-4 w-4" /> Watch Live
                       </Button>
                     </Link>
                     <Link to="/channels">
-                      <Button variant="outline" className="border-border hover:bg-muted">
+                      <Button variant="outline" className="border-border hover:bg-muted font-bold uppercase px-6">
                         <Calendar className="mr-2 h-4 w-4" /> Browse Channels
                       </Button>
                     </Link>

@@ -142,10 +142,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
     );
   };
 
-  // Team row component - FanCode style
+  // Team row component - FanCode style with bold text
   const TeamRow = ({ name, badge }: { name: string; badge: string }) => (
     <div className="flex items-center gap-3">
-      <div className="w-7 h-7 rounded-full overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-full overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
         {badge ? (
           <img
             src={badge}
@@ -155,39 +155,39 @@ const MatchCard: React.FC<MatchCardProps> = ({
               (e.target as HTMLImageElement).style.display = 'none';
               const parent = (e.target as HTMLImageElement).parentElement;
               if (parent) {
-                parent.innerHTML = `<span class="text-[10px] font-bold text-muted-foreground">${name.substring(0, 2).toUpperCase()}</span>`;
+                parent.innerHTML = `<span class="text-xs font-bold text-muted-foreground">${name.substring(0, 2).toUpperCase()}</span>`;
               }
             }}
           />
         ) : (
-          <span className="text-[10px] font-bold text-muted-foreground">
+          <span className="text-xs font-bold text-muted-foreground">
             {name.substring(0, 2).toUpperCase()}
           </span>
         )}
       </div>
-      <span className="text-foreground font-medium text-sm truncate">{name}</span>
+      <span className="text-foreground font-bold text-sm truncate">{name}</span>
     </div>
   );
 
   const cardContent = (
     <div className="group cursor-pointer h-full">
-      <div className="relative overflow-hidden rounded-lg bg-card border border-border/30 transition-all duration-300 hover:border-primary/40 hover:bg-card/80 h-full flex flex-col">
+      <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
         {/* Thumbnail Section */}
         <div className="relative aspect-video overflow-hidden flex-shrink-0">
           {generateThumbnail()}
           
           {/* Gradient overlay at bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
           
-          {/* WATCH IN / LIVE Badge - FanCode style */}
+          {/* WATCH IN / LIVE Badge - FanCode style with orange */}
           <div className="absolute bottom-3 left-3 z-10">
             {isLive || isMatchStarting ? (
-              <div className="bg-destructive text-destructive-foreground text-[10px] font-bold uppercase px-2.5 py-1 rounded tracking-wider flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
+              <div className="bg-destructive text-destructive-foreground text-[11px] font-extrabold uppercase px-3 py-1.5 rounded tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 bg-current rounded-full animate-pulse" />
                 LIVE
               </div>
             ) : countdown ? (
-              <div className="bg-primary text-primary-foreground text-[10px] font-bold uppercase px-2.5 py-1 rounded tracking-wider italic">
+              <div className="bg-primary text-primary-foreground text-[11px] font-extrabold uppercase px-3 py-1.5 rounded tracking-wider italic">
                 WATCH IN {countdown}
               </div>
             ) : null}
@@ -202,28 +202,28 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
 
         {/* Info Section */}
-        <div className="p-4 flex flex-col flex-1 gap-2.5">
+        <div className="p-4 flex flex-col flex-1 gap-3">
           {/* Sport & Competition */}
-          <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium truncate">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-bold truncate">
             {getSportName()} {match.title && !home && !away && `• ${match.title}`}
           </p>
           
           {/* Teams */}
           {home && away ? (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-3">
               <TeamRow name={home} badge={homeBadge} />
               <TeamRow name={away} badge={awayBadge} />
             </div>
           ) : (
-            <h3 className="font-semibold text-foreground text-sm line-clamp-2">
+            <h3 className="font-bold text-foreground text-sm line-clamp-2">
               {match.title}
             </h3>
           )}
           
           {/* Match Start Time */}
-          <p className="text-xs text-muted-foreground mt-auto pt-2 border-t border-border/30">
+          <p className="text-xs text-muted-foreground mt-auto pt-3 border-t border-border/40 font-medium">
             {isLive ? (
-              <span className="text-destructive font-medium">● Match is Live</span>
+              <span className="text-destructive font-bold">● Match is Live</span>
             ) : match.date ? (
               formatMatchDate(match.date)
             ) : (
