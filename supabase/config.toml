@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.social-webhook]
 verify_jwt = false
+
+[functions.goal-alerts]
+verify_jwt = false
