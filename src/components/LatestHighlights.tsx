@@ -1,10 +1,21 @@
-import React from 'react';
-import { Play, ExternalLink, Calendar } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Play, Calendar, Filter } from 'lucide-react';
 import { useHighlights } from '@/hooks/useHighlights';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+
+const LEAGUE_FILTERS = [
+  { id: 'all', label: 'All Leagues' },
+  { id: 'English Premier League', label: 'Premier League' },
+  { id: 'Spanish La Liga', label: 'La Liga' },
+  { id: 'UEFA Champions League', label: 'Champions League' },
+  { id: 'German Bundesliga', label: 'Bundesliga' },
+  { id: 'Italian Serie A', label: 'Serie A' },
+  { id: 'French Ligue 1', label: 'Ligue 1' },
+];
 
 const HighlightCard: React.FC<{
   homeTeam: string;
@@ -125,6 +136,18 @@ const LoadingSkeleton = () => (
 
 const LatestHighlights: React.FC = () => {
   const { highlights, loading, error } = useHighlights();
+  const [selectedLeague, setSelectedLeague] = useState('all');
+
+  const filteredHighlights = useMemo(() => {
+    if (selectedLeague === 'all') return highlights;
+    return highlights.filter((h) => h.league === selectedLeague);
+  }, [highlights, selectedLeague]);
+
+  // Get available leagues from the highlights
+  const availableLeagues = useMemo(() => {
+    const leagues = new Set(highlights.map((h) => h.league));
+    return LEAGUE_FILTERS.filter((f) => f.id === 'all' || leagues.has(f.id));
+  }, [highlights]);
 
   if (loading) {
     return (
@@ -150,8 +173,9 @@ const LatestHighlights: React.FC = () => {
 
   return (
     <section className="mb-10">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
             <Play className="h-6 w-6 text-primary" />
             Latest Highlights
@@ -160,13 +184,39 @@ const LatestHighlights: React.FC = () => {
             Watch the best moments from recent matches
           </p>
         </div>
-        <Badge variant="secondary" className="hidden sm:flex">
-          {highlights.length} Videos
-        </Badge>
+          <Badge variant="secondary" className="hidden sm:flex">
+            {filteredHighlights.length} Videos
+          </Badge>
+        </div>
+
+        {/* League Filter Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          {availableLeagues.map((league) => (
+            <Button
+              key={league.id}
+              variant={selectedLeague === league.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedLeague(league.id)}
+              className={`flex-shrink-0 text-xs font-semibold transition-all ${
+                selectedLeague === league.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card hover:bg-accent border-border'
+              }`}
+            >
+              {league.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {highlights.map((highlight) => (
+      {filteredHighlights.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          No highlights available for this league
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredHighlights.map((highlight) => (
           <HighlightCard
             key={highlight.id}
             homeTeam={highlight.homeTeam}
@@ -180,8 +230,9 @@ const LatestHighlights: React.FC = () => {
             thumbnail={highlight.thumbnail}
             video={highlight.video}
           />
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 };
