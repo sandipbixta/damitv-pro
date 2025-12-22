@@ -245,6 +245,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notified_matches: {
+        Row: {
+          id: string
+          match_id: string
+          match_title: string | null
+          notification_type: string | null
+          notified_at: string
+        }
+        Insert: {
+          id?: string
+          match_id: string
+          match_title?: string | null
+          notification_type?: string | null
+          notified_at?: string
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          match_title?: string | null
+          notification_type?: string | null
+          notified_at?: string
+        }
+        Relationships: []
+      }
       page_views: {
         Row: {
           created_at: string
@@ -418,6 +442,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_notifications: { Args: never; Returns: undefined }
       cleanup_stale_viewer_sessions: { Args: never; Returns: undefined }
       get_page_views_stats: {
         Args: { end_date?: string; start_date?: string }

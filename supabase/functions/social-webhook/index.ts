@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +21,50 @@ interface MatchData {
   awayScore?: number;
   scorer?: string;
   minute?: string;
+}
+
+// ========== Supabase Client ==========
+function getSupabaseClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+// ========== Check if already notified ==========
+async function isAlreadyNotified(matchId: string, notificationType: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  
+  const { data, error } = await supabase
+    .from('notified_matches')
+    .select('id')
+    .eq('match_id', matchId)
+    .eq('notification_type', notificationType)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('Error checking notification status:', error);
+    return false; // Allow notification if check fails
+  }
+  
+  return !!data;
+}
+
+// ========== Mark as notified ==========
+async function markAsNotified(matchId: string, matchTitle: string, notificationType: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  
+  const { error } = await supabase
+    .from('notified_matches')
+    .upsert({
+      match_id: matchId,
+      match_title: matchTitle,
+      notification_type: notificationType,
+      notified_at: new Date().toISOString()
+    }, { onConflict: 'match_id' });
+  
+  if (error) {
+    console.error('Error marking notification:', error);
+  }
 }
 
 // ========== TheSportsDB Image Fetching ==========
@@ -219,9 +264,25 @@ serve(async (req) => {
     matchData.homeTeam = homeTeam;
     matchData.awayTeam = awayTeam;
 
-    // Build stream URL
+    // Build stream URL and match ID
     const matchId = matchData.matchId || `${matchData.homeTeam.toLowerCase().replace(/\s+/g, '-')}-vs-${matchData.awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
     const streamUrl = matchData.streamUrl || `https://damitv.netlify.app/match/${matchData.sport || 'football'}/${matchId}`;
+    const notificationType = matchData.eventType || 'match_live';
+    const matchTitle = matchData.matchTitle || `${matchData.homeTeam} vs ${matchData.awayTeam}`;
+
+    // Check if already notified (server-side deduplication)
+    const alreadyNotified = await isAlreadyNotified(matchId, notificationType);
+    if (alreadyNotified) {
+      console.log(`⏭️ Already notified for ${matchTitle} (${notificationType}), skipping...`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          skipped: true, 
+          reason: 'Already notified for this match' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Fetch image if not provided
     let imageUrl = matchData.poster || '';
@@ -247,6 +308,11 @@ serve(async (req) => {
 
     // Post to Telegram
     const telegramResult = await postToTelegram(message, imageUrl || undefined);
+
+    // Mark as notified if successful
+    if (telegramResult.success) {
+      await markAsNotified(matchId, matchTitle, notificationType);
+    }
 
     console.log('📊 Telegram result:', telegramResult);
 
