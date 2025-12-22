@@ -1,8 +1,7 @@
-
 import React from 'react';
-import { tvChannels } from '../data/tvChannels';
+import { useFeaturedChannels } from '../hooks/useCDNChannels';
 import ChannelCard from './ChannelCard';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Link } from 'react-router-dom';
 import {
@@ -13,21 +12,24 @@ import {
 import Autoplay from "embla-carousel-autoplay"
 
 const FeaturedChannels = () => {
-  // Get more featured channels for the scrolling carousel
-  const featuredChannels = [
-    tvChannels.find(ch => ch.id === 'sky-sports-news'),
-    tvChannels.find(ch => ch.id === 'sky-sports-premier-league'),
-    tvChannels.find(ch => ch.id === 'espn-usa'),
-    tvChannels.find(ch => ch.id === 'fox-sports1-usa'),
-    tvChannels.find(ch => ch.id === 'tnt-sports-1'),
-    tvChannels.find(ch => ch.id === 'star-sports1-india'),
-    tvChannels.find(ch => ch.id === 'bein-sport1-france'),
-    tvChannels.find(ch => ch.id === 'fox-501'),
-    tvChannels.find(ch => ch.id === 'sky-sports-football'),
-    tvChannels.find(ch => ch.id === 'espn2-usa'),
-    tvChannels.find(ch => ch.id === 'nbc-sports'),
-    tvChannels.find(ch => ch.id === 'cbs-sports'),
-  ].filter(Boolean);
+  const { channels: featuredChannels, isLoading } = useFeaturedChannels(12);
+
+  if (isLoading) {
+    return (
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-foreground">Live TV Channels</h2>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
+  if (featuredChannels.length === 0) {
+    return null;
+  }
 
   return (
     <div className="mb-8">
@@ -58,7 +60,7 @@ const FeaturedChannels = () => {
           {featuredChannels.map(channel => (
             <CarouselItem key={channel.id} className="pl-2 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
               <Link 
-                to={`/channels?channel=${channel.id}`}
+                to={`/channel/${channel.country}/${channel.id}`}
                 className="block"
               >
                 <ChannelCard
