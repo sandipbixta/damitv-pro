@@ -313,8 +313,8 @@ const StreamSources = ({
               variant={isActive ? "default" : "outline"}
               className={`rounded-full px-5 py-2.5 min-w-[120px] flex-col h-auto gap-1 ${
                 isActive 
-                  ? 'bg-[#ff5722] hover:bg-[#ff5722]/90 text-white border-[#ff5722]' 
-                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-[#ff5722]/50'
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary' 
+                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
               }`}
               onClick={() => {
                 triggerStreamChangeAd();
@@ -329,7 +329,7 @@ const StreamSources = ({
               </div>
               {viewerCount > 0 && (
                 <div className="flex items-center gap-1 text-xs font-semibold">
-                  <Users className="w-3 h-3 text-[#ff5722]" />
+                  <Users className="w-3 h-3 text-primary" />
                   <span>{formatViewerCount(viewerCount, false)}</span>
                 </div>
               )}
