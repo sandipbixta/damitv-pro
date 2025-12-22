@@ -226,6 +226,24 @@ function extractTeamsFromTitle(title: string): { home: string; away: string } | 
   return null;
 }
 
+// Generate SEO-friendly slug for match URL
+function generateMatchSlug(homeTeam: string, awayTeam: string): string {
+  const slugify = (text: string) => text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  return `${slugify(homeTeam)}-vs-${slugify(awayTeam)}-live-stream`;
+}
+
+// Build production URL with SEO slug
+function buildProductionUrl(sport: string, matchId: string, homeTeam: string, awayTeam: string): string {
+  const slug = generateMatchSlug(homeTeam, awayTeam);
+  return `https://damitv.pro/match/${sport}/${matchId}/${slug}`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -264,9 +282,10 @@ serve(async (req) => {
     matchData.homeTeam = homeTeam;
     matchData.awayTeam = awayTeam;
 
-    // Build stream URL and match ID
+    // Build stream URL with production domain and SEO slug
     const matchId = matchData.matchId || `${matchData.homeTeam.toLowerCase().replace(/\s+/g, '-')}-vs-${matchData.awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
-    const streamUrl = matchData.streamUrl || `https://damitv.netlify.app/match/${matchData.sport || 'football'}/${matchId}`;
+    const sport = matchData.sport || 'football';
+    const streamUrl = buildProductionUrl(sport, matchId, matchData.homeTeam, matchData.awayTeam);
     const notificationType = matchData.eventType || 'match_live';
     const matchTitle = matchData.matchTitle || `${matchData.homeTeam} vs ${matchData.awayTeam}`;
 
