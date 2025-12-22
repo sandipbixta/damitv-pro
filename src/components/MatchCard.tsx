@@ -169,7 +169,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
     <div className="group cursor-pointer h-full">
       <div className="relative overflow-hidden rounded-xl bg-[#16161e] transition-all duration-300 hover:bg-[#1c1c28] h-full flex flex-col">
         {/* Thumbnail Section */}
-        <div className="relative aspect-[16/9] overflow-hidden flex-shrink-0 rounded-t-xl">
+        <div className="relative aspect-square overflow-hidden flex-shrink-0 rounded-t-xl">
           {generateThumbnail()}
           
           {/* WATCH IN / LIVE Badge - Positioned at bottom, overlapping */}
