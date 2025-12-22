@@ -4,6 +4,8 @@ import { ManualMatch } from '@/types/manualMatch';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, MapPin, Users, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
+import { useMatchTeamLogos } from '@/hooks/useTeamLogo';
+import TeamLogoDisplay from '@/components/TeamLogoDisplay';
 
 interface MatchDetailsProps {
   match?: Match | ManualMatch | null;
@@ -26,6 +28,9 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({
   const matchDate = isManualMatch ? new Date(match.date) : new Date(match.date);
   const matchTeams = isManualMatch ? match.teams : match.teams;
   const matchCategory = isManualMatch ? match.seo?.category : match.category;
+
+  // Fetch team logos from TheSportsDB
+  const { homeLogo, awayLogo } = useMatchTeamLogos(matchTeams?.home, matchTeams?.away);
 
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
@@ -113,11 +118,34 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({
 
   return (
     <div className={`prose prose-sm max-w-none text-foreground space-y-4 ${className}`}>
-      {/* Main Title */}
+      {/* Main Title with Team Logos */}
       <div className="border-b border-border pb-3">
-        <h2 className="text-lg font-bold text-foreground mb-2">
-          {matchTitle} {isLive && <span className="text-red-500">• LIVE NOW</span>}
-        </h2>
+        {matchTeams && getTeamName(matchTeams.home) && getTeamName(matchTeams.away) ? (
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-2">
+              <TeamLogoDisplay 
+                logo={homeLogo} 
+                teamName={getTeamName(matchTeams.home)} 
+                size="lg" 
+              />
+              <span className="font-bold text-foreground">{getTeamName(matchTeams.home)}</span>
+            </div>
+            <span className="text-muted-foreground font-medium">vs</span>
+            <div className="flex items-center gap-2">
+              <TeamLogoDisplay 
+                logo={awayLogo} 
+                teamName={getTeamName(matchTeams.away)} 
+                size="lg" 
+              />
+              <span className="font-bold text-foreground">{getTeamName(matchTeams.away)}</span>
+            </div>
+            {isLive && <span className="text-red-500 font-bold animate-pulse">• LIVE NOW</span>}
+          </div>
+        ) : (
+          <h2 className="text-lg font-bold text-foreground mb-2">
+            {matchTitle} {isLive && <span className="text-red-500">• LIVE NOW</span>}
+          </h2>
+        )}
         {matchCategory && (
           <p className="text-sm text-muted-foreground capitalize">
             {matchCategory} Match • {formatDate(matchDate)} at {formatTime(matchDate)}
@@ -133,15 +161,29 @@ const MatchDetails: React.FC<MatchDetailsProps> = ({
       {/* Teams Information */}
       {matchTeams && (
         <div className="bg-muted/30 rounded-lg p-4">
-          <h3 className="font-semibold text-foreground mb-2">Match Details</h3>
+          <h3 className="font-semibold text-foreground mb-3">Match Details</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="font-medium text-foreground">Home Team</p>
-              <p className="text-muted-foreground">{getTeamName(matchTeams.home)}</p>
+            <div className="flex items-center gap-3">
+              <TeamLogoDisplay 
+                logo={homeLogo} 
+                teamName={getTeamName(matchTeams.home) || 'Home'} 
+                size="md" 
+              />
+              <div>
+                <p className="font-medium text-foreground">Home Team</p>
+                <p className="text-muted-foreground">{getTeamName(matchTeams.home)}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-foreground">Away Team</p>
-              <p className="text-muted-foreground">{getTeamName(matchTeams.away)}</p>
+            <div className="flex items-center gap-3">
+              <TeamLogoDisplay 
+                logo={awayLogo} 
+                teamName={getTeamName(matchTeams.away) || 'Away'} 
+                size="md" 
+              />
+              <div>
+                <p className="font-medium text-foreground">Away Team</p>
+                <p className="text-muted-foreground">{getTeamName(matchTeams.away)}</p>
+              </div>
             </div>
           </div>
         </div>
