@@ -12,17 +12,5 @@ verify_jwt = false
 [functions.send-subscription-confirmation]
 verify_jwt = false
 
-[functions.fetch-leagues]
-verify_jwt = false
-
-[functions.fetch-league-teams]
-verify_jwt = false
-
-[functions.fetch-league-matches]
-verify_jwt = false
-
-[functions.fetch-league-scores]
-verify_jwt = false
-
 [functions.fetch-team-logo]
 verify_jwt = false
