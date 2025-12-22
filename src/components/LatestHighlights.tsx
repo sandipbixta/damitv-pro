@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Play, X } from 'lucide-react';
+import { Play, X, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useHighlights, Highlight } from '@/hooks/useHighlights';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
-
 const HighlightCard: React.FC<{
   highlight: Highlight;
   onPlay: (highlight: Highlight) => void;
@@ -198,15 +198,30 @@ const LatestHighlights: React.FC = () => {
             No highlights available for this sport
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {filteredHighlights.map((highlight) => (
-              <HighlightCard
-                key={highlight.id}
-                highlight={highlight}
-                onPlay={setPlayingHighlight}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {filteredHighlights.slice(0, 12).map((highlight) => (
+                <HighlightCard
+                  key={highlight.id}
+                  highlight={highlight}
+                  onPlay={setPlayingHighlight}
+                />
+              ))}
+            </div>
+            
+            {/* See All Highlights Button */}
+            <div className="flex justify-center mt-6">
+              <Link to="/highlights">
+                <Button
+                  variant="outline"
+                  className="gap-2 font-semibold border-primary/50 hover:bg-primary hover:text-primary-foreground transition-all"
+                >
+                  See All Highlights
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </>
         )}
       </section>
 
