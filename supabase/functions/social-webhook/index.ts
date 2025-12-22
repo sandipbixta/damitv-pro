@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createHmac } from "node:crypto";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,148 +118,31 @@ async function postToTelegram(
   }
 }
 
-// ========== Twitter/X Posting ==========
-function generateOAuthSignature(
-  method: string,
-  url: string,
-  params: Record<string, string>,
-  consumerSecret: string,
-  tokenSecret: string
-): string {
-  const signatureBaseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(
-    Object.entries(params)
-      .sort()
-      .map(([k, v]) => `${k}=${v}`)
-      .join("&")
-  )}`;
-  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
-  const hmacSha1 = createHmac("sha1", signingKey);
-  return hmacSha1.update(signatureBaseString).digest("base64");
-}
-
-function generateOAuthHeader(method: string, url: string): string | null {
-  const apiKey = Deno.env.get("TWITTER_CONSUMER_KEY")?.trim();
-  const apiSecret = Deno.env.get("TWITTER_CONSUMER_SECRET")?.trim();
-  const accessToken = Deno.env.get("TWITTER_ACCESS_TOKEN")?.trim();
-  const accessTokenSecret = Deno.env.get("TWITTER_ACCESS_TOKEN_SECRET")?.trim();
-
-  if (!apiKey || !apiSecret || !accessToken || !accessTokenSecret) {
-    return null;
-  }
-
-  const oauthParams = {
-    oauth_consumer_key: apiKey,
-    oauth_nonce: Math.random().toString(36).substring(2),
-    oauth_signature_method: "HMAC-SHA1",
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: accessToken,
-    oauth_version: "1.0",
-  };
-
-  const signature = generateOAuthSignature(
-    method,
-    url,
-    oauthParams,
-    apiSecret,
-    accessTokenSecret
-  );
-
-  const signedOAuthParams = {
-    ...oauthParams,
-    oauth_signature: signature,
-  };
-
-  const entries = Object.entries(signedOAuthParams).sort((a, b) =>
-    a[0].localeCompare(b[0])
-  );
-
-  return (
-    "OAuth " +
-    entries
-      .map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`)
-      .join(", ")
-  );
-}
-
-async function postToTwitter(tweetText: string): Promise<{ success: boolean; error?: string }> {
-  const url = "https://api.x.com/2/tweets";
-  const oauthHeader = generateOAuthHeader("POST", url);
-
-  if (!oauthHeader) {
-    console.log('⚠️ Twitter credentials not configured');
-    return { success: false, error: 'Twitter credentials not configured' };
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: oauthHeader,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text: tweetText }),
-    });
-
-    const responseText = await response.text();
-    console.log('Twitter response:', response.status, responseText);
-
-    if (!response.ok) {
-      return { success: false, error: `Twitter API error: ${response.status} - ${responseText}` };
-    }
-
-    console.log('✅ Posted to Twitter successfully');
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Twitter posting error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
 // ========== Message Formatting ==========
-function formatMatchLiveMessage(data: MatchData, streamUrl: string): { telegram: string; twitter: string } {
+function formatMatchLiveMessage(data: MatchData, streamUrl: string): string {
   const emoji = getSportEmoji(data.sport);
   
-  const telegram = `${emoji} <b>LIVE NOW!</b>
+  return `${emoji} <b>LIVE NOW!</b>
 
 ⚽ <b>${data.homeTeam}</b> vs <b>${data.awayTeam}</b>
 ${data.competition ? `🏆 ${data.competition}\n` : ''}
 📺 Watch live: ${streamUrl}
 
 #LiveStream #Sports #DamiTV`;
-
-  const twitter = `${emoji} LIVE NOW!
-
-${data.homeTeam} vs ${data.awayTeam}
-${data.competition ? `🏆 ${data.competition}\n` : ''}
-📺 Watch: ${streamUrl}
-
-#LiveStream #Sports`;
-
-  return { telegram, twitter };
 }
 
-function formatGoalMessage(data: MatchData, streamUrl: string): { telegram: string; twitter: string } {
+function formatGoalMessage(data: MatchData, streamUrl: string): string {
   const emoji = '⚽';
   const scoreDisplay = `${data.homeTeam} ${data.homeScore ?? 0} - ${data.awayScore ?? 0} ${data.awayTeam}`;
   const scorerInfo = data.scorer ? `\n👤 ${data.scorer}${data.minute ? ` (${data.minute}')` : ''}` : '';
   
-  const telegram = `${emoji} <b>GOAL!</b>
+  return `${emoji} <b>GOAL!</b>
 
 📊 <b>${scoreDisplay}</b>${scorerInfo}
 
 📺 Watch live: ${streamUrl}
 
 #Goal #LiveStream #DamiTV`;
-
-  const twitter = `${emoji} GOAL!
-
-${scoreDisplay}${scorerInfo}
-
-📺 ${streamUrl}
-
-#Goal #LiveStream`;
-
-  return { telegram, twitter };
 }
 
 function getSportEmoji(sport?: string): string {
@@ -292,7 +174,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('📨 Social webhook triggered - posting to Telegram & X');
+    console.log('📨 Social webhook triggered - posting to Telegram');
     
     const matchData: MatchData = await req.json();
     console.log('📥 Received match data:', JSON.stringify(matchData, null, 2));
@@ -320,43 +202,32 @@ serve(async (req) => {
       }
     }
 
-    // Default fallback image
-    if (!imageUrl) {
-      imageUrl = 'https://i.imgur.com/m4nV9S8.png';
-    }
-
-    // Format messages based on event type
-    let messages: { telegram: string; twitter: string };
+    // Format message based on event type
+    let message: string;
     
     if (matchData.eventType === 'goal_scored') {
-      messages = formatGoalMessage(matchData, streamUrl);
+      message = formatGoalMessage(matchData, streamUrl);
     } else {
       // Default to match live
-      messages = formatMatchLiveMessage(matchData, streamUrl);
+      message = formatMatchLiveMessage(matchData, streamUrl);
     }
 
-    console.log('📝 Formatted messages:', messages);
+    console.log('📝 Formatted message:', message);
 
-    // Post to both platforms in parallel
-    const [telegramResult, twitterResult] = await Promise.all([
-      postToTelegram(messages.telegram, imageUrl),
-      postToTwitter(messages.twitter)
-    ]);
+    // Post to Telegram
+    const telegramResult = await postToTelegram(message, imageUrl || undefined);
 
-    console.log('📊 Results - Telegram:', telegramResult, 'Twitter:', twitterResult);
-
-    const response = {
-      success: telegramResult.success || twitterResult.success,
-      telegram: telegramResult,
-      twitter: twitterResult,
-      streamUrl,
-      imageUrl
-    };
+    console.log('📊 Telegram result:', telegramResult);
 
     return new Response(
-      JSON.stringify(response),
+      JSON.stringify({
+        success: telegramResult.success,
+        telegram: telegramResult,
+        streamUrl,
+        imageUrl
+      }),
       { 
-        status: response.success ? 200 : 500, 
+        status: telegramResult.success ? 200 : 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
