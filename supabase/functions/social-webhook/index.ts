@@ -217,6 +217,27 @@ serve(async (req) => {
 
     if (!makeResponse.ok) {
       console.error('❌ Make.com webhook failed:', makeResponse.status);
+      
+      // Treat rate limiting / queue full as a soft failure - don't break the app
+      const isRateLimited = makeResponse.status === 400 || makeResponse.status === 429;
+      const isQueueFull = makeResponseText.toLowerCase().includes('queue is full');
+      
+      if (isRateLimited || isQueueFull) {
+        console.log('⚠️ Make.com rate limited or queue full - treating as soft failure');
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            warning: 'Make.com queue is full - notification skipped',
+            matchId: matchData.matchId,
+            matchTitle: matchData.matchTitle
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
