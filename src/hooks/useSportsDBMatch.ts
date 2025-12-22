@@ -62,33 +62,52 @@ interface UseSportsDBMatchResult {
   isLoading: boolean;
   error: string | null;
   lastUpdated: Date | null;
+  foundEventId: string | null;
   refetch: () => Promise<void>;
 }
 
+interface UseSportsDBMatchOptions {
+  eventId?: string | null;
+  searchTeams?: {
+    homeTeam: string;
+    awayTeam: string;
+  } | null;
+  autoRefreshInterval?: number;
+}
+
 export const useSportsDBMatch = (
-  eventId: string | null,
-  autoRefreshInterval: number = 60000
+  options: UseSportsDBMatchOptions
 ): UseSportsDBMatchResult => {
+  const { eventId, searchTeams, autoRefreshInterval = 60000 } = options;
+  
   const [match, setMatch] = useState<SportsDBMatch | null>(null);
   const [lineups, setLineups] = useState<MatchLineups | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [foundEventId, setFoundEventId] = useState<string | null>(null);
 
   const fetchMatchDetails = useCallback(async () => {
-    if (!eventId) return;
+    if (!eventId && !searchTeams) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
+      const requestBody: any = {
+        includeLineups: true,
+        includeTimeline: true,
+      };
+
+      if (eventId) {
+        requestBody.eventId = eventId;
+      } else if (searchTeams) {
+        requestBody.searchTeams = searchTeams;
+      }
+
       const { data, error: fnError } = await supabase.functions.invoke('fetch-match-details', {
-        body: {
-          eventId,
-          includeLineups: true,
-          includeTimeline: true,
-        },
+        body: requestBody,
       });
 
       if (fnError) {
@@ -99,6 +118,7 @@ export const useSportsDBMatch = (
         setMatch(data.match);
         setLineups(data.lineups);
         setTimeline(data.timeline);
+        setFoundEventId(data.eventId || eventId);
         setLastUpdated(new Date());
       } else {
         throw new Error(data?.error || 'Failed to fetch match details');
@@ -109,25 +129,25 @@ export const useSportsDBMatch = (
     } finally {
       setIsLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, searchTeams]);
 
   // Initial fetch
   useEffect(() => {
-    if (eventId) {
+    if (eventId || searchTeams) {
       fetchMatchDetails();
     }
-  }, [eventId, fetchMatchDetails]);
+  }, [eventId, searchTeams?.homeTeam, searchTeams?.awayTeam, fetchMatchDetails]);
 
   // Auto-refresh for live matches
   useEffect(() => {
-    if (!eventId || !match?.isLive) return;
+    if ((!eventId && !searchTeams) || !match?.isLive) return;
 
     const interval = setInterval(() => {
       fetchMatchDetails();
     }, autoRefreshInterval);
 
     return () => clearInterval(interval);
-  }, [eventId, match?.isLive, autoRefreshInterval, fetchMatchDetails]);
+  }, [eventId, searchTeams, match?.isLive, autoRefreshInterval, fetchMatchDetails]);
 
   return {
     match,
@@ -136,6 +156,7 @@ export const useSportsDBMatch = (
     isLoading,
     error,
     lastUpdated,
+    foundEventId,
     refetch: fetchMatchDetails,
   };
 };
