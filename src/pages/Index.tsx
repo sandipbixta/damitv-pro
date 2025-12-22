@@ -11,7 +11,6 @@ import AllSportsLiveMatches from '../components/AllSportsLiveMatches';
 
 // Lazy load more components to reduce initial bundle
 const PopularMatches = React.lazy(() => import('../components/PopularMatches'));
-const PromotionBoxes = React.lazy(() => import('../components/PromotionBoxes'));
 import { Separator } from '../components/ui/separator';
 import { Calendar, Tv } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -21,15 +20,12 @@ import { generateCompetitorTitle, generateCompetitorDescription } from '../utils
 import CompetitorSEOContent from '../components/CompetitorSEOContent';
 import { Helmet } from 'react-helmet-async';
 import { manualMatches } from '../data/manualMatches';
-import TelegramBanner from '../components/TelegramBanner';
 import { HeroCarousel } from '../components/HeroCarousel';
 import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 
 // Lazy load heavy components
-const NewsSection = React.lazy(() => import('../components/NewsSection'));
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
-const TrendingTopics = React.lazy(() => import('../components/TrendingTopics'));
 
 const Index = () => {
   const { toast } = useToast();
@@ -230,11 +226,6 @@ const Index = () => {
       <main className="py-4">
         {/* SEO H1 - Hidden but present for SEO */}
         <h1 className="sr-only">Top 10 Sports Streaming Site Alternatives - Free HD Streams</h1>
-        
-        {/* Promotion Links */}
-        <div className="mb-4">
-          <TelegramBanner />
-        </div>
 
         {/* Hero Carousel with Match Posters */}
         <HeroCarousel />
@@ -315,22 +306,6 @@ const Index = () => {
               )}
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-              <div className="lg:col-span-2">
-                <React.Suspense fallback={<div className="h-48 bg-[#242836] rounded-lg animate-pulse" />}>
-                  <NewsSection />
-                </React.Suspense>
-              </div>
-              <div>
-                <React.Suspense fallback={<div className="h-48 bg-[#242836] rounded-lg animate-pulse" />}>
-                  <TrendingTopics />
-                </React.Suspense>
-              </div>
-            </div>
-            
-            <React.Suspense fallback={<div className="h-24 bg-[#242836] rounded-lg animate-pulse" />}>
-              <PromotionBoxes />
-            </React.Suspense>
             
             {/* Hidden SEO content for competitor targeting */}
             <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
