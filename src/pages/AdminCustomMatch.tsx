@@ -76,12 +76,16 @@ const AdminCustomMatch = () => {
       return;
     }
 
-    // Convert datetime-local value to ISO string
+    // Parse date from DD/MM/YYYY HH:MM format or use current date
     let dateValue = new Date().toISOString();
     if (matchDate) {
-      const parsedDate = new Date(matchDate);
-      if (!isNaN(parsedDate.getTime())) {
-        dateValue = parsedDate.toISOString();
+      const dateMatch = matchDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+      if (dateMatch) {
+        const [, day, month, year, hours = '12', minutes = '00'] = dateMatch;
+        const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+        if (!isNaN(parsedDate.getTime())) {
+          dateValue = parsedDate.toISOString();
+        }
       }
     }
 
@@ -223,16 +227,16 @@ const AdminCustomMatch = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="matchDate">Match Date & Time</Label>
+                  <Label htmlFor="matchDate">Match Date & Time (Optional)</Label>
                   <Input
                     id="matchDate"
-                    type="datetime-local"
+                    type="text"
                     value={matchDate}
                     onChange={(e) => setMatchDate(e.target.value)}
-                    className="bg-background border-border [color-scheme:dark]"
-                    placeholder="Select date and time"
+                    className="bg-background border-border"
+                    placeholder="e.g., 23/12/2025 07:00 or leave empty for now"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Click to pick date/time</p>
+                  <p className="text-xs text-muted-foreground mt-1">Format: DD/MM/YYYY HH:MM</p>
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
