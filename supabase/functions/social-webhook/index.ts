@@ -5,12 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface WebhookPayload {
-  message: string;
-  matchTitle?: string;
-  streamUrl?: string;
-  platforms?: ('instagram' | 'twitter')[];
-  imageUrl?: string;
+interface MatchData {
+  matchId: string;
+  matchTitle: string;
+  homeTeam: string;
+  awayTeam: string;
+  competition?: string;
+  sport?: string;
+  streamUrl: string;
+  kickoffTime?: string;
+  message?: string;
 }
 
 serve(async (req) => {
@@ -20,19 +24,35 @@ serve(async (req) => {
   }
 
   try {
-    console.log('📨 Social webhook triggered');
+    console.log('📨 Social webhook triggered - forwarding to Make.com');
     
-    const payload: WebhookPayload = await req.json();
+    const MAKE_WEBHOOK_URL = Deno.env.get('MAKE_WEBHOOK_URL');
     
-    console.log('Received payload:', JSON.stringify(payload, null, 2));
-
-    // Validate required fields
-    if (!payload.message) {
-      console.error('❌ Missing message in payload');
+    if (!MAKE_WEBHOOK_URL) {
+      console.error('❌ MAKE_WEBHOOK_URL not configured');
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Message is required' 
+          error: 'Make.com webhook URL not configured' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const matchData: MatchData = await req.json();
+    
+    console.log('Received match data:', JSON.stringify(matchData, null, 2));
+
+    // Validate required fields
+    if (!matchData.matchId || !matchData.matchTitle) {
+      console.error('❌ Missing required fields');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'matchId and matchTitle are required' 
         }),
         { 
           status: 400, 
@@ -41,23 +61,59 @@ serve(async (req) => {
       );
     }
 
-    // Log the received data for Make.com to process
-    const responseData = {
-      success: true,
-      received: {
-        message: payload.message,
-        matchTitle: payload.matchTitle || null,
-        streamUrl: payload.streamUrl || null,
-        platforms: payload.platforms || ['instagram', 'twitter'],
-        imageUrl: payload.imageUrl || null,
-        timestamp: new Date().toISOString(),
-      }
+    // Prepare payload for Make.com
+    const makePayload = {
+      matchId: matchData.matchId,
+      matchTitle: matchData.matchTitle,
+      homeTeam: matchData.homeTeam || '',
+      awayTeam: matchData.awayTeam || '',
+      competition: matchData.competition || '',
+      sport: matchData.sport || 'Football',
+      streamUrl: matchData.streamUrl || `https://damitv.netlify.app/match/${matchData.matchId}`,
+      kickoffTime: matchData.kickoffTime || new Date().toISOString(),
+      message: matchData.message || `🔴 LIVE NOW: ${matchData.matchTitle}\n\n📺 Watch free: ${matchData.streamUrl || `https://damitv.netlify.app/match/${matchData.matchId}`}\n\n#DamiTV #LiveSports #FreeStreaming`,
+      timestamp: new Date().toISOString(),
+      isLive: true
     };
 
-    console.log('✅ Webhook processed successfully:', responseData);
+    console.log('📤 Sending to Make.com:', JSON.stringify(makePayload, null, 2));
+
+    // Forward to Make.com webhook
+    const makeResponse = await fetch(MAKE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(makePayload),
+    });
+
+    const makeResponseText = await makeResponse.text();
+    console.log('📥 Make.com response:', makeResponse.status, makeResponseText);
+
+    if (!makeResponse.ok) {
+      console.error('❌ Make.com webhook failed:', makeResponse.status);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Make.com webhook failed: ${makeResponse.status}`,
+          details: makeResponseText
+        }),
+        { 
+          status: 502, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('✅ Successfully forwarded to Make.com');
 
     return new Response(
-      JSON.stringify(responseData),
+      JSON.stringify({
+        success: true,
+        message: 'Match data sent to Make.com for social posting',
+        matchId: matchData.matchId,
+        matchTitle: matchData.matchTitle
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
