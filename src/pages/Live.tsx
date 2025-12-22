@@ -15,6 +15,7 @@ import MatchDetails from '../components/MatchDetails';
 
 import { useLiveMatches } from '../hooks/useLiveMatches';
 import { useStreamPlayer } from '../hooks/useStreamPlayer';
+import { useLiveMatchNotifier } from '../hooks/useLiveMatchNotifier';
 import LiveHeader from '../components/live/LiveHeader';
 import FeaturedPlayer from '../components/live/FeaturedPlayer';
 import SportFilterPills from '../components/live/SportFilterPills';
@@ -54,6 +55,9 @@ const Live = () => {
     setFeaturedMatch,
     fetchStreamData
   } = useStreamPlayer();
+
+  // Auto-notify when matches go live (posts to Telegram & X via Make.com)
+  useLiveMatchNotifier(allMatches);
 
   // Handle user match selection
   const handleUserMatchSelect = (match: Match) => {

@@ -23,6 +23,7 @@ import { manualMatches } from '../data/manualMatches';
 import { HeroCarousel } from '../components/HeroCarousel';
 import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
+import { useLiveMatchNotifier } from '../hooks/useLiveMatchNotifier';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -43,6 +44,9 @@ const Index = () => {
   const visibleManualMatches = useMemo(() => {
     return manualMatches.filter(match => match.visible);
   }, []);
+
+  // Auto-notify when matches go live (posts to Telegram & X via Make.com)
+  useLiveMatchNotifier(liveMatches);
 
   // Memoize popular matches calculation - filter by selected sport
   const popularMatches = useMemo(() => {
