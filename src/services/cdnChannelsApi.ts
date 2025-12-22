@@ -7,23 +7,74 @@ export interface CDNChannel {
   country: string;
   embedUrl: string;
   logo?: string;
-  category?: string;
+  viewers?: number;
 }
 
+// Actual API response format
 interface CDNApiChannel {
-  id?: string | number;
-  name?: string;
-  title?: string;
-  country?: string;
-  region?: string;
-  url?: string;
-  embed_url?: string;
-  embedUrl?: string;
-  logo?: string;
-  image?: string;
-  category?: string;
-  type?: string;
+  name: string;
+  code: string;
+  url: string;
+  image: string | null;
+  viewers: number;
 }
+
+interface CDNApiResponse {
+  total_channels: number;
+  channels: CDNApiChannel[];
+}
+
+// Map country codes to full names
+const countryCodeMap: Record<string, string> = {
+  'us': 'United States',
+  'uk': 'United Kingdom',
+  'ca': 'Canada',
+  'au': 'Australia',
+  'in': 'India',
+  'de': 'Germany',
+  'fr': 'France',
+  'es': 'Spain',
+  'it': 'Italy',
+  'br': 'Brazil',
+  'mx': 'Mexico',
+  'ar': 'Argentina',
+  'pt': 'Portugal',
+  'nl': 'Netherlands',
+  'be': 'Belgium',
+  'ch': 'Switzerland',
+  'at': 'Austria',
+  'pl': 'Poland',
+  'tr': 'Turkey',
+  'sa': 'Saudi Arabia',
+  'ae': 'UAE',
+  'pk': 'Pakistan',
+  'bd': 'Bangladesh',
+  'my': 'Malaysia',
+  'sg': 'Singapore',
+  'ph': 'Philippines',
+  'id': 'Indonesia',
+  'th': 'Thailand',
+  'vn': 'Vietnam',
+  'jp': 'Japan',
+  'kr': 'South Korea',
+  'cn': 'China',
+  'za': 'South Africa',
+  'ng': 'Nigeria',
+  'ke': 'Kenya',
+  'eg': 'Egypt',
+  'nz': 'New Zealand',
+  'ie': 'Ireland',
+  'se': 'Sweden',
+  'no': 'Norway',
+  'dk': 'Denmark',
+  'fi': 'Finland',
+  'ru': 'Russia',
+  'ua': 'Ukraine',
+  'gr': 'Greece',
+  'ro': 'Romania',
+  'cz': 'Czech Republic',
+  'hu': 'Hungary',
+};
 
 class CDNChannelsApiService {
   private baseUrl = 'https://api.cdn-live.tv/api/v1/vip/damitv/channels/';
@@ -32,22 +83,20 @@ class CDNChannelsApiService {
   private isFetching = false;
   private fetchPromise: Promise<CDNChannel[]> | null = null;
 
-  private transformChannel(apiChannel: CDNApiChannel, index: number): CDNChannel {
-    // Handle various possible API response formats
-    const name = apiChannel.name || apiChannel.title || `Channel ${index + 1}`;
-    const id = apiChannel.id?.toString() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const country = apiChannel.country || apiChannel.region || 'International';
-    const embedUrl = apiChannel.url || apiChannel.embed_url || apiChannel.embedUrl || '';
-    const logo = apiChannel.logo || apiChannel.image;
-    const category = apiChannel.category || apiChannel.type;
+  private getCountryName(code: string): string {
+    return countryCodeMap[code.toLowerCase()] || code.toUpperCase();
+  }
 
+  private transformChannel(apiChannel: CDNApiChannel): CDNChannel {
+    const id = apiChannel.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
     return {
       id,
-      title: name,
-      country,
-      embedUrl,
-      logo,
-      category
+      title: apiChannel.name,
+      country: this.getCountryName(apiChannel.code),
+      embedUrl: apiChannel.url,
+      logo: apiChannel.image || undefined,
+      viewers: apiChannel.viewers
     };
   }
 
@@ -90,32 +139,16 @@ class CDNChannelsApiService {
         throw new Error(`CDN API returned ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: CDNApiResponse = await response.json();
       
-      // Handle different possible response formats
-      let channelsArray: CDNApiChannel[] = [];
-      
-      if (Array.isArray(data)) {
-        channelsArray = data;
-      } else if (data.channels && Array.isArray(data.channels)) {
-        channelsArray = data.channels;
-      } else if (data.data && Array.isArray(data.data)) {
-        channelsArray = data.data;
-      } else if (typeof data === 'object') {
-        // If it's an object with country keys containing arrays
-        Object.values(data).forEach(value => {
-          if (Array.isArray(value)) {
-            channelsArray.push(...(value as CDNApiChannel[]));
-          }
-        });
-      }
-
-      if (channelsArray.length === 0) {
-        console.warn('📺 No channels found in API response');
+      if (!data.channels || !Array.isArray(data.channels)) {
+        console.warn('📺 Invalid API response format');
         return this.cache.data || [];
       }
 
-      const channels = channelsArray.map((ch, index) => this.transformChannel(ch, index));
+      console.log(`📺 API returned ${data.total_channels} total channels`);
+
+      const channels = data.channels.map(ch => this.transformChannel(ch));
       
       // Filter out channels without embed URLs
       const validChannels = channels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
@@ -126,7 +159,7 @@ class CDNChannelsApiService {
         timestamp: Date.now()
       };
 
-      console.log(`📺 Loaded ${validChannels.length} channels from CDN API`);
+      console.log(`📺 Loaded ${validChannels.length} valid channels from CDN API`);
       return validChannels;
     } catch (error) {
       console.error('📺 Error fetching CDN channels:', error);
@@ -149,16 +182,19 @@ class CDNChannelsApiService {
   }
 
   async getChannelById(country: string, channelId: string): Promise<CDNChannel | null> {
+    const channels = await this.fetchChannels();
+    
+    // First try to find by country and id
     const channelsByCountry = await this.getChannelsByCountry();
     const countryChannels = channelsByCountry[country];
     
-    if (!countryChannels) {
-      // Try to find in all channels
-      const allChannels = await this.fetchChannels();
-      return allChannels.find(ch => ch.id === channelId) || null;
+    if (countryChannels) {
+      const found = countryChannels.find(ch => ch.id === channelId);
+      if (found) return found;
     }
-
-    return countryChannels.find(ch => ch.id === channelId) || null;
+    
+    // Fallback: search all channels
+    return channels.find(ch => ch.id === channelId) || null;
   }
 
   async searchChannels(query: string): Promise<CDNChannel[]> {
@@ -178,10 +214,13 @@ class CDNChannelsApiService {
     return Array.from(countries).sort();
   }
 
-  // Get featured channels (first few popular ones)
+  // Get featured channels (first few popular ones, sorted by viewers)
   async getFeaturedChannels(limit: number = 12): Promise<CDNChannel[]> {
     const channels = await this.fetchChannels();
-    return channels.slice(0, limit);
+    // Sort by viewers descending and take top channels
+    return [...channels]
+      .sort((a, b) => (b.viewers || 0) - (a.viewers || 0))
+      .slice(0, limit);
   }
 
   // Clear cache (useful for force refresh)
