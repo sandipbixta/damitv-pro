@@ -24,6 +24,7 @@ import { HeroCarousel } from '../components/HeroCarousel';
 import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 import { useLiveMatchNotifier } from '../hooks/useLiveMatchNotifier';
+import CustomMatchCards from '../components/CustomMatchCards';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -230,6 +231,9 @@ const Index = () => {
       <main className="py-4">
         {/* SEO H1 - Hidden but present for SEO */}
         <h1 className="sr-only">Top 10 Sports Streaming Site Alternatives - Free HD Streams</h1>
+
+        {/* Custom Match Cards - Above Hero Carousel */}
+        <CustomMatchCards />
 
         {/* Hero Carousel with Match Posters */}
         <HeroCarousel />
