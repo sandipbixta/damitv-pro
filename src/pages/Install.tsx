@@ -4,15 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import PageLayout from '@/components/PageLayout';
 import SEOMetaTags from '@/components/SEOMetaTags';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 const Install = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [downloadStats, setDownloadStats] = useState<{ android: number; ios: number }>({ android: 0, ios: 0 });
-  const { toast } = useToast();
 
   useEffect(() => {
     // Check if already installed
@@ -29,55 +25,7 @@ const Install = () => {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
-    // Fetch download stats
-    fetchDownloadStats();
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-    };
   }, []);
-
-  const fetchDownloadStats = async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_download_stats');
-      if (!error && data) {
-        const stats = { android: 0, ios: 0 };
-        data.forEach((item: { platform: string; total_downloads: number }) => {
-          if (item.platform === 'android') stats.android = item.total_downloads;
-          if (item.platform === 'ios') stats.ios = item.total_downloads;
-        });
-        setDownloadStats(stats);
-      }
-    } catch (error) {
-      console.error('Error fetching download stats:', error);
-    }
-  };
-
-  const trackDownload = async (platform: 'android' | 'ios') => {
-    try {
-      const sessionId = localStorage.getItem('session_id') || crypto.randomUUID();
-      localStorage.setItem('session_id', sessionId);
-
-      await supabase.from('app_downloads').insert({
-        platform,
-        session_id: sessionId,
-        user_agent: navigator.userAgent,
-      });
-
-      // Update local stats
-      setDownloadStats(prev => ({
-        ...prev,
-        [platform]: prev[platform] + 1
-      }));
-
-      toast({
-        title: "Download started",
-        description: `Thank you for downloading DamiTV for ${platform === 'android' ? 'Android' : 'iOS'}!`,
-      });
-    } catch (error) {
-      console.error('Error tracking download:', error);
-    }
-  };
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -155,19 +103,15 @@ const Install = () => {
                       </p>
                       
                       <Button 
-                        onClick={() => {
-                          trackDownload('android');
-                          window.open('https://damitv-pro.netlify.app', '_blank');
-                        }}
+                        onClick={() => window.open('https://damitv-pro.netlify.app', '_blank')}
                         size="default"
                         className="bg-green-600 hover:bg-green-700 text-white w-full mb-2"
                       >
                         <Download className="mr-2 h-4 w-4" />
                         Download App
                       </Button>
-                      <p className="text-xs text-green-600 font-semibold mb-3">
-                        {downloadStats.android.toLocaleString()} downloads
-                      </p>
+                      
+
                       
                       <div className="bg-background/50 p-3 rounded-lg border text-left">
                         <p className="text-xs font-semibold mb-1">Quick Steps:</p>
@@ -196,10 +140,7 @@ const Install = () => {
                       </p>
                       
                       <Button 
-                        onClick={() => {
-                          trackDownload('ios');
-                          window.open('https://damitv-pro.netlify.app', '_blank');
-                        }}
+                        onClick={() => window.open('https://damitv-pro.netlify.app', '_blank')}
                         size="default"
                         className="bg-blue-600 hover:bg-blue-700 text-white w-full mb-2"
                       >
@@ -207,9 +148,7 @@ const Install = () => {
                         Download App
                       </Button>
                       
-                      <p className="text-xs text-blue-600 font-semibold mb-3">
-                        {downloadStats.ios.toLocaleString()} installations
-                      </p>
+
                       
                       <div className="bg-background/50 p-3 rounded-lg border text-left">
                         <p className="text-xs font-semibold mb-1">Quick Steps:</p>
