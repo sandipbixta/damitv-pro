@@ -1,9 +1,9 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CountrySelector from './CountrySelector';
 import SearchBar from './SearchBar';
-import { getChannelsByCountry } from '@/data/tvChannels';
+import { useCDNChannels } from '@/hooks/useCDNChannels';
+import { Loader2 } from 'lucide-react';
 
 // Helper for channel initials
 const getInitials = (title: string) =>
@@ -11,11 +11,16 @@ const getInitials = (title: string) =>
 
 const ChannelsGrid = () => {
   const navigate = useNavigate();
-  const channelsByCountry = getChannelsByCountry();
-  const allCountryNames = Object.keys(channelsByCountry);
-  // Default to first country alphabetical if exists
-  const [selectedCountry, setSelectedCountry] = useState(allCountryNames[0] || "");
+  const { channelsByCountry, countries, isLoading, error } = useCDNChannels();
+  const [selectedCountry, setSelectedCountry] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Set default country when data loads
+  useEffect(() => {
+    if (countries.length > 0 && !selectedCountry) {
+      setSelectedCountry(countries[0]);
+    }
+  }, [countries, selectedCountry]);
 
   const handleSelectChannel = (channel: any, country: string) => {
     navigate(`/channel/${country}/${channel.id}`);
@@ -47,6 +52,15 @@ const ChannelsGrid = () => {
     return allChannels;
   }, [searchTerm, selectedCountry, channelsByCountry]);
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading channels...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-2xl font-bold text-foreground mb-2">All Channels by Country</h2>
@@ -64,7 +78,7 @@ const ChannelsGrid = () => {
       {/* Country Selector - only show when not searching */}
       {!searchTerm.trim() && (
         <CountrySelector
-          countries={allCountryNames}
+          countries={countries}
           selected={selectedCountry}
           onSelect={handleSelectCountry}
         />
