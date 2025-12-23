@@ -579,13 +579,16 @@ ${sportEmoji} <b>${teams.home}</b> vs <b>${teams.away}</b>
             ? liveScore.homeGoalDetails?.split(',').pop()?.trim() 
             : liveScore.awayGoalDetails?.split(',').pop()?.trim();
           
+          const scoringTeam = homeGoals > 0 ? liveScore.homeTeam : liveScore.awayTeam;
+          
           const goalMessage = `⚽ <b>GOAL!</b>
 
-📊 <b>${liveScore.homeTeam}</b> ${liveScore.homeScore} - ${liveScore.awayScore} <b>${liveScore.awayTeam}</b>
-${liveScore.league ? `🏆 ${liveScore.league}\n` : ''}${liveScore.minute ? `⏱️ ${liveScore.minute}\n` : ''}${scorer ? `👤 <b>${scorer}</b>\n` : ''}
-📺 Watch the action live!
+<b>${liveScore.homeTeam} ${liveScore.homeScore} - ${liveScore.awayScore} ${liveScore.awayTeam}</b>
+${scorer ? `👤 ${scorer}` : ''}${liveScore.minute ? ` (${liveScore.minute}')` : ''}
 
-#Goal #LiveStream #DamiTV`;
+📺 Watch live on DamiTV!
+
+#${scoringTeam.replace(/\s+/g, '')} #Goal #DamiTV`;
 
           let result: { success: boolean; messageId?: number };
           
@@ -600,7 +603,6 @@ ${liveScore.league ? `🏆 ${liveScore.league}\n` : ''}${liveScore.minute ? `⏱
           }
           
           if (result.success) {
-            const scoringTeam = homeGoals > 0 ? liveScore.homeTeam : liveScore.awayTeam;
             await markAsNotified(match.id, `${scoringTeam} goal`, 'goal_scored');
             
             // Store message ID for future edits
