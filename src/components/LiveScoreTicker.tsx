@@ -133,7 +133,7 @@ const LiveScoreTicker: React.FC = () => {
     const el = trackRef.current;
     if (!el) return;
 
-    const speedPxPerSec = 10; // lower = slower
+    const speedPxPerSec = 18; // lower = slower
     const compute = () => {
       const distancePx = el.scrollWidth / 2;
       if (!distancePx || Number.isNaN(distancePx)) return;
