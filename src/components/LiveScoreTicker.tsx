@@ -47,12 +47,25 @@ const LiveScoreTicker: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Add timestamp to bust cache
+        const timestamp = Date.now();
+        console.log('🎯 Fetching live scores at:', new Date(timestamp).toISOString());
+        
         // First try to get live scores from TheSportsDB
-        const { data: liveScoreData } = await supabase.functions.invoke('fetch-live-scores');
+        const { data: liveScoreData, error } = await supabase.functions.invoke('fetch-live-scores', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        });
+        
+        if (error) {
+          console.error('Error from fetch-live-scores:', error);
+        }
         
         let items: TickerItem[] = [];
         
         if (liveScoreData?.success && liveScoreData.liveScores?.length > 0) {
+          console.log(`✅ Received ${liveScoreData.liveScores.length} live scores`);
           // Use live scores from TheSportsDB
           items = liveScoreData.liveScores.map((score: LiveScore) => {
             const sportSlug = getSportSlug(score.sport);
@@ -76,6 +89,7 @@ const LiveScoreTicker: React.FC = () => {
         
         // If no live scores, fallback to live matches from API
         if (items.length === 0) {
+          console.log('📡 No live scores, fetching from fallback API...');
           const matches = await fetchLiveMatches();
           const now = Date.now();
           
@@ -124,8 +138,8 @@ const LiveScoreTicker: React.FC = () => {
 
     fetchData();
     
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchData, 60 * 1000);
+    // Refresh every 30 seconds for more up-to-date scores
+    const interval = setInterval(fetchData, 30 * 1000);
     return () => clearInterval(interval);
   }, []);
 
