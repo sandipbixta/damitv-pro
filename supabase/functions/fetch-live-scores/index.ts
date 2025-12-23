@@ -20,7 +20,7 @@ interface LiveScore {
 }
 
 // Sports to fetch live scores for (v2 API uses lowercase)
-const SPORTS_V2 = ['soccer', 'basketball', 'icehockey', 'american_football'];
+const SPORTS_V2 = ['soccer', 'basketball', 'icehockey', 'american_football', 'tennis', 'rugby', 'cricket'];
 
 async function fetchLiveScoresForSport(apiKey: string, sport: string): Promise<LiveScore[]> {
   try {
