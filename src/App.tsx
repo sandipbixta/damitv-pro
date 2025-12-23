@@ -46,7 +46,7 @@ import WatchPremierLeague from "./pages/WatchPremierLeague";
 import NbaStreaming from "./pages/NbaStreaming";
 import UfcStreaming from "./pages/UfcStreaming";
 import Highlights from "./pages/Highlights";
-import GoogleAnalytics from "./components/GoogleAnalytics";
+
 import TelegramFAB from "./components/TelegramFAB";
 
 // Optimized query client configuration
@@ -69,7 +69,7 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <BrowserRouter>
-          <GoogleAnalytics />
+          
           <MonetizationTracker>
             <TooltipProvider>
               <AdsterraSocialBar />
