@@ -128,39 +128,39 @@ export const TeamStats = ({
   }
 
   return (
-    <Tabs defaultValue="comparison" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="comparison">Comparison</TabsTrigger>
-        <TabsTrigger value="home">Home Team</TabsTrigger>
-        <TabsTrigger value="away">Away Team</TabsTrigger>
+    <Tabs defaultValue="comparison" className="w-full overflow-x-hidden">
+      <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
+        <TabsTrigger value="comparison" className="px-2 sm:px-3">Stats</TabsTrigger>
+        <TabsTrigger value="home" className="px-2 sm:px-3 truncate">Home</TabsTrigger>
+        <TabsTrigger value="away" className="px-2 sm:px-3 truncate">Away</TabsTrigger>
       </TabsList>
 
       <TabsContent value="comparison" className="space-y-4 mt-4">
         {h2hStats && (
-          <Card className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Target className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold">Head to Head</h3>
+          <Card className="p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-4 sm:mb-6">
+              <Target className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              <h3 className="font-semibold text-sm sm:text-base">Head to Head</h3>
             </div>
             
             <div className="space-y-4">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">Total Matches</p>
-                <p className="text-3xl font-bold">{h2hStats.total_matches}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">Total Matches</p>
+                <p className="text-2xl sm:text-3xl font-bold">{h2hStats.total_matches}</p>
               </div>
               
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">{h2hStats.team_a_name}</p>
-                  <p className="text-2xl font-bold text-primary">{h2hStats.team_a_wins}</p>
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">{h2hStats.team_a_name}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-primary">{h2hStats.team_a_wins}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Draws</p>
-                  <p className="text-2xl font-bold">{h2hStats.draws}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Draws</p>
+                  <p className="text-xl sm:text-2xl font-bold">{h2hStats.draws}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">{h2hStats.team_b_name}</p>
-                  <p className="text-2xl font-bold text-primary">{h2hStats.team_b_wins}</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">{h2hStats.team_b_name}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-primary">{h2hStats.team_b_wins}</p>
                 </div>
               </div>
 
@@ -187,19 +187,19 @@ export const TeamStats = ({
         )}
 
         {homeStats && awayStats && (
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4">Season Statistics</h3>
-            <div className="space-y-4">
+          <Card className="p-4 sm:p-6">
+            <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Season Statistics</h3>
+            <div className="space-y-3 sm:space-y-4">
               {[
                 { label: 'Win Rate', home: homeStats.win_rate, away: awayStats.win_rate, suffix: '%' },
-                { label: 'Goals Per Game', home: homeStats.average_goals, away: awayStats.average_goals, suffix: '' },
+                { label: 'Goals/Game', home: homeStats.average_goals, away: awayStats.average_goals, suffix: '' },
                 { label: 'Clean Sheets', home: homeStats.clean_sheets, away: awayStats.clean_sheets, suffix: '' },
-                { label: 'Total Points', home: homeStats.total_points, away: awayStats.total_points, suffix: '' },
+                { label: 'Points', home: homeStats.total_points, away: awayStats.total_points, suffix: '' },
               ].map((stat) => (
                 <div key={stat.label}>
-                  <p className="text-sm text-muted-foreground mb-2">{stat.label}</p>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="text-right font-semibold">{stat.home}{stat.suffix}</div>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">{stat.label}</p>
+                  <div className="flex items-center justify-between gap-2 sm:gap-4">
+                    <div className="text-right font-semibold text-sm sm:text-base min-w-[40px]">{stat.home}{stat.suffix}</div>
                     <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-primary to-primary/60"
@@ -216,7 +216,7 @@ export const TeamStats = ({
                         }}
                       />
                     </div>
-                    <div className="font-semibold">{stat.away}{stat.suffix}</div>
+                    <div className="font-semibold text-sm sm:text-base min-w-[40px]">{stat.away}{stat.suffix}</div>
                   </div>
                 </div>
               ))}
@@ -227,17 +227,17 @@ export const TeamStats = ({
 
       <TabsContent value="home" className="mt-4">
         {homeStats ? (
-          <Card className="p-6">
-            <h3 className="font-semibold mb-6">{homeStats.team_name}</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard icon={<BarChart3 />} label="Matches" value={homeStats.matches_played} />
-              <StatCard icon={<TrendingUp />} label="Wins" value={homeStats.wins} />
-              <StatCard icon={<Shield />} label="Clean Sheets" value={homeStats.clean_sheets} />
-              <StatCard icon={<Target />} label="Goals" value={homeStats.goals_scored} />
+          <Card className="p-4 sm:p-6">
+            <h3 className="font-semibold mb-4 sm:mb-6 text-sm sm:text-base truncate">{homeStats.team_name}</h3>
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              <StatCard icon={<BarChart3 className="w-4 h-4" />} label="Matches" value={homeStats.matches_played} />
+              <StatCard icon={<TrendingUp className="w-4 h-4" />} label="Wins" value={homeStats.wins} />
+              <StatCard icon={<Shield className="w-4 h-4" />} label="Clean Sheets" value={homeStats.clean_sheets} />
+              <StatCard icon={<Target className="w-4 h-4" />} label="Goals" value={homeStats.goals_scored} />
             </div>
             {homeStats.form_last_5?.length > 0 && (
-              <div className="mt-6">
-                <p className="text-sm font-medium mb-2">Recent Form</p>
+              <div className="mt-4 sm:mt-6">
+                <p className="text-xs sm:text-sm font-medium mb-2">Recent Form</p>
                 {renderForm(homeStats.form_last_5)}
               </div>
             )}
@@ -251,17 +251,17 @@ export const TeamStats = ({
 
       <TabsContent value="away" className="mt-4">
         {awayStats ? (
-          <Card className="p-6">
-            <h3 className="font-semibold mb-6">{awayStats.team_name}</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard icon={<BarChart3 />} label="Matches" value={awayStats.matches_played} />
-              <StatCard icon={<TrendingUp />} label="Wins" value={awayStats.wins} />
-              <StatCard icon={<Shield />} label="Clean Sheets" value={awayStats.clean_sheets} />
-              <StatCard icon={<Target />} label="Goals" value={awayStats.goals_scored} />
+          <Card className="p-4 sm:p-6">
+            <h3 className="font-semibold mb-4 sm:mb-6 text-sm sm:text-base truncate">{awayStats.team_name}</h3>
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              <StatCard icon={<BarChart3 className="w-4 h-4" />} label="Matches" value={awayStats.matches_played} />
+              <StatCard icon={<TrendingUp className="w-4 h-4" />} label="Wins" value={awayStats.wins} />
+              <StatCard icon={<Shield className="w-4 h-4" />} label="Clean Sheets" value={awayStats.clean_sheets} />
+              <StatCard icon={<Target className="w-4 h-4" />} label="Goals" value={awayStats.goals_scored} />
             </div>
             {awayStats.form_last_5?.length > 0 && (
-              <div className="mt-6">
-                <p className="text-sm font-medium mb-2">Recent Form</p>
+              <div className="mt-4 sm:mt-6">
+                <p className="text-xs sm:text-sm font-medium mb-2">Recent Form</p>
                 {renderForm(awayStats.form_last_5)}
               </div>
             )}
@@ -277,11 +277,11 @@ export const TeamStats = ({
 };
 
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-  <div className="p-4 rounded-lg bg-muted/30 border">
-    <div className="flex items-center gap-2 mb-2 text-primary">
+  <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border">
+    <div className="flex items-center gap-2 mb-1 sm:mb-2 text-primary">
       {icon}
     </div>
-    <p className="text-2xl font-bold">{value}</p>
+    <p className="text-xl sm:text-2xl font-bold">{value}</p>
     <p className="text-xs text-muted-foreground mt-1">{label}</p>
   </div>
 );
