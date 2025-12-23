@@ -192,69 +192,6 @@ async function postToTelegramWithBothLogos(
   }
 }
 
-// ========== Facebook Page Posting ==========
-async function postToFacebookPage(
-  message: string,
-  imageUrl?: string | null
-): Promise<{ success: boolean; error?: string; postId?: string }> {
-  const pageId = Deno.env.get('FACEBOOK_PAGE_ID');
-  const accessToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN');
-
-  if (!pageId || !accessToken) {
-    console.log('⚠️ Facebook credentials not configured');
-    return { success: false, error: 'Facebook credentials not configured' };
-  }
-
-  try {
-    let response;
-    const baseUrl = `https://graph.facebook.com/v18.0/${pageId}`;
-
-    // Convert HTML to plain text for Facebook
-    const plainMessage = message
-      .replace(/<b>/g, '')
-      .replace(/<\/b>/g, '')
-      .replace(/<br\s*\/?>/g, '\n');
-
-    if (imageUrl) {
-      // Post with photo
-      console.log('📸 Posting to Facebook with image');
-      response = await fetch(`${baseUrl}/photos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: imageUrl,
-          caption: plainMessage,
-          access_token: accessToken
-        })
-      });
-    } else {
-      // Text-only post
-      console.log('📝 Posting text to Facebook');
-      response = await fetch(`${baseUrl}/feed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: plainMessage,
-          access_token: accessToken
-        })
-      });
-    }
-
-    const data = await response.json();
-
-    if (!response.ok || data.error) {
-      console.error('❌ Facebook API error:', data);
-      return { success: false, error: data.error?.message || 'Facebook API error' };
-    }
-
-    console.log('✅ Posted to Facebook successfully, ID:', data.id || data.post_id);
-    return { success: true, postId: data.id || data.post_id };
-  } catch (error) {
-    console.error('❌ Facebook posting error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
 // ========== Message Formatting ==========
 function formatMatchLiveMessage(data: MatchData, streamUrl: string): string {
   const emoji = getSportEmoji(data.sport);
@@ -411,35 +348,26 @@ serve(async (req) => {
 
     console.log('📝 Formatted message:', message);
 
-    // Post to Telegram and Facebook in parallel
-    const imageForFacebook = homeBadge || awayBadge || null;
-    
-    const [telegramResult, facebookResult] = await Promise.all([
-      postToTelegramWithBothLogos(message, homeBadge, awayBadge),
-      postToFacebookPage(message, imageForFacebook)
-    ]);
+    // Post to Telegram with both team logos
+    const telegramResult = await postToTelegramWithBothLogos(message, homeBadge, awayBadge);
 
-    // Mark as notified if at least one succeeded
-    if (telegramResult.success || facebookResult.success) {
+    // Mark as notified if successful
+    if (telegramResult.success) {
       await markAsNotified(matchId, matchTitle, notificationType);
     }
 
     console.log('📊 Telegram result:', telegramResult);
-    console.log('📘 Facebook result:', facebookResult);
-
-    const overallSuccess = telegramResult.success || facebookResult.success;
 
     return new Response(
       JSON.stringify({
-        success: overallSuccess,
+        success: telegramResult.success,
         telegram: telegramResult,
-        facebook: facebookResult,
         streamUrl,
         homeBadge,
         awayBadge
       }),
       { 
-        status: overallSuccess ? 200 : 500, 
+        status: telegramResult.success ? 200 : 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
