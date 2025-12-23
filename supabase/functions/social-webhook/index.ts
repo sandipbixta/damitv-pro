@@ -422,13 +422,28 @@ async function submitToGoogleIndexing(url: string): Promise<{ success: boolean; 
     const signatureInput = `${headerEncoded}.${payloadEncoded}`;
 
     // Handle escaped newlines in the private key (from environment variable)
-    const cleanedKey = privateKey
-      .replace(/\\n/g, '\n')  // Convert escaped newlines to actual newlines first
-      .replace('-----BEGIN PRIVATE KEY-----', '')
-      .replace('-----END PRIVATE KEY-----', '')
-      .replace(/\n/g, '')     // Then remove all newlines
-      .replace(/\s/g, '')
-      .trim();
+    let cleanedKey = privateKey;
+    
+    // First, convert all escaped \n to actual newlines for consistent processing
+    cleanedKey = cleanedKey.replace(/\\n/g, '\n');
+    
+    // Remove the PEM headers/footers
+    cleanedKey = cleanedKey
+      .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+      .replace(/-----END PRIVATE KEY-----/g, '');
+    
+    // Remove all newlines, carriage returns, and whitespace - keep only valid base64 characters
+    cleanedKey = cleanedKey
+      .split('')
+      .filter(c => /[A-Za-z0-9+/=]/.test(c))
+      .join('');
+    
+    // Fix for corrupted storage: if key starts with 'nMII' instead of 'MII', remove the leading 'n'
+    if (cleanedKey.startsWith('nMII')) {
+      cleanedKey = cleanedKey.substring(1);
+    }
+
+    console.log('🔑 Private key length after cleaning:', cleanedKey.length);
 
     const binaryKey = Uint8Array.from(atob(cleanedKey), (c) => c.charCodeAt(0));
 
