@@ -51,36 +51,6 @@ const MatchAnalysis: React.FC<MatchAnalysisProps> = ({ match }) => {
 
   return (
     <div className="space-y-6 mt-8">
-      {/* Auto-matching status indicator */}
-      {searchTeams && (
-        <div className="bg-card text-card-foreground rounded-lg p-4 border border-border">
-          <div className="flex items-center gap-3">
-            {isLoading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  Searching TheSportsDB for {homeTeam} vs {awayTeam}...
-                </span>
-              </>
-            ) : sportsDBMatch ? (
-              <>
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span className="text-sm text-foreground">
-                  Found match data from TheSportsDB
-                  {foundEventId && <span className="text-muted-foreground ml-1">(Event ID: {foundEventId})</span>}
-                </span>
-              </>
-            ) : error ? (
-              <>
-                <AlertCircle className="h-5 w-5 text-yellow-500" />
-                <span className="text-sm text-muted-foreground">
-                  No match data found for {homeTeam} vs {awayTeam}. Showing preview content.
-                </span>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
 
       {/* Live Match Data Display */}
       {sportsDBMatch && (
