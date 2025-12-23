@@ -15,6 +15,90 @@ interface MatchDetailsRequest {
   includeTimeline?: boolean;
 }
 
+// Map sport/league to TheSportsDB sport names for live scores
+function getSportsDBSport(league: string | null): string {
+  if (!league) return 'Soccer';
+  
+  const sportMap: Record<string, string> = {
+    'nfl': 'American_Football',
+    'nba': 'Basketball',
+    'nhl': 'Ice_Hockey',
+    'mlb': 'Baseball',
+    'premier league': 'Soccer',
+    'la liga': 'Soccer',
+    'serie a': 'Soccer',
+    'bundesliga': 'Soccer',
+    'ligue 1': 'Soccer',
+    'champions league': 'Soccer',
+    'uefa': 'Soccer',
+    'mls': 'Soccer',
+  };
+  
+  const lowerLeague = league.toLowerCase();
+  for (const [key, value] of Object.entries(sportMap)) {
+    if (lowerLeague.includes(key)) {
+      return value;
+    }
+  }
+  return 'Soccer';
+}
+
+// Fetch live score for a match from the livescore endpoint
+async function fetchLiveScore(
+  apiKey: string,
+  homeTeam: string,
+  awayTeam: string,
+  sport: string
+): Promise<{ homeScore: number | null; awayScore: number | null; progress: string | null; isLive: boolean } | null> {
+  try {
+    const url = `https://www.thesportsdb.com/api/v1/json/${apiKey}/livescore.php?s=${sport}`;
+    console.log(`Fetching live scores for sport: ${sport}`);
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log(`Live score fetch failed: ${response.statusText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    const events = data?.events || [];
+    
+    if (events.length === 0) {
+      console.log('No live events found');
+      return null;
+    }
+    
+    // Find matching event by team names
+    const normalizeTeam = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const homeNorm = normalizeTeam(homeTeam);
+    const awayNorm = normalizeTeam(awayTeam);
+    
+    for (const event of events) {
+      const eventHomeNorm = normalizeTeam(event.strHomeTeam || '');
+      const eventAwayNorm = normalizeTeam(event.strAwayTeam || '');
+      
+      const homeMatch = eventHomeNorm.includes(homeNorm) || homeNorm.includes(eventHomeNorm);
+      const awayMatch = eventAwayNorm.includes(awayNorm) || awayNorm.includes(eventAwayNorm);
+      
+      if (homeMatch && awayMatch) {
+        console.log(`Found live match: ${event.strHomeTeam} vs ${event.strAwayTeam} - Score: ${event.intHomeScore}-${event.intAwayScore}`);
+        return {
+          homeScore: event.intHomeScore !== null ? parseInt(event.intHomeScore) : null,
+          awayScore: event.intAwayScore !== null ? parseInt(event.intAwayScore) : null,
+          progress: event.strProgress || event.strStatus || null,
+          isLive: true,
+        };
+      }
+    }
+    
+    console.log(`No matching live event found for ${homeTeam} vs ${awayTeam}`);
+    return null;
+  } catch (e) {
+    console.log('Error fetching live score:', e);
+    return null;
+  }
+}
+
 // Search for an event by team names
 async function searchEventByTeams(
   apiKey: string,
@@ -223,16 +307,34 @@ serve(async (req) => {
       }
     }
 
-    // Parse and structure the response
+    // Try to fetch live score if the match might be in progress
+    let liveScore: { homeScore: number | null; awayScore: number | null; progress: string | null; isLive: boolean } | null = null;
+    if (event) {
+      const sport = getSportsDBSport(event.strLeague);
+      liveScore = await fetchLiveScore(apiKey, event.strHomeTeam, event.strAwayTeam, sport);
+      
+      // Also try alternative sports if no result
+      if (!liveScore) {
+        const altSports = ['American_Football', 'Basketball', 'Ice_Hockey', 'Soccer'];
+        for (const altSport of altSports) {
+          if (altSport !== sport) {
+            liveScore = await fetchLiveScore(apiKey, event.strHomeTeam, event.strAwayTeam, altSport);
+            if (liveScore) break;
+          }
+        }
+      }
+    }
+
+    // Parse and structure the response - merge live score data if available
     const matchDetails = event ? {
       id: event.idEvent,
       homeTeam: event.strHomeTeam,
       awayTeam: event.strAwayTeam,
-      homeScore: event.intHomeScore !== null ? parseInt(event.intHomeScore) : null,
-      awayScore: event.intAwayScore !== null ? parseInt(event.intAwayScore) : null,
-      status: event.strStatus || event.strProgress || 'Scheduled',
-      progress: event.strProgress || null,
-      isLive: event.strStatus === 'In Play' || event.strProgress?.includes("'"),
+      homeScore: liveScore?.homeScore ?? (event.intHomeScore !== null ? parseInt(event.intHomeScore) : null),
+      awayScore: liveScore?.awayScore ?? (event.intAwayScore !== null ? parseInt(event.intAwayScore) : null),
+      status: liveScore?.isLive ? 'In Play' : (event.strStatus || event.strProgress || 'Scheduled'),
+      progress: liveScore?.progress || event.strProgress || null,
+      isLive: liveScore?.isLive || event.strStatus === 'In Play' || event.strProgress?.includes("'"),
       venue: event.strVenue,
       date: event.dateEvent,
       time: event.strTime,
