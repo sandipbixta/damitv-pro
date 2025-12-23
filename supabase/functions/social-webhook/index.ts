@@ -43,28 +43,58 @@ async function isAlreadyNotified(matchId: string, notificationType: string): Pro
   
   if (error) {
     console.error('Error checking notification status:', error);
-    return false; // Allow notification if check fails
+    return false;
   }
   
   return !!data;
 }
 
-// ========== Mark as notified ==========
-async function markAsNotified(matchId: string, matchTitle: string, notificationType: string): Promise<void> {
+// ========== Mark as notified (with optional message_id) ==========
+async function markAsNotified(
+  matchId: string, 
+  matchTitle: string, 
+  notificationType: string,
+  messageId?: number
+): Promise<void> {
   const supabase = getSupabaseClient();
+  
+  const record: any = {
+    match_id: matchId,
+    match_title: matchTitle,
+    notification_type: notificationType,
+    notified_at: new Date().toISOString()
+  };
+  
+  // Store message_id in match_title for goal updates (hacky but works without schema change)
+  if (messageId && notificationType === 'goal_message') {
+    record.match_title = `${matchTitle}|msg_id:${messageId}`;
+  }
   
   const { error } = await supabase
     .from('notified_matches')
-    .upsert({
-      match_id: matchId,
-      match_title: matchTitle,
-      notification_type: notificationType,
-      notified_at: new Date().toISOString()
-    }, { onConflict: 'match_id' });
+    .upsert(record, { onConflict: 'match_id' });
   
   if (error) {
     console.error('Error marking notification:', error);
   }
+}
+
+// ========== Get stored message ID for editing ==========
+async function getStoredMessageId(matchId: string): Promise<number | null> {
+  const supabase = getSupabaseClient();
+  
+  const { data, error } = await supabase
+    .from('notified_matches')
+    .select('match_title')
+    .eq('match_id', `goal_${matchId}`)
+    .eq('notification_type', 'goal_message')
+    .maybeSingle();
+  
+  if (error || !data) return null;
+  
+  // Extract message_id from match_title
+  const match = data.match_title?.match(/\|msg_id:(\d+)/);
+  return match ? parseInt(match[1]) : null;
 }
 
 // ========== TheSportsDB Team Badge Fetching ==========
@@ -107,12 +137,22 @@ async function fetchBothTeamBadges(homeTeam: string, awayTeam: string): Promise<
   return { homeBadge, awayBadge };
 }
 
-// ========== Telegram Posting ==========
+// ========== Inline Keyboard for Watch Live Button ==========
+function createWatchLiveKeyboard(streamUrl: string) {
+  return {
+    inline_keyboard: [
+      [{ text: '📺 Watch Live', url: streamUrl }]
+    ]
+  };
+}
+
+// ========== Telegram Posting with Inline Buttons ==========
 async function postToTelegramWithBothLogos(
   message: string,
+  streamUrl: string,
   homeBadge?: string | null,
   awayBadge?: string | null
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; messageId?: number }> {
   const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
 
@@ -121,8 +161,11 @@ async function postToTelegramWithBothLogos(
     return { success: false, error: 'Telegram credentials not configured' };
   }
 
+  const replyMarkup = createWatchLiveKeyboard(streamUrl);
+
   try {
     let response;
+    let messageId: number | undefined;
     
     // If both badges available, send as media group with 2 photos
     if (homeBadge && awayBadge) {
@@ -147,8 +190,34 @@ async function postToTelegramWithBothLogos(
           ]
         })
       });
+      
+      // Media group doesn't support inline keyboards, send follow-up message with button
+      const mediaData = await response.json();
+      if (mediaData.ok && mediaData.result?.[0]?.message_id) {
+        messageId = mediaData.result[0].message_id;
+        // Send button as reply
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: '👆 Click below to watch the match live!',
+            reply_markup: replyMarkup,
+            reply_to_message_id: messageId
+          })
+        });
+      }
+      
+      if (!response.ok || !mediaData.ok) {
+        console.error('❌ Telegram API error:', mediaData);
+        return { success: false, error: mediaData.description || 'Telegram API error' };
+      }
+      
+      console.log('✅ Posted to Telegram successfully');
+      return { success: true, messageId };
+      
     } else if (homeBadge || awayBadge) {
-      // Only one badge available, send single photo
+      // Only one badge available, send single photo with inline button
       const imageUrl = homeBadge || awayBadge;
       console.log('📸 Sending single photo with one team logo');
       const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
@@ -159,11 +228,12 @@ async function postToTelegramWithBothLogos(
           chat_id: chatId,
           photo: imageUrl,
           caption: message,
-          parse_mode: 'HTML'
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup
         })
       });
     } else {
-      // No badges, send text only
+      // No badges, send text only with inline button
       console.log('📝 Sending text message only (no logos found)');
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
       response = await fetch(url, {
@@ -172,7 +242,8 @@ async function postToTelegramWithBothLogos(
         body: JSON.stringify({
           chat_id: chatId,
           text: message,
-          parse_mode: 'HTML'
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup
         })
       });
     }
@@ -184,10 +255,53 @@ async function postToTelegramWithBothLogos(
       return { success: false, error: data.description || 'Telegram API error' };
     }
 
-    console.log('✅ Posted to Telegram successfully');
-    return { success: true };
+    messageId = data.result?.message_id;
+    console.log('✅ Posted to Telegram successfully, message_id:', messageId);
+    return { success: true, messageId };
   } catch (error) {
     console.error('❌ Telegram posting error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ========== Edit Telegram Message (for goal updates) ==========
+async function editTelegramMessage(
+  messageId: number,
+  newCaption: string,
+  streamUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
+
+  if (!botToken || !chatId) {
+    return { success: false, error: 'Telegram credentials not configured' };
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/editMessageCaption`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        caption: newCaption,
+        parse_mode: 'HTML',
+        reply_markup: createWatchLiveKeyboard(streamUrl)
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok || !data.ok) {
+      console.error('❌ Edit message error:', data);
+      return { success: false, error: data.description || 'Edit failed' };
+    }
+
+    console.log('✅ Message edited successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Edit message error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -196,25 +310,25 @@ async function postToTelegramWithBothLogos(
 function formatMatchLiveMessage(data: MatchData, streamUrl: string): string {
   const emoji = getSportEmoji(data.sport);
   
-  return `${emoji} <b>LIVE NOW!</b>
+  return `🔴 <b>LIVE NOW!</b>
 
-⚽ <b>${data.homeTeam}</b> vs <b>${data.awayTeam}</b>
+${emoji} <b>${data.homeTeam}</b> vs <b>${data.awayTeam}</b>
 ${data.competition ? `🏆 ${data.competition}\n` : ''}
-📺 Watch live: ${streamUrl}
+📺 Stream ready - tap the button below!
 
 #LiveStream #Sports #DamiTV`;
 }
 
 function formatGoalMessage(data: MatchData, streamUrl: string): string {
-  const emoji = '⚽';
   const scoreDisplay = `${data.homeTeam} ${data.homeScore ?? 0} - ${data.awayScore ?? 0} ${data.awayTeam}`;
-  const scorerInfo = data.scorer ? `\n👤 ${data.scorer}${data.minute ? ` (${data.minute}')` : ''}` : '';
+  const scorerInfo = data.scorer ? `\n👤 <b>${data.scorer}</b>${data.minute ? ` (${data.minute}')` : ''}` : '';
+  const minuteInfo = !data.scorer && data.minute ? `\n⏱️ ${data.minute}'` : '';
   
-  return `${emoji} <b>GOAL!</b>
+  return `⚽ <b>GOAL!</b>
 
-📊 <b>${scoreDisplay}</b>${scorerInfo}
+📊 <b>${scoreDisplay}</b>${scorerInfo}${minuteInfo}
 
-📺 Watch live: ${streamUrl}
+📺 Watch the action live!
 
 #Goal #LiveStream #DamiTV`;
 }
@@ -348,12 +462,17 @@ serve(async (req) => {
 
     console.log('📝 Formatted message:', message);
 
-    // Post to Telegram with both team logos
-    const telegramResult = await postToTelegramWithBothLogos(message, homeBadge, awayBadge);
+    // Post to Telegram with both team logos and inline button
+    const telegramResult = await postToTelegramWithBothLogos(message, streamUrl, homeBadge, awayBadge);
 
-    // Mark as notified if successful
+    // Mark as notified if successful, including message_id for goal edits
     if (telegramResult.success) {
       await markAsNotified(matchId, matchTitle, notificationType);
+      
+      // Store message ID for goal updates
+      if (telegramResult.messageId) {
+        await markAsNotified(`goal_${matchId}`, matchTitle, 'goal_message', telegramResult.messageId);
+      }
     }
 
     console.log('📊 Telegram result:', telegramResult);

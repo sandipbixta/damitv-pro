@@ -53,8 +53,13 @@ async function isAlreadyNotified(matchId: string, notificationType: string): Pro
   return !!data;
 }
 
-// ========== Mark as notified ==========
-async function markAsNotified(matchId: string, matchTitle: string, notificationType: string): Promise<void> {
+// ========== Mark as notified (with optional message_id) ==========
+async function markAsNotified(
+  matchId: string, 
+  matchTitle: string, 
+  notificationType: string,
+  messageId?: number
+): Promise<void> {
   const supabase = getSupabaseClient();
   
   // Use a unique key combining matchId and type for goal notifications
@@ -62,18 +67,44 @@ async function markAsNotified(matchId: string, matchTitle: string, notificationT
     ? `${matchId}_goal_${Date.now()}` 
     : matchId;
   
+  const record: any = {
+    match_id: uniqueId,
+    match_title: matchTitle,
+    notification_type: notificationType,
+    notified_at: new Date().toISOString()
+  };
+  
+  // Store message_id in match_title for goal updates
+  if (messageId && notificationType === 'goal_message') {
+    record.match_id = `goal_msg_${matchId}`;
+    record.match_title = `${matchTitle}|msg_id:${messageId}`;
+  }
+  
   const { error } = await supabase
     .from('notified_matches')
-    .insert({
-      match_id: uniqueId,
-      match_title: matchTitle,
-      notification_type: notificationType,
-      notified_at: new Date().toISOString()
-    });
+    .upsert(record, { onConflict: 'match_id' });
   
   if (error && !error.message.includes('duplicate')) {
     console.error('Error marking notification:', error);
   }
+}
+
+// ========== Get stored message ID for editing ==========
+async function getStoredMessageId(matchId: string): Promise<number | null> {
+  const supabase = getSupabaseClient();
+  
+  const { data, error } = await supabase
+    .from('notified_matches')
+    .select('match_title')
+    .eq('match_id', `goal_msg_${matchId}`)
+    .eq('notification_type', 'goal_message')
+    .maybeSingle();
+  
+  if (error || !data) return null;
+  
+  // Extract message_id from match_title
+  const match = data.match_title?.match(/\|msg_id:(\d+)/);
+  return match ? parseInt(match[1]) : null;
 }
 
 // ========== Get cached score ==========
@@ -90,7 +121,7 @@ async function getCachedScore(matchId: string): Promise<{ homeScore: number; awa
   
   // Parse score from match_title (format: "homeScore-awayScore")
   const scores = data.match_title?.split('-').map(Number);
-  if (scores && scores.length === 2) {
+  if (scores && scores.length === 2 && !isNaN(scores[0]) && !isNaN(scores[1])) {
     return { homeScore: scores[0], awayScore: scores[1] };
   }
   return null;
@@ -215,15 +246,30 @@ async function searchSportsDBLiveScore(homeTeam: string, awayTeam: string, sport
   }
 }
 
-// ========== Post to Telegram ==========
-async function postToTelegram(message: string, imageUrl?: string): Promise<boolean> {
+// ========== Inline Keyboard for Watch Live Button ==========
+function createWatchLiveKeyboard(streamUrl: string) {
+  return {
+    inline_keyboard: [
+      [{ text: '📺 Watch Live', url: streamUrl }]
+    ]
+  };
+}
+
+// ========== Post to Telegram with inline button ==========
+async function postToTelegram(
+  message: string, 
+  streamUrl: string,
+  imageUrl?: string
+): Promise<{ success: boolean; messageId?: number }> {
   const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
 
   if (!botToken || !chatId) {
     console.log('⚠️ Telegram credentials not configured');
-    return false;
+    return { success: false };
   }
+
+  const replyMarkup = createWatchLiveKeyboard(streamUrl);
 
   try {
     let response;
@@ -236,7 +282,8 @@ async function postToTelegram(message: string, imageUrl?: string): Promise<boole
           chat_id: chatId,
           photo: imageUrl,
           caption: message,
-          parse_mode: 'HTML'
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup
         })
       });
     } else {
@@ -246,22 +293,81 @@ async function postToTelegram(message: string, imageUrl?: string): Promise<boole
         body: JSON.stringify({
           chat_id: chatId,
           text: message,
-          parse_mode: 'HTML'
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup
         })
       });
     }
 
     const data = await response.json();
     if (data.ok) {
-      console.log('✅ Posted to Telegram successfully');
-      return true;
+      console.log('✅ Posted to Telegram successfully, message_id:', data.result?.message_id);
+      return { success: true, messageId: data.result?.message_id };
     } else {
       console.error('❌ Telegram error:', data.description);
-      return false;
+      return { success: false };
     }
   } catch (error) {
     console.error('❌ Failed to post to Telegram:', error);
-    return false;
+    return { success: false };
+  }
+}
+
+// ========== Edit Telegram Message (for goal updates like VAR) ==========
+async function editTelegramMessage(
+  messageId: number,
+  newCaption: string,
+  streamUrl: string
+): Promise<{ success: boolean }> {
+  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
+
+  if (!botToken || !chatId) {
+    return { success: false };
+  }
+
+  try {
+    // Try editMessageCaption first (for photos)
+    let response = await fetch(`https://api.telegram.org/bot${botToken}/editMessageCaption`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        caption: newCaption,
+        parse_mode: 'HTML',
+        reply_markup: createWatchLiveKeyboard(streamUrl)
+      })
+    });
+
+    let data = await response.json();
+    
+    // If caption edit fails (text-only message), try editMessageText
+    if (!data.ok && data.description?.includes('no caption')) {
+      response = await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          text: newCaption,
+          parse_mode: 'HTML',
+          reply_markup: createWatchLiveKeyboard(streamUrl)
+        })
+      });
+      data = await response.json();
+    }
+
+    if (data.ok) {
+      console.log('✅ Message edited successfully');
+      return { success: true };
+    } else {
+      console.error('❌ Edit message error:', data.description);
+      return { success: false };
+    }
+  } catch (error) {
+    console.error('❌ Edit message error:', error);
+    return { success: false };
   }
 }
 
@@ -292,6 +398,19 @@ function extractTeams(title: string): { home: string; away: string } | null {
   return null;
 }
 
+// ========== Build stream URL ==========
+function buildStreamUrl(sport: string, matchId: string, homeTeam: string, awayTeam: string): string {
+  const slugify = (text: string) => text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  const slug = `${slugify(homeTeam)}-vs-${slugify(awayTeam)}-live-stream`;
+  return `https://damitv.pro/match/${sport}/${matchId}/${slug}`;
+}
+
 // ========== Main processing ==========
 async function processLiveMatches() {
   console.log('🔔 Starting live match & goal detection...');
@@ -316,24 +435,24 @@ async function processLiveMatches() {
     }
 
     const sport = match.category?.toLowerCase() || 'football';
-    const streamUrl = `https://damitv.netlify.app/match/${sport}/${match.id}`;
+    const streamUrl = buildStreamUrl(sport, match.id, teams.home, teams.away);
+    const sportEmoji = getSportEmoji(sport);
 
     // 3. Check if this is a NEW live match (not yet notified)
     const alreadyNotifiedLive = await isAlreadyNotified(match.id, 'match_live');
     
     if (!alreadyNotifiedLive) {
-      // New live match - send notification
-      const emoji = getSportEmoji(sport);
-      const message = `${emoji} <b>LIVE NOW!</b>
+      // New live match - send notification with 🔴 LIVE indicator
+      const message = `🔴 <b>LIVE NOW!</b>
 
-⚽ <b>${teams.home}</b> vs <b>${teams.away}</b>
+${sportEmoji} <b>${teams.home}</b> vs <b>${teams.away}</b>
 
-📺 Watch live: ${streamUrl}
+📺 Tap the button below to watch!
 
 #LiveStream #Sports #DamiTV`;
 
-      const success = await postToTelegram(message, match.poster);
-      if (success) {
+      const result = await postToTelegram(message, streamUrl, match.poster);
+      if (result.success) {
         await markAsNotified(match.id, match.title, 'match_live');
         newLiveMatches++;
         console.log(`🆕 New live match notified: ${match.title}`);
@@ -351,42 +470,47 @@ async function processLiveMatches() {
         // Check for new goals
         const homeGoals = liveScore.homeScore - cachedScore.homeScore;
         const awayGoals = liveScore.awayScore - cachedScore.awayScore;
+        const totalNewGoals = homeGoals + awayGoals;
         
-        if (homeGoals > 0) {
-          // Home team scored
-          const scorer = liveScore.homeGoalDetails?.split(',').pop()?.trim() || '';
-          const message = `⚽ <b>GOAL!</b>
+        if (totalNewGoals > 0) {
+          // Goal(s) scored - check if we should edit or send new message
+          const existingMessageId = await getStoredMessageId(match.id);
+          
+          const scorer = homeGoals > 0 
+            ? liveScore.homeGoalDetails?.split(',').pop()?.trim() 
+            : liveScore.awayGoalDetails?.split(',').pop()?.trim();
+          
+          const goalMessage = `⚽ <b>GOAL!</b>
 
 📊 <b>${liveScore.homeTeam}</b> ${liveScore.homeScore} - ${liveScore.awayScore} <b>${liveScore.awayTeam}</b>
-${liveScore.league ? `🏆 ${liveScore.league}\n` : ''}${liveScore.minute ? `⏱️ ${liveScore.minute}\n` : ''}${scorer ? `👤 ${scorer}\n` : ''}
-📺 Watch: ${streamUrl}
+${liveScore.league ? `🏆 ${liveScore.league}\n` : ''}${liveScore.minute ? `⏱️ ${liveScore.minute}\n` : ''}${scorer ? `👤 <b>${scorer}</b>\n` : ''}
+📺 Watch the action live!
 
-#Goal #${liveScore.homeTeam.replace(/\s+/g, '')} #LiveStream`;
+#Goal #LiveStream #DamiTV`;
 
-          const success = await postToTelegram(message, liveScore.thumb);
-          if (success) {
-            await markAsNotified(match.id, `${liveScore.homeTeam} goal`, 'goal_scored');
-            goalsDetected++;
-            console.log(`⚽ Goal! ${liveScore.homeTeam} scored`);
+          let result: { success: boolean; messageId?: number };
+          
+          if (existingMessageId) {
+            // Edit existing goal message (e.g., VAR update or score correction)
+            console.log(`✏️ Editing existing goal message ${existingMessageId}`);
+            const editResult = await editTelegramMessage(existingMessageId, goalMessage, streamUrl);
+            result = { success: editResult.success, messageId: existingMessageId };
+          } else {
+            // Send new goal message
+            result = await postToTelegram(goalMessage, streamUrl, liveScore.thumb);
           }
-        }
-        
-        if (awayGoals > 0) {
-          // Away team scored
-          const scorer = liveScore.awayGoalDetails?.split(',').pop()?.trim() || '';
-          const message = `⚽ <b>GOAL!</b>
-
-📊 <b>${liveScore.homeTeam}</b> ${liveScore.homeScore} - ${liveScore.awayScore} <b>${liveScore.awayTeam}</b>
-${liveScore.league ? `🏆 ${liveScore.league}\n` : ''}${liveScore.minute ? `⏱️ ${liveScore.minute}\n` : ''}${scorer ? `👤 ${scorer}\n` : ''}
-📺 Watch: ${streamUrl}
-
-#Goal #${liveScore.awayTeam.replace(/\s+/g, '')} #LiveStream`;
-
-          const success = await postToTelegram(message, liveScore.thumb);
-          if (success) {
-            await markAsNotified(match.id, `${liveScore.awayTeam} goal`, 'goal_scored');
-            goalsDetected++;
-            console.log(`⚽ Goal! ${liveScore.awayTeam} scored`);
+          
+          if (result.success) {
+            const scoringTeam = homeGoals > 0 ? liveScore.homeTeam : liveScore.awayTeam;
+            await markAsNotified(match.id, `${scoringTeam} goal`, 'goal_scored');
+            
+            // Store message ID for future edits
+            if (result.messageId) {
+              await markAsNotified(match.id, match.title, 'goal_message', result.messageId);
+            }
+            
+            goalsDetected += totalNewGoals;
+            console.log(`⚽ Goal! ${scoringTeam} scored. Total: ${liveScore.homeScore}-${liveScore.awayScore}`);
           }
         }
       }
