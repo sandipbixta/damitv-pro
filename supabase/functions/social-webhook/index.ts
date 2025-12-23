@@ -9,8 +9,8 @@ const corsHeaders = {
 interface MatchData {
   matchId?: string;
   matchTitle?: string;
-  homeTeam: string;
-  awayTeam: string;
+  homeTeam?: string;
+  awayTeam?: string;
   competition?: string;
   sport?: string;
   streamUrl?: string;
@@ -310,9 +310,14 @@ async function editTelegramMessage(
 function formatMatchLiveMessage(data: MatchData, streamUrl: string): string {
   const emoji = getSportEmoji(data.sport);
   
+  // Handle event-style matches (WWE, NFL Network, etc.) that don't have home/away teams
+  const matchDisplay = data.homeTeam && data.awayTeam 
+    ? `<b>${data.homeTeam}</b> vs <b>${data.awayTeam}</b>`
+    : `<b>${data.matchTitle || 'Live Event'}</b>`;
+  
   return `🔴 <b>LIVE NOW!</b>
 
-${emoji} <b>${data.homeTeam}</b> vs <b>${data.awayTeam}</b>
+${emoji} ${matchDisplay}
 ${data.competition ? `🏆 ${data.competition}\n` : ''}
 📺 Stream ready - tap the button below!
 
@@ -525,12 +530,17 @@ serve(async (req) => {
       }
     }
 
-    // Validate required fields
+    // For matches without home/away teams (events like WWE, NFL Network 24/7), skip silently
+    // These are not traditional matches and shouldn't trigger notifications
     if (!homeTeam || !awayTeam) {
-      console.error('❌ Missing required fields: homeTeam and awayTeam');
+      console.log(`⏭️ Skipping non-match event (no home/away teams): ${matchData.matchTitle || matchData.matchId}`);
       return new Response(
-        JSON.stringify({ success: false, error: 'homeTeam and awayTeam are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: true, 
+          skipped: true, 
+          reason: 'Event does not have home/away teams - not a traditional match' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
