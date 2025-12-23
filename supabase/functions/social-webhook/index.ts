@@ -167,59 +167,11 @@ async function postToTelegramWithBothLogos(
     let response;
     let messageId: number | undefined;
     
-    // If both badges available, send as media group with 2 photos
-    if (homeBadge && awayBadge) {
-      console.log('📸 Sending media group with both team logos');
-      const url = `https://api.telegram.org/bot${botToken}/sendMediaGroup`;
-      response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          media: [
-            {
-              type: 'photo',
-              media: homeBadge,
-              caption: message,
-              parse_mode: 'HTML'
-            },
-            {
-              type: 'photo',
-              media: awayBadge
-            }
-          ]
-        })
-      });
-      
-      // Media group doesn't support inline keyboards, send follow-up message with button
-      const mediaData = await response.json();
-      if (mediaData.ok && mediaData.result?.[0]?.message_id) {
-        messageId = mediaData.result[0].message_id;
-        // Send button as reply
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: '👆 Click below to watch the match live!',
-            reply_markup: replyMarkup,
-            reply_to_message_id: messageId
-          })
-        });
-      }
-      
-      if (!response.ok || !mediaData.ok) {
-        console.error('❌ Telegram API error:', mediaData);
-        return { success: false, error: mediaData.description || 'Telegram API error' };
-      }
-      
-      console.log('✅ Posted to Telegram successfully');
-      return { success: true, messageId };
-      
-    } else if (homeBadge || awayBadge) {
-      // Only one badge available, send single photo with inline button
-      const imageUrl = homeBadge || awayBadge;
-      console.log('📸 Sending single photo with one team logo');
+    // Use single photo with inline button (prioritize home badge, fallback to away)
+    const imageUrl = homeBadge || awayBadge;
+    
+    if (imageUrl) {
+      console.log('📸 Sending single photo with team logo and Watch Live button');
       const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
       response = await fetch(url, {
         method: 'POST',
