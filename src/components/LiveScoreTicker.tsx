@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchLiveMatches } from '@/api/sportsApi';
@@ -39,6 +39,10 @@ const LiveScoreTicker: React.FC = () => {
   const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  // Keep scrolling speed readable regardless of how many items are in the ticker
+  const [durationSec, setDurationSec] = useState<number>(600);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -125,6 +129,33 @@ const LiveScoreTicker: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    const speedPxPerSec = 10; // lower = slower
+    const compute = () => {
+      const distancePx = el.scrollWidth / 2;
+      if (!distancePx || Number.isNaN(distancePx)) return;
+      const next = Math.max(240, Math.round(distancePx / speedPxPerSec));
+      setDurationSec(next);
+    };
+
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      compute();
+      raf2 = requestAnimationFrame(compute);
+    });
+
+    window.addEventListener('resize', compute);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.removeEventListener('resize', compute);
+    };
+  }, [tickerItems.length]);
+
   const getSportSlug = (sport: string): string => {
     const sportMap: Record<string, string> = {
       'Soccer': 'football',
@@ -195,9 +226,13 @@ const LiveScoreTicker: React.FC = () => {
         </div>
 
         {/* Scrolling content */}
-        <div 
+        <div
+          ref={trackRef}
           className={`flex pl-24 ${isPaused ? '' : 'animate-scroll-left'}`}
-          style={isPaused ? { animationPlayState: 'paused' } : {}}
+          style={{
+            animationDuration: `${durationSec}s`,
+            ...(isPaused ? { animationPlayState: 'paused' } : {}),
+          }}
         >
           {duplicatedItems.map((item, index) => (
             <Link
