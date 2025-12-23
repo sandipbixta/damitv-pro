@@ -173,8 +173,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   const cardContent = (
     <div className="group cursor-pointer h-full">
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
-        {/* Thumbnail Section */}
-        <div className="relative aspect-video overflow-hidden flex-shrink-0">
+        {/* Thumbnail Section - Fixed height for consistency */}
+        <div className="relative h-36 overflow-hidden flex-shrink-0">
           {generateThumbnail()}
           
           {/* Gradient overlay at bottom */}
