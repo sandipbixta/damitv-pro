@@ -146,12 +146,11 @@ function createWatchLiveKeyboard(streamUrl: string) {
   };
 }
 
-// ========== Telegram Posting with Inline Buttons ==========
-async function postToTelegramWithBothLogos(
+// ========== Telegram Posting with Poster Only ==========
+async function postToTelegramWithPoster(
   message: string,
   streamUrl: string,
-  homeBadge?: string | null,
-  awayBadge?: string | null
+  poster?: string | null
 ): Promise<{ success: boolean; error?: string; messageId?: number }> {
   const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
@@ -167,26 +166,24 @@ async function postToTelegramWithBothLogos(
     let response;
     let messageId: number | undefined;
     
-    // Use single photo with inline button (prioritize home badge, fallback to away)
-    const imageUrl = homeBadge || awayBadge;
-    
-    if (imageUrl) {
-      console.log('📸 Sending single photo with team logo and Watch Live button');
+    // Only send photo if poster is available
+    if (poster) {
+      console.log('📸 Sending photo with poster and Watch Live button');
       const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
       response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          photo: imageUrl,
+          photo: poster,
           caption: message,
           parse_mode: 'HTML',
           reply_markup: replyMarkup
         })
       });
     } else {
-      // No badges, send text only with inline button
-      console.log('📝 Sending text message only (no logos found)');
+      // No poster, send text only with inline button (no logos)
+      console.log('📝 Sending text message only (no poster available)');
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
       response = await fetch(url, {
         method: 'POST',
@@ -521,9 +518,9 @@ serve(async (req) => {
       );
     }
 
-    // Fetch both team badges from TheSportsDB
-    console.log('🖼️ Fetching both team badges from TheSportsDB...');
-    const { homeBadge, awayBadge } = await fetchBothTeamBadges(matchData.homeTeam, matchData.awayTeam);
+    // Use poster if available (no need to fetch team badges anymore)
+    const poster = matchData.poster;
+    console.log('🖼️ Poster available:', poster ? 'Yes' : 'No');
 
     // Format message based on event type
     let message: string;
@@ -537,8 +534,8 @@ serve(async (req) => {
 
     console.log('📝 Formatted message:', message);
 
-    // Post to Telegram with both team logos and inline button
-    const telegramResult = await postToTelegramWithBothLogos(message, streamUrl, homeBadge, awayBadge);
+    // Post to Telegram with poster only (no logos)
+    const telegramResult = await postToTelegramWithPoster(message, streamUrl, poster);
 
     // Submit to Google Indexing API (only for new match_live events)
     let googleIndexResult = null;
@@ -568,8 +565,7 @@ serve(async (req) => {
         telegram: telegramResult,
         googleIndexing: googleIndexResult,
         streamUrl,
-        homeBadge,
-        awayBadge
+        poster: poster || null
       }),
       { 
         status: telegramResult.success ? 200 : 500, 
