@@ -611,18 +611,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
-      JSON.stringify({
-        success: telegramResult.success,
-        telegram: telegramResult,
-        streamUrl,
-        homeBadge,
-        awayBadge
-      }),
-      { 
-        status: telegramResult.success ? 200 : 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+
 
   } catch (error) {
     console.error('❌ Webhook error:', error);
