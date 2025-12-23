@@ -128,11 +128,21 @@ const LiveScoreTicker: React.FC = () => {
   const getSportSlug = (sport: string): string => {
     const sportMap: Record<string, string> = {
       'Soccer': 'football',
+      'soccer': 'football',
       'Basketball': 'basketball',
+      'basketball': 'basketball',
       'Ice Hockey': 'hockey',
+      'icehockey': 'hockey',
       'American Football': 'american-football',
+      'american_football': 'american-football',
+      'Tennis': 'tennis',
+      'tennis': 'tennis',
+      'Rugby': 'rugby',
+      'rugby': 'rugby',
+      'Cricket': 'cricket',
+      'cricket': 'cricket',
     };
-    return sportMap[sport] || 'football';
+    return sportMap[sport] || sport.toLowerCase().replace(/\s+/g, '-');
   };
 
   const formatProgress = (progress: string | null, status: string): string => {
