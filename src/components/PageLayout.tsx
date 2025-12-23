@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MainNav from './MainNav';
 import MobileBottomNav from './MobileBottomNav';
 import ScrollToTop from './ScrollToTop';
+import LiveScoreTicker from './LiveScoreTicker';
 import { useIsMobile } from '@/hooks/use-mobile';
 import SearchBar from './SearchBar';
 import damitvLogo from "@/assets/damitv-logo.png";
@@ -69,6 +70,9 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           </div>
         </div>
       </header>
+      
+      {/* Live Score Ticker */}
+      <LiveScoreTicker />
 
       <main className="container mx-auto py-6 px-4 pb-24 md:pb-8">
         {children}
