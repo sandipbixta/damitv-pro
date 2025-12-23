@@ -41,16 +41,51 @@ async function generateGoogleJWT(): Promise<string> {
   const payloadEncoded = base64UrlEncode(payload);
   const signatureInput = `${headerEncoded}.${payloadEncoded}`;
 
-  // Import the private key and sign - handle escaped newlines
-  const cleanedKey = privateKey
-    .replace(/\\n/g, '\n')  // Convert escaped newlines to actual newlines first
-    .replace('-----BEGIN PRIVATE KEY-----', '')
-    .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\n/g, '')     // Then remove all newlines
-    .replace(/\s/g, '')
-    .trim();
+  // Import the private key and sign - handle various newline formats
+  let cleanedKey = privateKey;
+  
+  // First, convert all escaped \n to actual newlines for consistent processing
+  cleanedKey = cleanedKey.replace(/\\n/g, '\n');
+  
+  // Remove the PEM headers/footers
+  cleanedKey = cleanedKey
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '');
+  
+  // Remove all newlines, carriage returns, and whitespace - keep only valid base64 characters
+  cleanedKey = cleanedKey
+    .split('')
+    .filter(c => /[A-Za-z0-9+/=]/.test(c))
+    .join('');
+  
+  // Fix for corrupted storage: if key starts with 'nMII' instead of 'MII', remove the leading 'n'
+  // This happens when \n was stored as literal character
+  if (cleanedKey.startsWith('nMII')) {
+    cleanedKey = cleanedKey.substring(1);
+  }
 
-  const binaryKey = Uint8Array.from(atob(cleanedKey), (c) => c.charCodeAt(0));
+  console.log('Private key length after cleaning:', cleanedKey.length);
+  console.log('First 50 chars:', cleanedKey.substring(0, 50));
+  console.log('Last 50 chars:', cleanedKey.substring(cleanedKey.length - 50));
+  
+  // Standard base64 characters check
+  const isValidBase64 = /^[A-Za-z0-9+/=]+$/.test(cleanedKey);
+  console.log('Is valid base64:', isValidBase64);
+  
+  if (!isValidBase64) {
+    // Find invalid characters
+    const invalidChars = cleanedKey.split('').filter(c => !/[A-Za-z0-9+/=]/.test(c));
+    console.error('Invalid characters found:', JSON.stringify(invalidChars));
+    throw new Error(`Invalid base64 characters: ${invalidChars.join(', ')}`);
+  }
+  
+  let binaryKey: Uint8Array;
+  try {
+    binaryKey = Uint8Array.from(atob(cleanedKey), (c) => c.charCodeAt(0));
+  } catch (e) {
+    console.error('Failed to decode base64:', e);
+    throw new Error('Failed to decode base64');
+  }
 
   const cryptoKey = await crypto.subtle.importKey(
     'pkcs8',
