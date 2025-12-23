@@ -411,6 +411,45 @@ function buildStreamUrl(sport: string, matchId: string, homeTeam: string, awayTe
   return `https://damitv.pro/match/${sport}/${matchId}/${slug}`;
 }
 
+// ========== Submit URL to Google Indexing ==========
+async function submitToGoogleIndexing(url: string): Promise<boolean> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!supabaseUrl || !supabaseKey) {
+    console.log('⚠️ Supabase credentials not configured for indexing');
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/google-indexing`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`
+      },
+      body: JSON.stringify({
+        action: 'submit',
+        url: url,
+        type: 'URL_UPDATED'
+      })
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log(`🔍 Google indexed: ${url}`);
+      return true;
+    } else {
+      console.log(`⚠️ Google indexing failed: ${result.message}`);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Google indexing error:', error);
+    return false;
+  }
+}
+
 // ========== Main processing ==========
 async function processLiveMatches() {
   console.log('🔔 Starting live match & goal detection...');
@@ -456,6 +495,9 @@ ${sportEmoji} <b>${teams.home}</b> vs <b>${teams.away}</b>
         await markAsNotified(match.id, match.title, 'match_live');
         newLiveMatches++;
         console.log(`🆕 New live match notified: ${match.title}`);
+        
+        // Auto-submit to Google Indexing
+        await submitToGoogleIndexing(streamUrl);
       }
     }
 
