@@ -124,7 +124,7 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'slide-up': 'slide-up 0.3s ease-out',
-        'scroll-left': 'scroll-left 120s linear infinite'
+        'scroll-left': 'scroll-left 200s linear infinite'
       }
     }
   },
