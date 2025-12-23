@@ -1,117 +1,255 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { fetchLiveMatches } from '@/api/sportsApi';
 import { Match } from '@/types/sports';
 import { isMatchLive } from '@/utils/matchUtils';
 import { generateMatchSlug } from '@/utils/matchSlug';
 
+interface LiveScore {
+  eventId: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: string;
+  progress: string | null;
+  sport: string;
+  league: string;
+  homeBadge: string | null;
+  awayBadge: string | null;
+}
+
+interface TickerItem {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: string;
+  sport: string;
+  league: string;
+  homeBadge: string | null;
+  awayBadge: string | null;
+  isLive: boolean;
+  matchUrl: string;
+}
+
 const LiveScoreTicker: React.FC = () => {
-  const [liveMatches, setLiveMatches] = useState<Match[]>([]);
+  const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    const fetchMatches = async () => {
+    const fetchData = async () => {
       try {
-        const matches = await fetchLiveMatches();
-        // Filter to only show live matches or matches starting soon
-        const now = Date.now();
-        const relevantMatches = matches.filter(match => {
-          const isLive = isMatchLive(match);
-          const isStartingSoon = match.date && match.date - now < 2 * 60 * 60 * 1000; // Within 2 hours
-          return isLive || isStartingSoon;
-        }).slice(0, 15);
+        // First try to get live scores from TheSportsDB
+        const { data: liveScoreData } = await supabase.functions.invoke('fetch-live-scores');
         
-        setLiveMatches(relevantMatches);
+        let items: TickerItem[] = [];
+        
+        if (liveScoreData?.success && liveScoreData.liveScores?.length > 0) {
+          // Use live scores from TheSportsDB
+          items = liveScoreData.liveScores.map((score: LiveScore) => {
+            const sportSlug = getSportSlug(score.sport);
+            const matchSlug = generateMatchSlug(score.homeTeam, score.awayTeam, `${score.homeTeam} vs ${score.awayTeam}`);
+            return {
+              id: score.eventId,
+              homeTeam: score.homeTeam,
+              awayTeam: score.awayTeam,
+              homeScore: score.homeScore,
+              awayScore: score.awayScore,
+              status: formatProgress(score.progress, score.status),
+              sport: score.sport,
+              league: score.league,
+              homeBadge: score.homeBadge,
+              awayBadge: score.awayBadge,
+              isLive: true,
+              matchUrl: `/match/${sportSlug}/${score.eventId}/${matchSlug}`,
+            };
+          });
+        }
+        
+        // If no live scores, fallback to live matches from API
+        if (items.length === 0) {
+          const matches = await fetchLiveMatches();
+          const now = Date.now();
+          
+          // Get live matches or matches starting soon
+          const relevantMatches = matches.filter(match => {
+            const live = isMatchLive(match);
+            const isStartingSoon = match.date && match.date - now < 2 * 60 * 60 * 1000;
+            return live || isStartingSoon;
+          }).slice(0, 20);
+          
+          items = relevantMatches.map(match => {
+            const home = match.teams?.home?.name || '';
+            const away = match.teams?.away?.name || '';
+            const matchSlug = generateMatchSlug(home, away, match.title);
+            const homeBadge = match.teams?.home?.badge 
+              ? `https://streamed.pk/api/images/badge/${match.teams.home.badge}.webp`
+              : null;
+            const awayBadge = match.teams?.away?.badge
+              ? `https://streamed.pk/api/images/badge/${match.teams.away.badge}.webp`
+              : null;
+            
+            return {
+              id: match.id,
+              homeTeam: home || match.title.split(' vs ')[0] || match.title,
+              awayTeam: away || match.title.split(' vs ')[1] || '',
+              homeScore: null,
+              awayScore: null,
+              status: isMatchLive(match) ? 'LIVE' : getTimeUntil(match.date),
+              sport: match.category?.replace(/-/g, ' ') || 'Sports',
+              league: match.category?.replace(/-/g, ' ') || '',
+              homeBadge,
+              awayBadge,
+              isLive: isMatchLive(match),
+              matchUrl: `/match/${match.category}/${match.id}/${matchSlug}`,
+            };
+          });
+        }
+        
+        setTickerItems(items);
       } catch (error) {
-        console.error('Error fetching live matches for ticker:', error);
+        console.error('Error fetching ticker data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMatches();
+    fetchData();
     
-    // Refresh every 2 minutes
-    const interval = setInterval(fetchMatches, 2 * 60 * 1000);
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchData, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  if (isLoading || liveMatches.length === 0) {
+  const getSportSlug = (sport: string): string => {
+    const sportMap: Record<string, string> = {
+      'Soccer': 'football',
+      'Basketball': 'basketball',
+      'Ice Hockey': 'hockey',
+      'American Football': 'american-football',
+    };
+    return sportMap[sport] || 'football';
+  };
+
+  const formatProgress = (progress: string | null, status: string): string => {
+    if (progress) return progress;
+    if (status) {
+      if (status.includes('HT')) return 'HT';
+      if (status.includes('FT')) return 'FT';
+      if (status.includes('Q1')) return 'Q1';
+      if (status.includes('Q2')) return 'Q2';
+      if (status.includes('Q3')) return 'Q3';
+      if (status.includes('Q4')) return 'Q4';
+      return status;
+    }
+    return 'LIVE';
+  };
+
+  const getTimeUntil = (date: number | undefined): string => {
+    if (!date) return '';
+    const now = Date.now();
+    const diff = date - now;
+    if (diff <= 0) return 'LIVE';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+
+  if (isLoading || tickerItems.length === 0) {
     return null;
   }
 
-  const getMatchDisplay = (match: Match) => {
-    const home = match.teams?.home?.name || '';
-    const away = match.teams?.away?.name || '';
-    const isLive = isMatchLive(match);
-    
-    if (home && away) {
-      return (
-        <span className="flex items-center gap-2">
-          {isLive && (
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-destructive rounded-full animate-pulse" />
-              <span className="text-destructive font-bold text-[10px] uppercase">LIVE</span>
-            </span>
-          )}
-          <span className="text-foreground font-medium">{home}</span>
-          <span className="text-muted-foreground">vs</span>
-          <span className="text-foreground font-medium">{away}</span>
-          <span className="text-muted-foreground text-xs">•</span>
-          <span className="text-primary text-xs font-medium uppercase">{match.category?.replace(/-/g, ' ')}</span>
-        </span>
-      );
-    }
-    
-    return (
-      <span className="flex items-center gap-2">
-        {isLive && (
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-destructive rounded-full animate-pulse" />
-            <span className="text-destructive font-bold text-[10px] uppercase">LIVE</span>
-          </span>
-        )}
-        <span className="text-foreground font-medium">{match.title}</span>
-      </span>
-    );
-  };
-
-  const getMatchUrl = (match: Match) => {
-    const home = match.teams?.home?.name || '';
-    const away = match.teams?.away?.name || '';
-    const matchSlug = generateMatchSlug(home, away, match.title);
-    return `/match/${match.category}/${match.id}/${matchSlug}`;
-  };
-
-  // Duplicate matches for seamless looping
-  const duplicatedMatches = [...liveMatches, ...liveMatches];
+  // Duplicate items for seamless looping
+  const duplicatedItems = [...tickerItems, ...tickerItems];
 
   return (
-    <div className="bg-card/80 backdrop-blur-sm border-b border-border overflow-hidden">
-      <div className="relative flex items-center h-8">
+    <div 
+      className="bg-card/80 backdrop-blur-sm border-b border-border overflow-hidden"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <div className="relative flex items-center h-10">
         {/* Live indicator */}
-        <div className="absolute left-0 z-10 bg-gradient-to-r from-card via-card to-transparent pr-4 pl-2 h-full flex items-center">
-          <div className="flex items-center gap-1.5 bg-destructive/10 px-2 py-0.5 rounded">
+        <div className="absolute left-0 z-10 bg-gradient-to-r from-card via-card to-transparent pr-6 pl-3 h-full flex items-center">
+          <div className="flex items-center gap-1.5 bg-destructive/10 px-2.5 py-1 rounded">
             <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
             <span className="text-destructive font-bold text-xs uppercase tracking-wide">Live</span>
           </div>
         </div>
 
         {/* Scrolling content */}
-        <div className="flex animate-scroll-left pl-24">
-          {duplicatedMatches.map((match, index) => (
+        <div 
+          className={`flex pl-24 ${isPaused ? '' : 'animate-scroll-left'}`}
+          style={isPaused ? { animationPlayState: 'paused' } : {}}
+        >
+          {duplicatedItems.map((item, index) => (
             <Link
-              key={`${match.id}-${index}`}
-              to={getMatchUrl(match)}
-              className="flex-shrink-0 px-6 py-1 hover:bg-muted/50 transition-colors text-sm whitespace-nowrap"
+              key={`${item.id}-${index}`}
+              to={item.matchUrl}
+              className="flex-shrink-0 px-4 py-1.5 hover:bg-muted/50 transition-colors text-sm whitespace-nowrap flex items-center gap-3 border-r border-border/30"
             >
-              {getMatchDisplay(match)}
+              {/* Sport badge */}
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                {item.sport.length > 10 ? item.sport.substring(0, 8) + '..' : item.sport}
+              </span>
+              
+              {/* Teams and Score */}
+              <div className="flex items-center gap-2">
+                {/* Home Team */}
+                <div className="flex items-center gap-1.5">
+                  {item.homeBadge && (
+                    <img 
+                      src={item.homeBadge} 
+                      alt={item.homeTeam}
+                      className="w-4 h-4 object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
+                  <span className="text-foreground font-medium text-xs max-w-[80px] truncate">{item.homeTeam}</span>
+                </div>
+                
+                {/* Score */}
+                {item.homeScore !== null && item.awayScore !== null ? (
+                  <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded">
+                    <span className="text-foreground font-bold text-sm">{item.homeScore}</span>
+                    <span className="text-muted-foreground">-</span>
+                    <span className="text-foreground font-bold text-sm">{item.awayScore}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground text-xs">vs</span>
+                )}
+                
+                {/* Away Team */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-foreground font-medium text-xs max-w-[80px] truncate">{item.awayTeam}</span>
+                  {item.awayBadge && (
+                    <img 
+                      src={item.awayBadge} 
+                      alt={item.awayTeam}
+                      className="w-4 h-4 object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
+                </div>
+              </div>
+              
+              {/* Status */}
+              <span className={`text-[10px] font-bold uppercase ${item.isLive ? 'text-destructive' : 'text-primary'}`}>
+                {item.status}
+              </span>
             </Link>
           ))}
         </div>
 
         {/* Fade overlay on right */}
-        <div className="absolute right-0 z-10 bg-gradient-to-l from-card via-card to-transparent w-12 h-full" />
+        <div className="absolute right-0 z-10 bg-gradient-to-l from-card via-card to-transparent w-16 h-full" />
       </div>
     </div>
   );

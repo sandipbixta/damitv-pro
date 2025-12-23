@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.google-indexing]
 verify_jwt = false
+
+[functions.fetch-live-scores]
+verify_jwt = false
