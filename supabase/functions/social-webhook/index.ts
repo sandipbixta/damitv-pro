@@ -387,6 +387,116 @@ function buildProductionUrl(sport: string, matchId: string, homeTeam: string, aw
   return `https://damitv.pro/match/${sport}/${matchId}/${slug}`;
 }
 
+// ========== Google Indexing API ==========
+async function submitToGoogleIndexing(url: string): Promise<{ success: boolean; error?: string }> {
+  const privateKey = Deno.env.get('GOOGLE_INDEXING_PRIVATE_KEY');
+  const clientEmail = Deno.env.get('GOOGLE_INDEXING_CLIENT_EMAIL');
+
+  if (!privateKey || !clientEmail) {
+    console.log('⚠️ Google Indexing credentials not configured');
+    return { success: false, error: 'Google Indexing credentials not configured' };
+  }
+
+  try {
+    // Generate JWT
+    const now = Math.floor(Date.now() / 1000);
+    const expiry = now + 3600;
+
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const payload = {
+      iss: clientEmail,
+      scope: 'https://www.googleapis.com/auth/indexing',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: expiry,
+    };
+
+    const base64UrlEncode = (data: object | string): string => {
+      const str = typeof data === 'string' ? data : JSON.stringify(data);
+      const base64 = btoa(str);
+      return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    };
+
+    const headerEncoded = base64UrlEncode(header);
+    const payloadEncoded = base64UrlEncode(payload);
+    const signatureInput = `${headerEncoded}.${payloadEncoded}`;
+
+    const pemContents = privateKey
+      .replace('-----BEGIN PRIVATE KEY-----', '')
+      .replace('-----END PRIVATE KEY-----', '')
+      .replace(/\\n/g, '')
+      .replace(/\s/g, '');
+
+    const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8',
+      binaryKey,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signatureBytes = await crypto.subtle.sign(
+      'RSASSA-PKCS1-v1_5',
+      cryptoKey,
+      new TextEncoder().encode(signatureInput)
+    );
+
+    const signatureEncoded = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+
+    const jwt = `${signatureInput}.${signatureEncoded}`;
+
+    // Get access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.text();
+      console.error('❌ Failed to get Google access token:', error);
+      return { success: false, error: `Token error: ${error}` };
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    // Submit URL for indexing
+    const indexResponse = await fetch('https://indexing.googleapis.com/v3/urlNotifications:publish', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        url: url,
+        type: 'URL_UPDATED',
+      }),
+    });
+
+    const indexResult = await indexResponse.json();
+
+    if (!indexResponse.ok) {
+      console.error('❌ Google Indexing API error:', indexResult);
+      return { success: false, error: indexResult.error?.message || 'Indexing API error' };
+    }
+
+    console.log('✅ URL submitted to Google Indexing:', url);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Google Indexing error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -465,6 +575,13 @@ serve(async (req) => {
     // Post to Telegram with both team logos and inline button
     const telegramResult = await postToTelegramWithBothLogos(message, streamUrl, homeBadge, awayBadge);
 
+    // Submit to Google Indexing API (only for new match_live events)
+    let googleIndexResult = null;
+    if (notificationType === 'match_live') {
+      console.log('🔍 Submitting URL to Google Indexing:', streamUrl);
+      googleIndexResult = await submitToGoogleIndexing(streamUrl);
+    }
+
     // Mark as notified if successful, including message_id for goal edits
     if (telegramResult.success) {
       await markAsNotified(matchId, matchTitle, notificationType);
@@ -476,8 +593,24 @@ serve(async (req) => {
     }
 
     console.log('📊 Telegram result:', telegramResult);
+    if (googleIndexResult) {
+      console.log('📊 Google Indexing result:', googleIndexResult);
+    }
 
     return new Response(
+      JSON.stringify({
+        success: telegramResult.success,
+        telegram: telegramResult,
+        googleIndexing: googleIndexResult,
+        streamUrl,
+        homeBadge,
+        awayBadge
+      }),
+      { 
+        status: telegramResult.success ? 200 : 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
       JSON.stringify({
         success: telegramResult.success,
         telegram: telegramResult,
