@@ -288,13 +288,11 @@ function createWatchLiveKeyboard(streamUrl: string) {
   };
 }
 
-// ========== Post to Telegram with both team logos ==========
-async function postToTelegramWithLogos(
+// ========== Post to Telegram with poster only (no logos) ==========
+async function postToTelegramWithPoster(
   message: string, 
   streamUrl: string,
-  homeBadge?: string | null,
-  awayBadge?: string | null,
-  fallbackImage?: string
+  poster?: string | null
 ): Promise<{ success: boolean; messageId?: number }> {
   const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
@@ -307,53 +305,18 @@ async function postToTelegramWithLogos(
   const replyMarkup = createWatchLiveKeyboard(streamUrl);
 
   try {
-    // If we have both badges, send as media group (2 photos side by side)
-    if (homeBadge && awayBadge) {
-      console.log('📸 Sending media group with both team logos');
-      
-      // Send media group with both logos
-      const mediaGroupResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMediaGroup`, {
+    let response;
+    let messageId: number | undefined;
+    
+    // Only send photo if poster is available - no logos
+    if (poster) {
+      console.log('📸 Sending photo with poster');
+      response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          media: [
-            { type: 'photo', media: homeBadge },
-            { type: 'photo', media: awayBadge, caption: message, parse_mode: 'HTML' }
-          ]
-        })
-      });
-      
-      const mediaGroupData = await mediaGroupResponse.json();
-      
-      if (mediaGroupData.ok) {
-        // Send follow-up message with Watch Live button
-        const buttonResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: '📺 Stream ready - tap the button below!',
-            reply_markup: replyMarkup
-          })
-        });
-        
-        const buttonData = await buttonResponse.json();
-        console.log('✅ Posted both logos + Watch Live button');
-        return { success: true, messageId: buttonData.result?.message_id };
-      }
-    }
-    
-    // Fallback: single image with caption
-    const imageUrl = homeBadge || awayBadge || fallbackImage;
-    
-    if (imageUrl) {
-      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          photo: imageUrl,
+          photo: poster,
           caption: message,
           parse_mode: 'HTML',
           reply_markup: replyMarkup
@@ -362,13 +325,14 @@ async function postToTelegramWithLogos(
 
       const data = await response.json();
       if (data.ok) {
-        console.log('✅ Posted single photo to Telegram');
+        console.log('✅ Posted photo to Telegram');
         return { success: true, messageId: data.result?.message_id };
       }
     }
     
-    // No images - text only
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    // No poster - text only (no logos)
+    console.log('📝 Sending text message only (no poster available)');
+    response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -399,7 +363,7 @@ async function postToTelegram(
   streamUrl: string,
   imageUrl?: string
 ): Promise<{ success: boolean; messageId?: number }> {
-  return postToTelegramWithLogos(message, streamUrl, null, null, imageUrl);
+  return postToTelegramWithPoster(message, streamUrl, imageUrl);
 }
 
 // ========== Edit Telegram Message (for goal updates like VAR) ==========
@@ -570,8 +534,8 @@ async function processLiveMatches() {
     const alreadyNotifiedLive = await isAlreadyNotified(match.id, 'match_live');
     
     if (!alreadyNotifiedLive) {
-      // Fetch both team badges
-      const { homeBadge, awayBadge } = await fetchBothTeamBadges(teams.home, teams.away);
+      // Use poster only - no team badges
+      console.log('🖼️ Poster available:', match.poster ? 'Yes' : 'No');
       
       // New live match - send notification with 🔴 LIVE indicator
       const message = `🔴 <b>LIVE NOW!</b>
@@ -583,7 +547,7 @@ ${sportEmoji} <b>${teams.home}</b> vs <b>${teams.away}</b>
 
 #LiveStream #Sports #DamiTV`;
 
-      const result = await postToTelegramWithLogos(message, streamUrl, homeBadge, awayBadge, match.poster);
+      const result = await postToTelegramWithPoster(message, streamUrl, match.poster);
       if (result.success) {
         await markAsNotified(match.id, match.title, 'match_live');
         newLiveMatches++;
