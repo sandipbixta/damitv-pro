@@ -17,6 +17,7 @@ import { useLiveMatches } from '../hooks/useLiveMatches';
 import { useStreamPlayer } from '../hooks/useStreamPlayer';
 import LiveHeader from '../components/live/LiveHeader';
 import FeaturedPlayer from '../components/live/FeaturedPlayer';
+import SportFilterPills from '../components/live/SportFilterPills';
 import MatchesTabContent from '../components/live/MatchesTabContent';
 import MatchSection from '../components/MatchSection';
 import MatchCard from '../components/MatchCard';
@@ -66,16 +67,6 @@ const Live = () => {
     }, 100);
   };
 
-  // Sync sport filter from URL params
-  useEffect(() => {
-    const sportFromUrl = searchParams.get('sport');
-    if (sportFromUrl && sportFromUrl !== activeSportFilter) {
-      setActiveSportFilter(sportFromUrl);
-    } else if (!sportFromUrl && activeSportFilter !== 'all') {
-      setActiveSportFilter('all');
-    }
-  }, [searchParams]);
-
   // Auto-select match from URL params (when coming from home page)
   useEffect(() => {
     const matchIdFromUrl = searchParams.get('matchId');
@@ -85,11 +76,8 @@ const Live = () => {
       const matchToSelect = allMatches.find(m => m.id === matchIdFromUrl);
       if (matchToSelect) {
         handleUserMatchSelect(matchToSelect);
-        // Clear match params but keep sport filter
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete('matchId');
-        newParams.delete('sportId');
-        setSearchParams(newParams);
+        // Clear URL params after selection
+        setSearchParams({});
       }
     }
   }, [searchParams, allMatches, userSelectedMatch]);
@@ -234,6 +222,12 @@ const Live = () => {
         </div>
       )}
       
+      <SportFilterPills
+        allMatches={allMatches}
+        sports={sports}
+        activeSportFilter={activeSportFilter}
+        onSportFilterChange={setActiveSportFilter}
+      />
       
       {/* Tabs Navigation for All/Live/Upcoming */}
       <Tabs 
