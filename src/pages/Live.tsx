@@ -67,6 +67,16 @@ const Live = () => {
     }, 100);
   };
 
+  // Sync sport filter from URL params
+  useEffect(() => {
+    const sportFromUrl = searchParams.get('sport');
+    if (sportFromUrl && sportFromUrl !== activeSportFilter) {
+      setActiveSportFilter(sportFromUrl);
+    } else if (!sportFromUrl && activeSportFilter !== 'all') {
+      setActiveSportFilter('all');
+    }
+  }, [searchParams]);
+
   // Auto-select match from URL params (when coming from home page)
   useEffect(() => {
     const matchIdFromUrl = searchParams.get('matchId');
@@ -76,8 +86,11 @@ const Live = () => {
       const matchToSelect = allMatches.find(m => m.id === matchIdFromUrl);
       if (matchToSelect) {
         handleUserMatchSelect(matchToSelect);
-        // Clear URL params after selection
-        setSearchParams({});
+        // Clear match params but keep sport filter
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('matchId');
+        newParams.delete('sportId');
+        setSearchParams(newParams);
       }
     }
   }, [searchParams, allMatches, userSelectedMatch]);
