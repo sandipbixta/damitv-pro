@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import MainNav from './MainNav';
+import SportsNav from './SportsNav';
 import MobileBottomNav from './MobileBottomNav';
 import ScrollToTop from './ScrollToTop';
 import LiveScoreTicker from './LiveScoreTicker';
@@ -69,6 +70,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
             )}
           </div>
         </div>
+        <SportsNav />
       </header>
       
       {/* Live Score Ticker */}
