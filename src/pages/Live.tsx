@@ -17,7 +17,6 @@ import { useLiveMatches } from '../hooks/useLiveMatches';
 import { useStreamPlayer } from '../hooks/useStreamPlayer';
 import LiveHeader from '../components/live/LiveHeader';
 import FeaturedPlayer from '../components/live/FeaturedPlayer';
-import SportFilterPills from '../components/live/SportFilterPills';
 import MatchesTabContent from '../components/live/MatchesTabContent';
 import MatchSection from '../components/MatchSection';
 import MatchCard from '../components/MatchCard';
@@ -235,12 +234,6 @@ const Live = () => {
         </div>
       )}
       
-      <SportFilterPills
-        allMatches={allMatches}
-        sports={sports}
-        activeSportFilter={activeSportFilter}
-        onSportFilterChange={setActiveSportFilter}
-      />
       
       {/* Tabs Navigation for All/Live/Upcoming */}
       <Tabs 
