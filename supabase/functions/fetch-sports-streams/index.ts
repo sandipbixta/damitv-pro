@@ -5,21 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Multiple M3U8 sources to try
-const M3U8_SOURCES = [
-  'https://raw.githubusercontent.com/byte-capsule/Starter-Starter-Pro-Sports-M3U8/main/all.m3u8',
-  'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_sports.m3u8',
-  'https://iptv-org.github.io/iptv/categories/sports.m3u8',
-];
-
 interface StreamInfo {
   name: string;
   url: string;
   logo?: string;
   group?: string;
+  headers?: Record<string, string>;
 }
 
-function parseM3U8(content: string): StreamInfo[] {
+// Parse M3U/M3U8 playlist format
+function parseM3U(content: string): StreamInfo[] {
   const lines = content.split('\n');
   const streams: StreamInfo[] = [];
   
@@ -27,7 +22,6 @@ function parseM3U8(content: string): StreamInfo[] {
     const line = lines[i].trim();
     
     if (line.startsWith('#EXTINF:')) {
-      // Parse the EXTINF line for metadata
       const nameMatch = line.match(/,(.+)$/);
       const logoMatch = line.match(/tvg-logo="([^"]+)"/);
       const groupMatch = line.match(/group-title="([^"]+)"/);
@@ -36,7 +30,7 @@ function parseM3U8(content: string): StreamInfo[] {
       const logo = logoMatch ? logoMatch[1] : undefined;
       const group = groupMatch ? groupMatch[1] : undefined;
       
-      // Next non-empty, non-comment line should be the URL
+      // Find the URL line
       for (let j = i + 1; j < lines.length; j++) {
         const urlLine = lines[j].trim();
         if (urlLine && !urlLine.startsWith('#')) {
@@ -52,80 +46,150 @@ function parseM3U8(content: string): StreamInfo[] {
   return streams;
 }
 
+// Parse TSports/FanCode JSON format
+function parseJsonStreams(data: any[]): StreamInfo[] {
+  return data.map(item => ({
+    name: item.name || item.channel_name || 'Live Stream',
+    url: item.url || item.m3u8_url || item.link,
+    logo: item.logo || item.icon,
+    group: item.category || item.group || 'Sports',
+    headers: item.headers || undefined,
+  })).filter(s => s.url);
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Fetching sports streams from multiple sources...');
+    console.log('🔄 Fetching sports streams from multiple sources...');
     
     const allStreams: StreamInfo[] = [];
     const errors: string[] = [];
-    
-    // Try each source
-    for (const source of M3U8_SOURCES) {
-      try {
-        console.log(`Trying source: ${source}`);
-        const response = await fetch(source, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
-        });
-        
-        if (response.ok) {
-          const content = await response.text();
-          const streams = parseM3U8(content);
-          console.log(`Found ${streams.length} streams from ${source}`);
-          allStreams.push(...streams);
-        } else {
-          errors.push(`${source}: ${response.status}`);
-        }
-      } catch (error) {
-        console.error(`Error fetching ${source}:`, error);
-        errors.push(`${source}: ${error.message}`);
+
+    // Source 1: IPTV-org Sports (most reliable)
+    try {
+      console.log('📡 Fetching from IPTV-org...');
+      const res = await fetch('https://iptv-org.github.io/iptv/categories/sports.m3u', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      });
+      if (res.ok) {
+        const content = await res.text();
+        const streams = parseM3U(content);
+        console.log(`✅ IPTV-org: ${streams.length} streams`);
+        allStreams.push(...streams);
       }
+    } catch (e) {
+      console.error('IPTV-org error:', e);
+      errors.push('IPTV-org failed');
     }
-    
-    // Filter for sports-related streams and remove duplicates
-    const sportsKeywords = ['sport', 'espn', 'fox', 'sky', 'bein', 'dazn', 'nba', 'nfl', 'mlb', 'nhl', 'soccer', 'football', 'tennis', 'golf', 'racing', 'f1', 'ufc', 'wwe', 'cricket', 'rugby'];
-    
-    const uniqueStreams = allStreams.filter((stream, index, self) => 
-      self.findIndex(s => s.url === stream.url) === index
+
+    // Source 2: TSports Grabber (JSON with headers)
+    try {
+      console.log('📡 Fetching from TSports...');
+      const res = await fetch('https://raw.githubusercontent.com/byte-capsule/TSports-m3u8-Grabber/main/TSports_m3u8_headers.Json', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const streams = parseJsonStreams(data);
+        console.log(`✅ TSports: ${streams.length} streams`);
+        allStreams.push(...streams);
+      }
+    } catch (e) {
+      console.error('TSports error:', e);
+      errors.push('TSports failed');
+    }
+
+    // Source 3: FanCode (JSON with headers)
+    try {
+      console.log('📡 Fetching from FanCode...');
+      const res = await fetch('https://raw.githubusercontent.com/byte-capsule/FanCode-Hls-Fetcher/main/Fancode_hls_m3u8.Json', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const streams = parseJsonStreams(data);
+        console.log(`✅ FanCode: ${streams.length} streams`);
+        allStreams.push(...streams);
+      }
+    } catch (e) {
+      console.error('FanCode error:', e);
+      errors.push('FanCode failed');
+    }
+
+    // Source 4: AbbaSport M3U
+    try {
+      console.log('📡 Fetching from AbbaSport...');
+      const res = await fetch('https://raw.githubusercontent.com/konanda-sg/abbasport-m3u/refs/heads/main/output/abbasport.m3u', {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0',
+          'Referer': 'https://cookiewebplay.xyz/'
+        },
+      });
+      if (res.ok) {
+        const content = await res.text();
+        const streams = parseM3U(content);
+        // Add referer header requirement to these streams
+        streams.forEach(s => {
+          s.headers = { 'Referer': 'https://cookiewebplay.xyz/' };
+        });
+        console.log(`✅ AbbaSport: ${streams.length} streams`);
+        allStreams.push(...streams);
+      }
+    } catch (e) {
+      console.error('AbbaSport error:', e);
+      errors.push('AbbaSport failed');
+    }
+
+    // Source 5: Free-TV IPTV sports
+    try {
+      console.log('📡 Fetching from Free-TV...');
+      const res = await fetch('https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_sports.m3u8', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+      if (res.ok) {
+        const content = await res.text();
+        const streams = parseM3U(content);
+        console.log(`✅ Free-TV: ${streams.length} streams`);
+        allStreams.push(...streams);
+      }
+    } catch (e) {
+      console.error('Free-TV error:', e);
+      errors.push('Free-TV failed');
+    }
+
+    // Remove duplicates by URL
+    const uniqueStreams = allStreams.filter((stream, index, self) =>
+      index === self.findIndex(s => s.url === stream.url)
     );
+
+    // Sort: prioritize sports keywords
+    const sportsKeywords = ['sport', 'espn', 'fox', 'sky', 'bein', 'dazn', 'nba', 'nfl', 'mlb', 'nhl', 'soccer', 'football', 'tennis', 'golf', 'f1', 'ufc', 'wwe', 'cricket', 'rugby', 'tsports', 'fancode', 'live'];
     
-    // Prioritize streams with sports keywords in name
-    const sortedStreams = uniqueStreams.sort((a, b) => {
-      const aIsSports = sportsKeywords.some(kw => a.name.toLowerCase().includes(kw) || (a.group?.toLowerCase().includes(kw)));
-      const bIsSports = sportsKeywords.some(kw => b.name.toLowerCase().includes(kw) || (b.group?.toLowerCase().includes(kw)));
-      if (aIsSports && !bIsSports) return -1;
-      if (!aIsSports && bIsSports) return 1;
-      return 0;
+    uniqueStreams.sort((a, b) => {
+      const aScore = sportsKeywords.filter(kw => a.name.toLowerCase().includes(kw)).length;
+      const bScore = sportsKeywords.filter(kw => b.name.toLowerCase().includes(kw)).length;
+      return bScore - aScore;
     });
-    
-    console.log(`Total unique streams found: ${sortedStreams.length}`);
-    
+
+    console.log(`📊 Total unique streams: ${uniqueStreams.length}`);
+
     return new Response(
       JSON.stringify({
         success: true,
-        streams: sortedStreams.slice(0, 100), // Limit to 100 streams
-        total: sortedStreams.length,
-        sources_tried: M3U8_SOURCES.length,
+        streams: uniqueStreams.slice(0, 150),
+        total: uniqueStreams.length,
         errors: errors.length > 0 ? errors : undefined,
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in fetch-sports-streams:', error);
+    console.error('Fatal error:', error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
