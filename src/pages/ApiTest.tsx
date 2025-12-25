@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Play, ExternalLink } from 'lucide-react';
+import { Loader2, RefreshCw, Play, ExternalLink, X, Maximize } from 'lucide-react';
+import Hls from 'hls.js';
 
 interface Sport {
   id: number;
@@ -39,6 +40,11 @@ const ApiTest = () => {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedStream, setSelectedStream] = useState<LiveStream | null>(null);
+  const [playerError, setPlayerError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -63,6 +69,58 @@ const ApiTest = () => {
     fetchData();
   }, []);
 
+  // Initialize HLS player when stream is selected
+  useEffect(() => {
+    if (!selectedStream || !videoRef.current) return;
+    
+    setPlayerError(null);
+    const streamUrl = selectedStream.url;
+    
+    console.log('🎬 Attempting to play stream:', streamUrl);
+    
+    // Try iframe approach first since these URLs are typically web pages
+    // The video element will be used as a fallback
+    
+    // Check if it's an HLS stream
+    if (streamUrl.includes('.m3u8')) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+        });
+        
+        hlsRef.current = hls;
+        hls.loadSource(streamUrl);
+        hls.attachMedia(videoRef.current);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('✅ HLS manifest loaded');
+          videoRef.current?.play().catch(e => console.log('Autoplay blocked:', e));
+        });
+        
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          console.error('HLS Error:', data);
+          if (data.fatal) {
+            setPlayerError(`HLS Error: ${data.details}`);
+          }
+        });
+      } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari native HLS
+        videoRef.current.src = streamUrl;
+        videoRef.current.play().catch(e => console.log('Autoplay blocked:', e));
+      }
+    }
+    
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [selectedStream]);
+
   const getSportName = (sportId: number) => {
     return data?.sports.find(s => s.id === sportId)?.name || 'Unknown';
   };
@@ -76,6 +134,29 @@ const ApiTest = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handlePlayStream = (stream: LiveStream) => {
+    setSelectedStream(stream);
+    setPlayerError(null);
+  };
+
+  const closePlayer = () => {
+    setSelectedStream(null);
+    setPlayerError(null);
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      containerRef.current.requestFullscreen();
+    }
   };
 
   if (loading) {
@@ -109,6 +190,67 @@ const ApiTest = () => {
           </Button>
         </div>
 
+        {/* Video Player Modal */}
+        {selectedStream && (
+          <Card className="border-2 border-primary">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{selectedStream.name}</CardTitle>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={toggleFullscreen}>
+                    <Maximize className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={closePlayer}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div ref={containerRef} className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                {playerError ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                    <p className="text-red-400 mb-4">{playerError}</p>
+                    <p className="text-sm text-muted-foreground mb-4">Trying iframe fallback...</p>
+                  </div>
+                ) : null}
+                
+                {/* Try iframe embed first */}
+                <iframe
+                  src={selectedStream.url}
+                  className="absolute inset-0 w-full h-full"
+                  allowFullScreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  referrerPolicy="no-referrer"
+                  style={{ border: 'none' }}
+                />
+                
+                {/* HLS Video player as hidden fallback */}
+                <video
+                  ref={videoRef}
+                  className="hidden w-full h-full"
+                  controls
+                  playsInline
+                  autoPlay
+                />
+              </div>
+              
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="secondary">{getSportName(selectedStream.sport_id)}</Badge>
+                <Badge variant="outline">{getTournamentName(selectedStream.tournament_id)}</Badge>
+                <a 
+                  href={selectedStream.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline ml-auto"
+                >
+                  Open in new tab <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Sports */}
         <Card>
           <CardHeader>
@@ -136,7 +278,7 @@ const ApiTest = () => {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {data?.items.live.map(stream => (
-                <Card key={stream.stream_id} className="border border-border">
+                <Card key={stream.stream_id} className="border border-border hover:border-primary transition-colors">
                   <CardContent className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="font-semibold text-sm text-foreground line-clamp-2">
@@ -150,14 +292,25 @@ const ApiTest = () => {
                       <p>Start: {formatTime(stream.start)}</p>
                       <p className="text-[10px]">Stream ID: {stream.stream_id}</p>
                     </div>
-                    <a 
-                      href={stream.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                    >
-                      Open Stream <ExternalLink className="h-3 w-3" />
-                    </a>
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handlePlayStream(stream)}
+                        className="flex-1"
+                      >
+                        <Play className="h-3 w-3 mr-1" />
+                        Play
+                      </Button>
+                      <a 
+                        href={stream.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        <Button size="sm" variant="outline">
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </a>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
