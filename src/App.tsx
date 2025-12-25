@@ -46,6 +46,7 @@ import WatchPremierLeague from "./pages/WatchPremierLeague";
 import NbaStreaming from "./pages/NbaStreaming";
 import UfcStreaming from "./pages/UfcStreaming";
 import Highlights from "./pages/Highlights";
+import ApiTest from "./pages/ApiTest";
 
 import TelegramFAB from "./components/TelegramFAB";
 
@@ -178,6 +179,7 @@ const App: React.FC = () => {
                   <Highlights />
                 </SEOPageTracker>
               } />
+              <Route path="/api-test-private" element={<ApiTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>
