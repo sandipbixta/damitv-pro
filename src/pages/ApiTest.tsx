@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, RefreshCw, Play, X, Maximize, Volume2, VolumeX } from 'lucide-react';
 import Hls from 'hls.js';
+import { supabase } from '@/integrations/supabase/client';
 
 // ===== API 1: ssssdata.com =====
 interface Sport {
@@ -45,15 +46,6 @@ interface M3U8Stream {
 }
 
 const SSSS_API_URL = 'https://api.ssssdata.com/v1.1/stream/list?language=en&access-token=SMB9MtuEJTs6FdH_owwf0QXWtqoyJ0';
-
-// GitHub raw M3U playlist sources
-const M3U_SOURCES = [
-  {
-    name: 'AbbaSport',
-    url: 'https://raw.githubusercontent.com/konanda-sg/abbasport-m3u/refs/heads/main/output/abbasport.m3u',
-    referer: 'https://cookiewebplay.xyz/'
-  }
-];
 
 const ApiTest = () => {
   const [activeTab, setActiveTab] = useState('m3u8');
@@ -107,32 +99,28 @@ const ApiTest = () => {
     return streams;
   };
 
-  // Fetch M3U8 playlist
+  // Fetch M3U8 playlist via edge function
   const fetchM3U8 = async () => {
     setM3u8Loading(true);
     setM3u8Error(null);
     
     try {
-      const allStreams: M3U8Stream[] = [];
+      console.log('🔄 Fetching streams via edge function...');
+      const { data, error } = await supabase.functions.invoke('fetch-sports-streams');
       
-      for (const source of M3U_SOURCES) {
-        try {
-          const response = await fetch(source.url);
-          if (response.ok) {
-            const content = await response.text();
-            const streams = parseM3U(content);
-            console.log(`✅ Loaded ${streams.length} streams from ${source.name}`);
-            allStreams.push(...streams);
-          }
-        } catch (e) {
-          console.error(`Failed to fetch ${source.name}:`, e);
-        }
+      if (error) {
+        throw error;
       }
       
-      setM3u8Streams(allStreams);
-      
-      if (allStreams.length === 0) {
-        setM3u8Error('No streams found. CORS may be blocking the request.');
+      if (data?.success && data.streams) {
+        console.log(`✅ Loaded ${data.streams.length} streams from edge function`);
+        setM3u8Streams(data.streams);
+        
+        if (data.streams.length === 0) {
+          setM3u8Error('No streams found from sources.');
+        }
+      } else {
+        setM3u8Error(data?.error || 'Failed to fetch streams');
       }
     } catch (err) {
       console.error('M3U8 fetch error:', err);
@@ -397,7 +385,7 @@ const ApiTest = () => {
                 
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {m3u8Streams.map((stream, index) => (
-                    <Card key={index} className="border border-border hover:border-green-500 transition-colors cursor-pointer" onClick={() => setSelectedStream({ name: stream.name, url: stream.url, referer: M3U_SOURCES[0].referer })}>
+                    <Card key={index} className="border border-border hover:border-green-500 transition-colors cursor-pointer" onClick={() => setSelectedStream({ name: stream.name, url: stream.url })}>
                       <CardContent className="p-3">
                         <div className="flex items-center gap-3">
                           {stream.logo && (
