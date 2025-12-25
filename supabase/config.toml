@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.fetch-highlights]
 verify_jwt = false
+
+[functions.fetch-clean-sports]
+verify_jwt = false

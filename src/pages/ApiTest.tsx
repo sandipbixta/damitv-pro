@@ -45,10 +45,24 @@ interface M3U8Stream {
   group?: string;
 }
 
+// ===== API 3: Clean Sports (ad-free with EPG) =====
+interface CleanStream {
+  id: string;
+  name: string;
+  url: string;
+  logo?: string;
+  category: string;
+  currentProgram?: string;
+  startTime?: string;
+  endTime?: string;
+  isLive: boolean;
+  headers?: Record<string, string>;
+}
+
 const SSSS_API_URL = 'https://api.ssssdata.com/v1.1/stream/list?language=en&access-token=SMB9MtuEJTs6FdH_owwf0QXWtqoyJ0';
 
 const ApiTest = () => {
-  const [activeTab, setActiveTab] = useState('m3u8');
+  const [activeTab, setActiveTab] = useState('clean');
   
   // ssssdata state
   const [ssssData, setSsssData] = useState<SsssApiResponse | null>(null);
@@ -59,6 +73,11 @@ const ApiTest = () => {
   const [m3u8Streams, setM3u8Streams] = useState<M3U8Stream[]>([]);
   const [m3u8Loading, setM3u8Loading] = useState(false);
   const [m3u8Error, setM3u8Error] = useState<string | null>(null);
+  
+  // Clean sports state (ad-free)
+  const [cleanStreams, setCleanStreams] = useState<CleanStream[]>([]);
+  const [cleanLoading, setCleanLoading] = useState(false);
+  const [cleanError, setCleanError] = useState<string | null>(null);
   
   // Player state
   const [selectedStream, setSelectedStream] = useState<{ name: string; url: string; referer?: string } | null>(null);
@@ -150,8 +169,37 @@ const ApiTest = () => {
     }
   };
 
+  // Fetch clean sports (ad-free with EPG)
+  const fetchCleanSports = async () => {
+    setCleanLoading(true);
+    setCleanError(null);
+    
+    try {
+      console.log('🔄 Fetching clean ad-free streams...');
+      const { data, error } = await supabase.functions.invoke('fetch-clean-sports');
+      
+      if (error) throw error;
+      
+      if (data?.success && data.streams) {
+        console.log(`✅ Loaded ${data.streams.length} clean streams`);
+        setCleanStreams(data.streams);
+        
+        if (data.streams.length === 0) {
+          setCleanError('No streams found.');
+        }
+      } else {
+        setCleanError(data?.error || 'Failed to fetch streams');
+      }
+    } catch (err) {
+      console.error('Clean sports fetch error:', err);
+      setCleanError(err instanceof Error ? err.message : 'Failed to fetch streams');
+    } finally {
+      setCleanLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchM3U8();
+    fetchCleanSports();
   }, []);
 
   // Initialize HLS player when stream is selected
@@ -338,10 +386,82 @@ const ApiTest = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="m3u8">Direct M3U8 Streams</TabsTrigger>
-            <TabsTrigger value="ssss">ssssdata.com API</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="clean">Ad-Free Sports</TabsTrigger>
+            <TabsTrigger value="m3u8">Direct M3U8</TabsTrigger>
+            <TabsTrigger value="ssss">ssssdata.com</TabsTrigger>
           </TabsList>
+          
+          {/* Clean Ad-Free Sports Tab */}
+          <TabsContent value="clean" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Play className="h-5 w-5 text-green-500" />
+                    Ad-Free Sports Streams ({cleanStreams.length})
+                  </CardTitle>
+                  <Button onClick={fetchCleanSports} variant="outline" size="sm" disabled={cleanLoading}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${cleanLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Direct HLS streams with EPG schedule data - No iframe ads
+                </p>
+              </CardHeader>
+              <CardContent>
+                {cleanLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                )}
+                
+                {cleanError && (
+                  <div className="text-center py-8">
+                    <p className="text-destructive mb-4">{cleanError}</p>
+                  </div>
+                )}
+                
+                {!cleanLoading && !cleanError && cleanStreams.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    No streams loaded. Click Refresh to try again.
+                  </p>
+                )}
+                
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {cleanStreams.map((stream, index) => (
+                    <Card 
+                      key={index} 
+                      className="border border-border hover:border-green-500 transition-colors cursor-pointer" 
+                      onClick={() => setSelectedStream({ name: stream.name, url: stream.url })}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                          {stream.logo && (
+                            <img 
+                              src={stream.logo} 
+                              alt="" 
+                              className="w-8 h-8 object-contain" 
+                              onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} 
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-sm truncate">{stream.name}</h3>
+                            {stream.currentProgram && (
+                              <p className="text-xs text-green-500 truncate">▶ {stream.currentProgram}</p>
+                            )}
+                            <Badge variant="secondary" className="text-xs">{stream.category}</Badge>
+                          </div>
+                          <Play className="h-4 w-4 text-green-500 shrink-0" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           {/* M3U8 Direct Streams Tab */}
           <TabsContent value="m3u8" className="space-y-4">
