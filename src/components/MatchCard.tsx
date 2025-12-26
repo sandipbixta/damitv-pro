@@ -69,10 +69,15 @@ const MatchCard: React.FC<MatchCardProps> = ({
     return format(date, "EEE, do MMM, h:mm a");
   };
 
-  // Get team badges with fallbacks
+  // Get team badges with fallbacks - now using BOHOSport API
   const getTeamBadge = (team: any) => {
     if (team?.badge) {
-      return `https://streamed.pk/api/images/badge/${team.badge}.webp`;
+      // If badge is already a full URL, use it directly
+      if (team.badge.startsWith('http')) {
+        return team.badge;
+      }
+      // Otherwise construct the URL from BOHOSport API
+      return `https://streamapi.cc/sport/images/badge/${team.badge}`;
     }
     const logoFromService = teamLogoService.getTeamLogo(team?.name || '', team?.badge);
     return logoFromService || '';
@@ -94,9 +99,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
   // Generate thumbnail
   const generateThumbnail = () => {
     if (match.poster && match.poster.trim() !== '') {
-      const posterUrl = match.poster.startsWith('http') 
-        ? match.poster 
-        : `https://streamed.pk${match.poster}.webp`;
+      let posterUrl = match.poster;
+      // Handle different URL formats
+      if (!match.poster.startsWith('http')) {
+        posterUrl = `https://streamapi.cc/sport${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
+      }
       
       return (
         <img

@@ -23,7 +23,6 @@ import { manualMatches } from '../data/manualMatches';
 import { HeroCarousel } from '../components/HeroCarousel';
 import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
-import { useLiveMatchNotifier } from '../hooks/useLiveMatchNotifier';
 import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
 
@@ -47,8 +46,7 @@ const Index = () => {
     return manualMatches.filter(match => match.visible);
   }, []);
 
-  // Auto-notify when matches go live (posts to Telegram & X via Make.com)
-  useLiveMatchNotifier(liveMatches);
+  // Note: Live match notifications are now handled by the backend cron job (goal-alerts)
 
   // Memoize popular matches calculation - filter by selected sport
   const popularMatches = useMemo(() => {
