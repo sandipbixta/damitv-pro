@@ -98,12 +98,39 @@ interface FootballApiResponse {
   };
 }
 
+// ===== API 5: SportsRC API =====
+interface SportsRCCategory {
+  id: string;
+  name: string;
+}
+
+interface SportsRCMatch {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  time: string;
+  home_team?: string;
+  away_team?: string;
+  home_logo?: string;
+  away_logo?: string;
+  league?: string;
+  status?: string;
+}
+
+interface SportsRCDetail {
+  id: string;
+  title: string;
+  embed: string;
+  category: string;
+}
+
 const SSSS_API_URL = 'https://api.ssssdata.com/v1.1/stream/list?language=en&access-token=SMB9MtuEJTs6FdH_owwf0QXWtqoyJ0';
 const RAPIDAPI_KEY = 'd60ec7742bmshf7e102f26210e84p1164d2jsne0633fe2851c';
 const RAPIDAPI_HOST = 'football-live-streaming-api.p.rapidapi.com';
 
 const ApiTest = () => {
-  const [activeTab, setActiveTab] = useState('football');
+  const [activeTab, setActiveTab] = useState('sportsrc');
   
   // ssssdata state
   const [ssssData, setSsssData] = useState<SsssApiResponse | null>(null);
@@ -127,6 +154,14 @@ const ApiTest = () => {
   const [footballStatus, setFootballStatus] = useState<'all' | 'live' | 'vs'>('all');
   const [footballLeague, setFootballLeague] = useState<string>('all');
   const [footballDate, setFootballDate] = useState<string>('');
+  
+  // SportsRC API state
+  const [sportsrcCategories, setSportsrcCategories] = useState<SportsRCCategory[]>([]);
+  const [sportsrcMatches, setSportsrcMatches] = useState<SportsRCMatch[]>([]);
+  const [sportsrcCategory, setSportsrcCategory] = useState<string>('football');
+  const [sportsrcLoading, setSportsrcLoading] = useState(false);
+  const [sportsrcError, setSportsrcError] = useState<string | null>(null);
+  const [sportsrcEmbed, setSportsrcEmbed] = useState<string | null>(null);
   
   // Player state
   const [selectedStream, setSelectedStream] = useState<{ name: string; url: string; referer?: string } | null>(null);
@@ -311,9 +346,83 @@ const ApiTest = () => {
     }
   };
 
+  // ===== SportsRC API Functions =====
+  const SPORTSRC_BASE = 'https://api.sportsrc.org';
+
+  // Fetch SportsRC categories
+  const fetchSportsrcCategories = async () => {
+    try {
+      console.log('🏀 Fetching SportsRC categories...');
+      const response = await fetch(`${SPORTSRC_BASE}/?data=sports`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      console.log('📋 SportsRC categories:', data);
+      if (Array.isArray(data)) {
+        setSportsrcCategories(data);
+      }
+    } catch (err) {
+      console.error('SportsRC categories error:', err);
+    }
+  };
+
+  // Fetch SportsRC matches by category
+  const fetchSportsrcMatches = async (category: string) => {
+    setSportsrcLoading(true);
+    setSportsrcError(null);
+    setSportsrcEmbed(null);
+    
+    try {
+      console.log(`🏀 Fetching SportsRC ${category} matches...`);
+      const response = await fetch(`${SPORTSRC_BASE}/?data=matches&category=${category}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      console.log('⚽ SportsRC matches:', data);
+      
+      if (Array.isArray(data)) {
+        setSportsrcMatches(data);
+        if (data.length === 0) {
+          setSportsrcError(`No ${category} matches found`);
+        }
+      } else if (data.matches && Array.isArray(data.matches)) {
+        setSportsrcMatches(data.matches);
+      } else {
+        setSportsrcError('Invalid response format');
+      }
+    } catch (err) {
+      console.error('SportsRC matches error:', err);
+      setSportsrcError(err instanceof Error ? err.message : 'Failed to fetch matches');
+    } finally {
+      setSportsrcLoading(false);
+    }
+  };
+
+  // Fetch SportsRC match detail (embed)
+  const fetchSportsrcDetail = async (category: string, matchId: string) => {
+    try {
+      console.log(`🎬 Fetching SportsRC detail for ${matchId}...`);
+      const response = await fetch(`${SPORTSRC_BASE}/?data=detail&category=${category}&id=${matchId}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      console.log('🎬 SportsRC detail:', data);
+      
+      if (data.embed) {
+        setSportsrcEmbed(data.embed);
+      } else if (data.url) {
+        setSportsrcEmbed(data.url);
+      } else {
+        setSportsrcError('No stream embed found for this match');
+      }
+    } catch (err) {
+      console.error('SportsRC detail error:', err);
+      setSportsrcError(err instanceof Error ? err.message : 'Failed to fetch stream');
+    }
+  };
+
   // Auto-load Football API on mount
   useEffect(() => {
     fetchFootballLive(footballStatus, footballLeague, footballDate);
+    fetchSportsrcCategories();
+    fetchSportsrcMatches('football');
   }, []);
 
   // Initialize HLS player when stream is selected
@@ -546,12 +655,147 @@ const ApiTest = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="sportsrc">🌐 SportsRC</TabsTrigger>
             <TabsTrigger value="football">⚽ Football API</TabsTrigger>
-            <TabsTrigger value="clean">Ad-Free Sports</TabsTrigger>
-            <TabsTrigger value="m3u8">Direct M3U8</TabsTrigger>
-            <TabsTrigger value="ssss">ssssdata.com</TabsTrigger>
+            <TabsTrigger value="clean">Ad-Free</TabsTrigger>
+            <TabsTrigger value="m3u8">M3U8</TabsTrigger>
+            <TabsTrigger value="ssss">ssssdata</TabsTrigger>
           </TabsList>
+          
+          {/* SportsRC API Tab */}
+          <TabsContent value="sportsrc" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Play className="h-5 w-5 text-green-500" />
+                    SportsRC API ({sportsrcMatches.length})
+                  </CardTitle>
+                  <Button 
+                    onClick={() => fetchSportsrcMatches(sportsrcCategory)} 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={sportsrcLoading}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${sportsrcLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Multi-sport streaming API with embed codes - api.sportsrc.org
+                </p>
+                
+                {/* Category Pills */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {['football', 'basketball', 'tennis', 'mma', 'boxing', 'hockey', 'baseball', 'motorsport'].map(cat => (
+                    <Button
+                      key={cat}
+                      variant={sportsrcCategory === cat ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setSportsrcCategory(cat);
+                        fetchSportsrcMatches(cat);
+                      }}
+                    >
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Embed Player */}
+                {sportsrcEmbed && (
+                  <div className="mb-4 relative">
+                    <div className="flex justify-end mb-2">
+                      <Button variant="ghost" size="sm" onClick={() => setSportsrcEmbed(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div 
+                      className="aspect-video bg-black rounded-lg overflow-hidden"
+                      dangerouslySetInnerHTML={{ __html: sportsrcEmbed }}
+                    />
+                  </div>
+                )}
+                
+                {sportsrcLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                )}
+                
+                {sportsrcError && (
+                  <div className="text-center py-4">
+                    <p className="text-destructive">{sportsrcError}</p>
+                  </div>
+                )}
+                
+                {!sportsrcLoading && !sportsrcError && sportsrcMatches.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    No matches found. Try a different category.
+                  </p>
+                )}
+                
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {sportsrcMatches.map((match, index) => (
+                    <Card key={match.id || index} className="border border-border hover:border-primary/50 transition-colors">
+                      <CardContent className="p-4 space-y-3">
+                        {/* Match Header */}
+                        <div className="flex items-center justify-between">
+                          <Badge variant="secondary" className="text-xs">
+                            {match.category || sportsrcCategory}
+                          </Badge>
+                          {match.status && (
+                            <Badge variant={match.status === 'live' ? 'destructive' : 'outline'}>
+                              {match.status === 'live' ? '🔴 LIVE' : match.status}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Title or Teams */}
+                        {match.home_team && match.away_team ? (
+                          <div className="flex items-center justify-between gap-2 text-sm">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {match.home_logo && (
+                                <img src={match.home_logo} alt="" className="w-6 h-6 object-contain" />
+                              )}
+                              <span className="truncate font-medium">{match.home_team}</span>
+                            </div>
+                            <span className="text-muted-foreground">vs</span>
+                            <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                              <span className="truncate font-medium text-right">{match.away_team}</span>
+                              {match.away_logo && (
+                                <img src={match.away_logo} alt="" className="w-6 h-6 object-contain" />
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <h3 className="font-medium text-sm line-clamp-2">{match.title}</h3>
+                        )}
+                        
+                        {/* Time & League */}
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          {match.date && <span>{match.date}</span>}
+                          {match.time && <span>{match.time}</span>}
+                          {match.league && <span>• {match.league}</span>}
+                        </div>
+                        
+                        {/* Watch Button */}
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={() => fetchSportsrcDetail(match.category || sportsrcCategory, match.id)}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Watch Stream
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           {/* Football Live Streaming API Tab (RapidAPI) */}
           <TabsContent value="football" className="space-y-4">
