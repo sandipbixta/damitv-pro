@@ -1,9 +1,12 @@
-// BOHOSport API Service - uses Supabase Edge Function proxy
+// BOHOSport API Service - fetches from sportsrc.org API
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
 // BOHOSport embed base URL (ad-free iframe player)
 const BOHOSPORT_EMBED_BASE = 'https://embed.damitv.pro';
+
+// SportsRC API base URL for match details
+const SPORTSRC_API_BASE = 'https://api.sportsrc.org';
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
@@ -354,6 +357,34 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   }
 };
 
+// Fetch match details from SportsRC API to get correct stream sources
+const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football'): Promise<Source[]> => {
+  try {
+    const url = `${SPORTSRC_API_BASE}/?data=detail&category=${category}&id=${matchId}`;
+    console.log(`🔍 Fetching match sources from: ${url}`);
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.data?.sources && Array.isArray(result.data.sources)) {
+      console.log(`✅ Found ${result.data.sources.length} sources from SportsRC API`);
+      return result.data.sources.map((s: any) => ({
+        source: s.source,
+        id: s.id
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('❌ Error fetching match sources from API:', error);
+    return [];
+  }
+};
+
 // Fetch all streams for a match
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
@@ -364,37 +395,53 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
 
-  if (!match.sources || match.sources.length === 0) {
-    // Try to fetch with match ID and default source
+  // First, try to fetch sources from SportsRC API for accurate source/id pairs
+  const category = match.category || match.sportId || 'football';
+  const apiSources = await fetchMatchSourcesFromAPI(match.id, category);
+  
+  // Use API sources if available, otherwise fall back to match.sources
+  const sourcesToUse = apiSources.length > 0 ? apiSources : (match.sources || []);
+  
+  if (sourcesToUse.length === 0) {
+    // Last resort: try with match ID and echo source
     try {
       const streams = await fetchSimpleStream('echo', match.id);
       if (streams.length > 0) {
         allStreams.push(...streams);
-        sourcesWithStreams.add('bohosport');
+        sourcesWithStreams.add('echo');
       }
     } catch (error) {
       console.error('Error fetching default stream:', error);
     }
   } else {
-    // Use the source from match data
-    const source = match.sources[0];
-    try {
-      const streams = await fetchSimpleStream(source.source, source.id);
-      if (streams.length > 0) {
-        sourcesWithStreams.add('bohosport');
-        allStreams.push(...streams);
+    // Build streams for all available sources
+    for (const source of sourcesToUse) {
+      try {
+        const bohoEmbedUrl = buildBohoSportEmbedUrl(source.id, source.source);
+        const stream: Stream = {
+          id: source.id,
+          streamNo: allStreams.length + 1,
+          language: 'EN',
+          hd: true,
+          embedUrl: bohoEmbedUrl,
+          source: source.source,
+          timestamp: Date.now()
+        };
+        allStreams.push(stream);
+        sourcesWithStreams.add(source.source);
+        console.log(`✅ Added stream: ${source.source}/${source.id}`);
+      } catch (error) {
+        console.error('Error building stream:', error);
       }
-    } catch (error) {
-      console.error('Error fetching stream:', error);
     }
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`🎬 BOHOSport stream ready for ${match.title}: ${allStreams.length} streams`);
+  console.log(`🎬 BOHOSport streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
 
   return {
     streams: allStreams,
-    sourcesChecked: match.sources?.length || 1,
+    sourcesChecked: sourcesToUse.length || 1,
     sourcesWithStreams: sourceNames.length,
     sourceNames
   };
