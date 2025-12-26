@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, RefreshCw, Play, X, Maximize, Volume2, VolumeX } from 'lucide-react';
+import { Loader2, RefreshCw, Play, X, Maximize, Volume2, VolumeX, Server, AlertTriangle } from 'lucide-react';
 import Hls from 'hls.js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -59,10 +59,49 @@ interface CleanStream {
   headers?: Record<string, string>;
 }
 
+// ===== API 4: Football Live Streaming API (RapidAPI) =====
+interface FootballServer {
+  name: string;
+  url: string;
+  header?: { 
+    'user-agent'?: string; 
+    referer?: string;
+  };
+  type: 'direct' | 'drm' | 'referer';
+}
+
+interface FootballMatch {
+  match_time: string;
+  match_status: string;
+  home_team_name: string;
+  home_team_logo: string;
+  homeTeamScore: string;
+  away_team_name: string;
+  away_team_logo: string;
+  awayTeamScore: string;
+  league_name: string;
+  league_logo: string;
+  servers: FootballServer[];
+}
+
+interface FootballApiResponse {
+  matches: FootballMatch[];
+  pagination: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
 const SSSS_API_URL = 'https://api.ssssdata.com/v1.1/stream/list?language=en&access-token=SMB9MtuEJTs6FdH_owwf0QXWtqoyJ0';
+const RAPIDAPI_KEY = 'd60ec7742bmshf7e102f26210e84p1164d2jsne0633fe2851c';
+const RAPIDAPI_HOST = 'football-live-streaming-api.p.rapidapi.com';
 
 const ApiTest = () => {
-  const [activeTab, setActiveTab] = useState('clean');
+  const [activeTab, setActiveTab] = useState('football');
   
   // ssssdata state
   const [ssssData, setSsssData] = useState<SsssApiResponse | null>(null);
@@ -78,6 +117,12 @@ const ApiTest = () => {
   const [cleanStreams, setCleanStreams] = useState<CleanStream[]>([]);
   const [cleanLoading, setCleanLoading] = useState(false);
   const [cleanError, setCleanError] = useState<string | null>(null);
+  
+  // Football API state (RapidAPI)
+  const [footballMatches, setFootballMatches] = useState<FootballMatch[]>([]);
+  const [footballLoading, setFootballLoading] = useState(false);
+  const [footballError, setFootballError] = useState<string | null>(null);
+  const [footballStatus, setFootballStatus] = useState<'all' | 'live' | 'vs'>('all');
   
   // Player state
   const [selectedStream, setSelectedStream] = useState<{ name: string; url: string; referer?: string } | null>(null);
@@ -116,6 +161,51 @@ const ApiTest = () => {
     }
     
     return streams;
+  };
+
+  // Fetch Football Live Streaming API (RapidAPI)
+  const fetchFootballLive = async (status?: 'live' | 'vs' | 'all') => {
+    setFootballLoading(true);
+    setFootballError(null);
+    
+    try {
+      console.log('⚽ Fetching Football Live Streaming API...');
+      
+      let url = `https://${RAPIDAPI_HOST}/matches?page=1`;
+      if (status && status !== 'all') {
+        url += `&status=${status}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: {
+          'x-rapidapi-host': RAPIDAPI_HOST,
+          'x-rapidapi-key': RAPIDAPI_KEY
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data: FootballApiResponse = await response.json();
+      console.log('⚽ Football API Response:', data);
+      
+      if (data.matches) {
+        setFootballMatches(data.matches);
+        console.log(`✅ Loaded ${data.matches.length} football matches`);
+        
+        if (data.matches.length === 0) {
+          setFootballError('No matches found. Try changing the status filter.');
+        }
+      } else {
+        setFootballError('Invalid API response format');
+      }
+    } catch (err) {
+      console.error('Football API Error:', err);
+      setFootballError(err instanceof Error ? err.message : 'Failed to fetch football matches');
+    } finally {
+      setFootballLoading(false);
+    }
   };
 
   // Fetch M3U8 playlist via edge function
@@ -198,8 +288,9 @@ const ApiTest = () => {
     }
   };
 
+  // Auto-load Football API on mount
   useEffect(() => {
-    fetchCleanSports();
+    fetchFootballLive(footballStatus);
   }, []);
 
   // Initialize HLS player when stream is selected
@@ -325,6 +416,39 @@ const ApiTest = () => {
     });
   };
 
+  const formatMatchTime = (timestamp: string) => {
+    const date = new Date(parseInt(timestamp) * 1000);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleFootballServerClick = (match: FootballMatch, server: FootballServer) => {
+    const matchName = `${match.home_team_name} vs ${match.away_team_name}`;
+    
+    if (server.type === 'drm') {
+      setPlayerError('DRM streams require a special player (ExoPlayer/Shaka). Cannot play in browser.');
+      setSelectedStream({ name: matchName, url: server.url });
+      return;
+    }
+    
+    setSelectedStream({ 
+      name: `${matchName} - ${server.name}`, 
+      url: server.url,
+      referer: server.header?.referer
+    });
+  };
+
+  const getServerBadgeColor = (type: string) => {
+    switch (type) {
+      case 'direct': return 'bg-green-500/20 text-green-400 border-green-500/50';
+      case 'referer': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
+      case 'drm': return 'bg-red-500/20 text-red-400 border-red-500/50';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -386,11 +510,175 @@ const ApiTest = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="football">⚽ Football API</TabsTrigger>
             <TabsTrigger value="clean">Ad-Free Sports</TabsTrigger>
             <TabsTrigger value="m3u8">Direct M3U8</TabsTrigger>
             <TabsTrigger value="ssss">ssssdata.com</TabsTrigger>
           </TabsList>
+          
+          {/* Football Live Streaming API Tab (RapidAPI) */}
+          <TabsContent value="football" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Play className="h-5 w-5 text-green-500" />
+                    Football Live API ({footballMatches.length})
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant={footballStatus === 'all' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => { setFootballStatus('all'); fetchFootballLive('all'); }}
+                    >
+                      All
+                    </Button>
+                    <Button 
+                      variant={footballStatus === 'live' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => { setFootballStatus('live'); fetchFootballLive('live'); }}
+                    >
+                      Live
+                    </Button>
+                    <Button 
+                      variant={footballStatus === 'vs' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => { setFootballStatus('vs'); fetchFootballLive('vs'); }}
+                    >
+                      Upcoming
+                    </Button>
+                    <Button onClick={() => fetchFootballLive(footballStatus)} variant="outline" size="sm" disabled={footballLoading}>
+                      <RefreshCw className={`h-4 w-4 ${footballLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  RapidAPI Football Live Streaming - Direct HLS streams with multiple servers per match
+                </p>
+              </CardHeader>
+              <CardContent>
+                {footballLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                )}
+                
+                {footballError && (
+                  <div className="text-center py-8">
+                    <p className="text-destructive mb-4">{footballError}</p>
+                  </div>
+                )}
+                
+                {!footballLoading && !footballError && footballMatches.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    No matches found. Try a different status filter.
+                  </p>
+                )}
+                
+                <div className="grid gap-4 md:grid-cols-2">
+                  {footballMatches.map((match, index) => (
+                    <Card key={index} className="border border-border overflow-hidden">
+                      <CardContent className="p-4 space-y-3">
+                        {/* League Header */}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {match.league_logo && (
+                            <img 
+                              src={match.league_logo} 
+                              alt="" 
+                              className="w-4 h-4 object-contain" 
+                              onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} 
+                            />
+                          )}
+                          <span>{match.league_name}</span>
+                          <Badge 
+                            variant={match.match_status === 'live' ? 'destructive' : 'secondary'}
+                            className="ml-auto"
+                          >
+                            {match.match_status === 'live' ? '🔴 LIVE' : formatMatchTime(match.match_time)}
+                          </Badge>
+                        </div>
+                        
+                        {/* Teams */}
+                        <div className="flex items-center justify-between gap-2">
+                          {/* Home Team */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {match.home_team_logo && (
+                              <img 
+                                src={match.home_team_logo} 
+                                alt="" 
+                                className="w-8 h-8 object-contain shrink-0" 
+                                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} 
+                              />
+                            )}
+                            <span className="font-medium text-sm truncate">{match.home_team_name}</span>
+                          </div>
+                          
+                          {/* Score */}
+                          <div className="flex items-center gap-1 shrink-0 px-3 py-1 bg-muted rounded-md">
+                            <span className="font-bold text-lg">{match.homeTeamScore || '-'}</span>
+                            <span className="text-muted-foreground">:</span>
+                            <span className="font-bold text-lg">{match.awayTeamScore || '-'}</span>
+                          </div>
+                          
+                          {/* Away Team */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                            <span className="font-medium text-sm truncate text-right">{match.away_team_name}</span>
+                            {match.away_team_logo && (
+                              <img 
+                                src={match.away_team_logo} 
+                                alt="" 
+                                className="w-8 h-8 object-contain shrink-0" 
+                                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} 
+                              />
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Stream Servers */}
+                        {match.servers && match.servers.length > 0 && (
+                          <div className="space-y-2 pt-2 border-t border-border">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Server className="h-3 w-3" />
+                              <span>{match.servers.length} servers available</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {match.servers.map((server, serverIndex) => (
+                                <Button
+                                  key={serverIndex}
+                                  variant="outline"
+                                  size="sm"
+                                  className={`text-xs ${getServerBadgeColor(server.type)}`}
+                                  onClick={() => handleFootballServerClick(match, server)}
+                                >
+                                  <Play className="h-3 w-3 mr-1" />
+                                  {server.name}
+                                  {server.type === 'drm' && (
+                                    <AlertTriangle className="h-3 w-3 ml-1" />
+                                  )}
+                                </Button>
+                              ))}
+                            </div>
+                            <div className="flex gap-2 text-[10px] text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span> Direct
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-yellow-500"></span> Referer
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-red-500"></span> DRM (unsupported)
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           {/* Clean Ad-Free Sports Tab */}
           <TabsContent value="clean" className="space-y-4">
