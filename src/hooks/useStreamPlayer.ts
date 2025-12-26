@@ -9,6 +9,7 @@ export const useStreamPlayer = () => {
   const [featuredMatch, setFeaturedMatch] = useState<Match | null>(null);
   const [currentStream, setCurrentStream] = useState<Stream | null>(null);
   const [streamLoading, setStreamLoading] = useState(false);
+  const [streamSwitching, setStreamSwitching] = useState(false); // New state for switching
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [allStreams, setAllStreams] = useState<Record<string, Stream[]>>({});
   const [streamDiscovery, setStreamDiscovery] = useState<{
@@ -150,29 +151,29 @@ export const useStreamPlayer = () => {
 
   const handleSourceChange = async (source: string, id: string, streamNo?: number) => {
     console.log(`🔄 Source change requested: ${source}/${id}/${streamNo || 'default'}`);
-    setCurrentStream(null); // Clear current stream first
+    
+    // Set switching state instead of clearing stream (prevents reconnect message)
+    setStreamSwitching(true);
     
     // Track source change in GA4
     trackSourceChange(source, id);
     
     if (featuredMatch) {
-      // Force fresh load with delay
-      setTimeout(() => {
-        fetchStreamData({ source, id }, streamNo);
-      }, 100);
+      // Fetch new stream directly without clearing current one first
+      await fetchStreamData({ source, id }, streamNo);
+      setStreamSwitching(false);
     }
   };
 
-  const handleStreamRetry = () => {
+  const handleStreamRetry = async () => {
     console.log('🔄 Retrying stream...');
-    setCurrentStream(null); // Clear current stream first
+    setStreamSwitching(true);
     
     if (featuredMatch?.sources && featuredMatch.sources.length > 0) {
-      // Force fresh load with delay
-      setTimeout(() => {
-        fetchStreamData(featuredMatch.sources[0]);
-      }, 100);
+      await fetchStreamData(featuredMatch.sources[0]);
     }
+    
+    setStreamSwitching(false);
   };
 
   // Export hook values and functions
@@ -180,6 +181,7 @@ export const useStreamPlayer = () => {
     featuredMatch,
     currentStream,
     streamLoading,
+    streamSwitching, // Export new state
     activeSource,
     allStreams,
     streamDiscovery,
