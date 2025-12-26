@@ -1,6 +1,6 @@
 import { Match } from '@/types/sports';
 
-const API_BASE = 'https://streamed.pk/api';
+const API_BASE = 'https://streamapi.cc/sport';
 
 // Cache for viewer counts to minimize API calls (5 minute cache)
 interface ViewerCountCache {
