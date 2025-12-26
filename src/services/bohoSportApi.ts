@@ -1,8 +1,12 @@
 // BOHOSport API Service - https://streamapi.cc/sport/
 import { Sport, Match, Stream, Source } from '../types/sports';
+import { supabase } from '@/integrations/supabase/client';
 
-// BOHOSport API base URL
+// BOHOSport API base URL (direct calls)
 const API_BASE = 'https://streamapi.cc/sport';
+
+// Flag to track if direct API works
+let useProxyFallback = false;
 
 // Cache for API responses
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -184,7 +188,7 @@ export const fetchSports = async (): Promise<Sport[]> => {
   }
 };
 
-// Fetch all matches from BOHOSport API
+// Fetch all matches from BOHOSport API (with proxy fallback)
 export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'boho-matches-all';
   const cached = getCachedData(cacheKey);
@@ -193,27 +197,68 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   const timeout = isMobile ? 20000 : 15000;
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+  // Try direct API first (unless we know it doesn't work)
+  if (!useProxyFallback) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    console.log(`🔄 Fetching matches from BOHOSport API: ${API_BASE}`);
-    
-    const response = await fetch(API_BASE, {
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json'
+      console.log(`🔄 Fetching matches from BOHOSport API: ${API_BASE}`);
+      
+      const response = await fetch(API_BASE, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      console.log('📦 BOHOSport API response:', data);
+
+      let matches: Match[] = [];
+
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        matches = data.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (data.matches && Array.isArray(data.matches)) {
+        matches = data.matches.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (data.data && Array.isArray(data.data)) {
+        matches = data.data.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (data.events && Array.isArray(data.events)) {
+        matches = data.events.map(parseMatchData).filter((m): m is Match => m !== null);
+      }
+
+      if (matches.length > 0) {
+        setCachedData(cacheKey, matches);
+        console.log(`✅ Fetched ${matches.length} matches from BOHOSport API (direct)`);
+        return matches;
+      }
+    } catch (error) {
+      console.warn('⚠️ Direct BOHOSport API failed, trying proxy:', error);
+      useProxyFallback = true;
+    }
+  }
+
+  // Fallback to edge function proxy
+  try {
+    console.log('🔄 Trying BOHOSport via Supabase proxy...');
+    
+    const { data, error } = await supabase.functions.invoke('boho-sport', {
+      body: { endpoint: '' },
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    if (error) {
+      console.error('❌ BOHOSport proxy error:', error);
+      throw error;
     }
 
-    const data = await response.json();
-    console.log('📦 BOHOSport API response:', data);
+    console.log('📦 BOHOSport proxy response:', data);
 
     let matches: Match[] = [];
 
@@ -229,11 +274,11 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
     }
 
     setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} matches from BOHOSport API`);
+    console.log(`✅ Fetched ${matches.length} matches from BOHOSport API (proxy)`);
     return matches;
   } catch (error) {
-    console.error('❌ Error fetching matches from BOHOSport:', error);
-    throw error;
+    console.error('❌ Error fetching matches from BOHOSport (all methods failed):', error);
+    return [];
   }
 };
 
