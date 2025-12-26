@@ -456,10 +456,23 @@ const ApiTest = () => {
       return;
     }
     
+    // Use proxy for streams to handle CORS and custom headers
+    const userAgent = server.header?.['user-agent'] || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36';
+    const referer = server.header?.referer || '';
+    
+    // Build proxied URL through our edge function
+    const proxyUrl = new URL('https://wxvsteaayxgygihpshoz.supabase.co/functions/v1/proxy-stream');
+    proxyUrl.searchParams.set('url', server.url);
+    proxyUrl.searchParams.set('ua', userAgent);
+    if (referer) {
+      proxyUrl.searchParams.set('referer', referer);
+    }
+    
+    console.log('🎬 Using proxy URL:', proxyUrl.toString());
+    
     setSelectedStream({ 
       name: `${matchName} - ${server.name}`, 
-      url: server.url,
-      referer: server.header?.referer
+      url: proxyUrl.toString()
     });
   };
 
