@@ -347,6 +347,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
 
       <iframe 
         ref={iframeRef}
+        src={src}
         className="w-full h-full absolute inset-0"
         allowFullScreen
         title={title || "Live Stream"}
