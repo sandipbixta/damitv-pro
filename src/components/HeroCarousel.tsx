@@ -11,7 +11,7 @@ import { Clock, Calendar, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import coverPhoto from '@/assets/damitv-cover.jpeg';
 
-const POSTER_BASE_URL = 'https://streamapi.cc/sport';
+const POSTER_BASE_URL = 'https://streamed.su/api';
 
 export const HeroCarousel = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel(

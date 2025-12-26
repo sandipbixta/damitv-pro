@@ -145,7 +145,7 @@ const Match = () => {
     if (match.poster && match.poster.trim() !== '') {
       const baseUrl = match.poster.startsWith('http') 
         ? match.poster 
-        : `https://streamapi.cc/sport${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
+        : `https://streamed.su/api${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
       return baseUrl + `?v=${Date.now()}`;
     }
     return 'https://i.imgur.com/m4nV9S8.png';

@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Link } from 'react-router-dom';
 import { isMatchLive } from '../../utils/matchUtils';
 import { ViewerCount } from '../ViewerCount';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FeaturedPlayerProps {
   loading: boolean;
@@ -49,14 +50,11 @@ const FeaturedPlayer: React.FC<FeaturedPlayerProps> = ({
       
       if (source && id) {
         try {
-          const response = await fetch(`https://streamapi.cc/sport/stream/${source}/${id}`, {
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(5000)
+          const { data, error } = await supabase.functions.invoke('boho-sport', {
+            body: { endpoint: `stream/${source}/${id}` },
           });
           
-          if (response.ok) {
-            const data = await response.json();
-            
+          if (!error && data) {
             // Sum up all viewers from this source
             if (Array.isArray(data)) {
               const total = data.reduce((sum: number, stream: any) => sum + (stream.viewers || 0), 0);
