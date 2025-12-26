@@ -27,12 +27,18 @@ const MatchCard: React.FC<MatchCardProps> = ({
 }) => {
   const [countdown, setCountdown] = React.useState<string>('');
   const [isMatchStarting, setIsMatchStarting] = React.useState(false);
+  const [posterFailed, setPosterFailed] = React.useState(false);
 
   // Use TheSportsDB API for team logos
   const { homeLogo, awayLogo } = useMatchTeamLogos(
     match.teams?.home,
     match.teams?.away
   );
+
+  // Reset poster error when match changes
+  React.useEffect(() => {
+    setPosterFailed(false);
+  }, [match.id, match.poster]);
 
   // Calculate countdown for upcoming matches
   React.useEffect(() => {
@@ -91,8 +97,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   // Generate thumbnail
   const generateThumbnail = () => {
-    if (match.poster && match.poster.trim() !== '') {
-      const posterUrl = getBohoImageUrl(match.poster);
+    const poster = typeof match.poster === 'string' ? match.poster.trim() : '';
+
+    if (!posterFailed && poster) {
+      const posterUrl = getBohoImageUrl(poster);
 
       return (
         <img
@@ -100,8 +108,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
           alt={match.title}
           className="w-full h-full object-cover"
           loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
+          referrerPolicy="no-referrer"
+          onError={() => {
+            setPosterFailed(true);
           }}
         />
       );
