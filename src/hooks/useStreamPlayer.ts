@@ -1,15 +1,29 @@
 import { useState, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { Match, Stream, Source } from '../types/sports';
-import { fetchSimpleStream, fetchAllMatchStreams } from '../api/sportsApi';
+import { fetchAllMatchStreams } from '../api/sportsApi';
 import { trackMatchSelect, trackSourceChange } from '@/utils/videoAnalytics';
+
+// Helper function to build DAMITV embed URL (outside hook to avoid hook count issues)
+const buildDamitvStream = (matchSlug: string, source: string, streamNo: number = 1): Stream => {
+  const embedUrl = `https://embed.damitv.pro/?id=${matchSlug}&source=${source}`;
+  return {
+    id: matchSlug,
+    streamNo: streamNo,
+    language: 'EN',
+    hd: true,
+    embedUrl: embedUrl,
+    source: source,
+    timestamp: Date.now()
+  };
+};
 
 export const useStreamPlayer = () => {
   const { toast } = useToast();
   const [featuredMatch, setFeaturedMatch] = useState<Match | null>(null);
   const [currentStream, setCurrentStream] = useState<Stream | null>(null);
   const [streamLoading, setStreamLoading] = useState(false);
-  const [streamSwitching, setStreamSwitching] = useState(false); // New state for switching
+  const [streamSwitching, setStreamSwitching] = useState(false);
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [allStreams, setAllStreams] = useState<Record<string, Stream[]>>({});
   const [streamDiscovery, setStreamDiscovery] = useState<{
@@ -18,7 +32,7 @@ export const useStreamPlayer = () => {
     sourceNames: string[];
   }>({ sourcesChecked: 0, sourcesWithStreams: 0, sourceNames: [] });
 
-  // Simple function to fetch ALL streams from ALL sources (like HTML example)
+  // Fetch ALL streams from ALL sources
   const fetchAllStreamsForMatch = useCallback(async (match: Match) => {
     setStreamLoading(true);
     
@@ -29,7 +43,7 @@ export const useStreamPlayer = () => {
       const { clearStreamCache } = await import('@/api/sportsApi');
       clearStreamCache(match.id);
       
-      // Use the simple stream fetching approach but maintain compatibility
+      // Use the simple stream fetching approach
       const result = await fetchAllMatchStreams(match);
       
       // Store discovery metadata
@@ -53,7 +67,7 @@ export const useStreamPlayer = () => {
       
       setAllStreams(streamsData);
       
-      // Auto-select first available stream (like HTML example)
+      // Auto-select first available stream
       const sourceKeys = Object.keys(streamsData);
       if (sourceKeys.length > 0 && streamsData[sourceKeys[0]].length > 0) {
         const firstStream = streamsData[sourceKeys[0]][0];
@@ -61,7 +75,6 @@ export const useStreamPlayer = () => {
           ...firstStream,
           timestamp: Date.now()
         });
-        // Set active source with streamNo for proper button highlighting
         setActiveSource(`${firstStream.source}/${firstStream.id}/${firstStream.streamNo || 1}`);
         console.log(`✅ Auto-selected first stream: ${firstStream.source} Stream ${firstStream.streamNo}`);
       }
@@ -76,20 +89,6 @@ export const useStreamPlayer = () => {
     } finally {
       setStreamLoading(false);
     }
-  }, []);
-
-  // Build DAMITV embed URL directly (no API call needed)
-  const buildDamitvStream = useCallback((matchSlug: string, source: string, streamNo: number = 1): Stream => {
-    const embedUrl = `https://embed.damitv.pro/?id=${matchSlug}&source=${source}`;
-    return {
-      id: matchSlug,
-      streamNo: streamNo,
-      language: 'EN',
-      hd: true,
-      embedUrl: embedUrl,
-      source: source,
-      timestamp: Date.now()
-    };
   }, []);
 
   // Simplified stream fetching - builds DAMITV embed URL directly
@@ -123,7 +122,7 @@ export const useStreamPlayer = () => {
     } finally {
       setStreamLoading(false);
     }
-  }, [buildDamitvStream]);
+  }, []);
 
   // Match selection with comprehensive stream loading
   const handleMatchSelect = useCallback(async (match: Match) => {
