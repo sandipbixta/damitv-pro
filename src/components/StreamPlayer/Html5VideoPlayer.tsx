@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
+import Hls from 'hls.js';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Play, Pause, Volume2, VolumeX, Maximize, Home } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Home, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,7 +19,12 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [volume, setVolume] = useState(1);
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+  const hlsRef = useRef<Hls | null>(null);
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
+  const actualVideoRef = videoRef || internalVideoRef;
 
   // Handle home navigation
   const handleHomeClick = () => {
@@ -36,57 +42,119 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
       if (isPlaying) {
         setShowControls(false);
       }
-    }, 4000); // Increased to 4 seconds
+    }, 4000);
   };
 
-  // Handle play/pause
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
+  // Initialize HLS.js for m3u8 streams
+  useEffect(() => {
+    if (!src || !actualVideoRef.current) return;
+    
+    const video = actualVideoRef.current;
+    const isHLS = /\.m3u8(\?|$)/i.test(src);
+    
+    // Clean up previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    
+    setHasError(false);
+    setIsLoading(true);
+    
+    if (isHLS) {
+      // Check for native HLS support (Safari, iOS)
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        console.log('📺 Using native HLS support');
+        video.src = src;
+        video.load();
+      } else if (Hls.isSupported()) {
+        console.log('📺 Using HLS.js for stream playback');
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          maxBufferSize: 60 * 1000 * 1000,
+          fragLoadingTimeOut: 20000,
+          manifestLoadingTimeOut: 10000,
+          levelLoadingTimeOut: 10000,
+          startLevel: -1,
+          autoStartLoad: true,
+        });
+        
+        hlsRef.current = hls;
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('📺 HLS manifest parsed, starting playback');
+          setIsLoading(false);
+          video.play().catch((e) => {
+            console.log('Autoplay blocked:', e);
+          });
+        });
+        
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          console.error('HLS error:', data.type, data.details);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log('🔄 Network error, attempting recovery...');
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log('🔄 Media error, attempting recovery...');
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error('💥 Fatal HLS error');
+                setHasError(true);
+                setIsLoading(false);
+                onError();
+                break;
+            }
+          }
+        });
       } else {
-        videoRef.current.play();
+        console.error('HLS is not supported in this browser');
+        setHasError(true);
+        setIsLoading(false);
+        onError();
       }
+    } else {
+      // Regular video source
+      video.src = src;
+      video.load();
     }
-  };
-
-  // Handle mute/unmute
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    }
-  };
-
-  // Handle fullscreen
-  const toggleFullscreen = () => {
-    if (videoRef.current) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        videoRef.current.requestFullscreen();
+    
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
       }
-    }
-  };
+    };
+  }, [src, onError]);
 
-  // Handle volume change
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (videoRef.current) {
-      videoRef.current.volume = newVolume;
-      setIsMuted(newVolume === 0);
-    }
-  };
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Video event handlers
   const handleLoadedData = () => {
     console.log('✅ Video loaded successfully');
+    setIsLoading(false);
     onLoad();
   };
 
-  const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.error('❌ Video failed to load:', e);
+  const handleVideoError = () => {
+    console.error('❌ Video failed to load');
+    setHasError(true);
+    setIsLoading(false);
     onError();
   };
 
@@ -103,23 +171,28 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
     }
   };
 
-  // Mouse/touch activity handlers
-  const handleMouseMove = () => {
-    resetControlsTimeout();
+  const handleRetry = () => {
+    setHasError(false);
+    setIsLoading(true);
+    if (actualVideoRef.current) {
+      actualVideoRef.current.load();
+    }
   };
 
-  const handleTouchStart = () => {
-    resetControlsTimeout();
-  };
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-    };
-  }, []);
+  // Show error state
+  if (hasError) {
+    return (
+      <div className="relative w-full h-full bg-black flex items-center justify-center">
+        <div className="text-center text-white p-4">
+          <p className="text-lg mb-4">Stream failed to load</p>
+          <Button onClick={handleRetry} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -127,9 +200,14 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
       onMouseMove={() => resetControlsTimeout()}
       onTouchStart={() => resetControlsTimeout()}
     >
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      )}
+      
       <video
-        ref={videoRef}
-        src={src}
+        ref={actualVideoRef}
         className="w-full h-full object-contain"
         controls={false}
         autoPlay
@@ -137,13 +215,13 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
         preload="auto"
         crossOrigin="anonymous"
         onLoadedData={handleLoadedData}
-        onError={handleError}
+        onError={handleVideoError}
         onPlay={handlePlay}
         onPause={handlePause}
         onVolumeChange={() => {
-          if (videoRef.current) {
-            setVolume(videoRef.current.volume);
-            setIsMuted(videoRef.current.muted);
+          if (actualVideoRef.current) {
+            setVolume(actualVideoRef.current.volume);
+            setIsMuted(actualVideoRef.current.muted);
           }
         }}
       />
@@ -179,11 +257,11 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
         <div 
           className="absolute inset-0 flex items-center justify-center cursor-pointer"
           onClick={() => {
-            if (videoRef.current) {
+            if (actualVideoRef.current) {
               if (isPlaying) {
-                videoRef.current.pause();
+                actualVideoRef.current.pause();
               } else {
-                videoRef.current.play();
+                actualVideoRef.current.play();
               }
             }
           }}
@@ -203,11 +281,11 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
               variant="ghost"
               size="icon"
               onClick={() => {
-                if (videoRef.current) {
+                if (actualVideoRef.current) {
                   if (isPlaying) {
-                    videoRef.current.pause();
+                    actualVideoRef.current.pause();
                   } else {
-                    videoRef.current.play();
+                    actualVideoRef.current.play();
                   }
                 }
               }}
@@ -222,8 +300,8 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  if (videoRef.current) {
-                    videoRef.current.muted = !isMuted;
+                  if (actualVideoRef.current) {
+                    actualVideoRef.current.muted = !isMuted;
                     setIsMuted(!isMuted);
                   }
                 }}
@@ -245,8 +323,8 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
                   onChange={(e) => {
                     const newVolume = parseFloat(e.target.value);
                     setVolume(newVolume);
-                    if (videoRef.current) {
-                      videoRef.current.volume = newVolume;
+                    if (actualVideoRef.current) {
+                      actualVideoRef.current.volume = newVolume;
                       setIsMuted(newVolume === 0);
                     }
                   }}
@@ -263,11 +341,11 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
               variant="ghost"
               size="icon"
               onClick={() => {
-                if (videoRef.current) {
+                if (actualVideoRef.current) {
                   if (document.fullscreenElement) {
                     document.exitFullscreen();
                   } else {
-                    videoRef.current.requestFullscreen();
+                    actualVideoRef.current.requestFullscreen();
                   }
                 }
               }}
