@@ -10,9 +10,9 @@ const ENDPOINTS = {
   tables: (league: string) => `/results/tables/${league}`,
 };
 
-// Fetch from edge function
+// Fetch from edge function (using boho-sport instead of deprecated sports-api)
 const fetchApi = async (endpoint: string) => {
-  const { data, error } = await supabase.functions.invoke('sports-api', {
+  const { data, error } = await supabase.functions.invoke('boho-sport', {
     body: { endpoint },
   });
   
