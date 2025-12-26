@@ -2,11 +2,16 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// BOHOSport player base URL (ad-free iframe player)
-const BOHOSPORT_PLAYER_BASE = 'https://sports.damitv.pro';
+// BOHOSport embed base URL (ad-free iframe player)
+const BOHOSPORT_EMBED_BASE = 'https://embed.damitv.pro';
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
+
+// Build BOHOSport embed URL with query parameters
+const buildBohoSportEmbedUrl = (matchId: string, source: string): string => {
+  return `${BOHOSPORT_EMBED_BASE}/?id=${matchId}&source=${source}`;
+};
 
 // Cache for API responses
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -306,67 +311,36 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
   }
 };
 
-// Helper to build BOHOSport player URL
-const buildBohoSportPlayerUrl = (category: string, matchId: string): string => {
-  // Map sport categories to BOHOSport URL format
-  const categoryMap: Record<string, string> = {
-    'football': 'football',
-    'soccer': 'football',
-    'basketball': 'basketball',
-    'tennis': 'tennis',
-    'cricket': 'cricket',
-    'hockey': 'hockey',
-    'ice-hockey': 'hockey',
-    'fight': 'fight',
-    'mma': 'fight',
-    'boxing': 'fight',
-    'ufc': 'fight',
-    'baseball': 'baseball',
-    'rugby': 'rugby',
-    'american-football': 'american-football',
-    'nfl': 'american-football',
-    'motorsport': 'motorsport',
-    'f1': 'motorsport',
-    'golf': 'golf',
-    'darts': 'darts',
-    'other': 'other'
-  };
-  
-  const normalizedCategory = categoryMap[category?.toLowerCase()] || category?.toLowerCase() || 'football';
-  return `${BOHOSPORT_PLAYER_BASE}/${normalizedCategory}/${matchId}/`;
-};
-
-// Fetch stream for a match - uses BOHOSport ad-free player
+// Fetch stream for a match - uses BOHOSport ad-free embed player
 export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
   const cacheKey = `boho-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log(`🎬 Building BOHOSport player URL for ${category || source}/${id}`);
+    console.log(`🎬 Building BOHOSport embed URL for source: ${source}, id: ${id}`);
 
-    // Use BOHOSport ad-free player URL
-    const sportCategory = category || source;
-    const bohoPlayerUrl = buildBohoSportPlayerUrl(sportCategory, id);
+    // Use BOHOSport ad-free embed URL format: https://embed.damitv.pro/?id={matchId}&source={source}
+    const bohoEmbedUrl = buildBohoSportEmbedUrl(id, source);
     
     const primaryStream: Stream = {
       id: id,
       streamNo: 1,
       language: 'EN',
       hd: true,
-      embedUrl: bohoPlayerUrl,
+      embedUrl: bohoEmbedUrl,
       source: 'bohosport',
       timestamp: Date.now()
     };
 
-    console.log(`✅ BOHOSport player URL: ${bohoPlayerUrl}`);
+    console.log(`✅ BOHOSport embed URL: ${bohoEmbedUrl}`);
     setCachedData(cacheKey, [primaryStream]);
     return [primaryStream];
   } catch (error) {
     console.error(`❌ Error building BOHOSport URL for ${source}/${id}:`, error);
     
-    // Fallback to BOHOSport player with default category
-    const fallbackUrl = buildBohoSportPlayerUrl('football', id);
+    // Fallback with echo source
+    const fallbackUrl = buildBohoSportEmbedUrl(id, 'echo');
     const fallbackStream: Stream = {
       id: id,
       streamNo: 1,
@@ -389,14 +363,11 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
 }> => {
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
-  
-  // Get match category for BOHOSport URL
-  const matchCategory = match.category || match.sportId || 'football';
 
   if (!match.sources || match.sources.length === 0) {
-    // Try to fetch with match ID and category
+    // Try to fetch with match ID and default source
     try {
-      const streams = await fetchSimpleStream('main', match.id, matchCategory);
+      const streams = await fetchSimpleStream('echo', match.id);
       if (streams.length > 0) {
         allStreams.push(...streams);
         sourcesWithStreams.add('bohosport');
@@ -405,10 +376,10 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
       console.error('Error fetching default stream:', error);
     }
   } else {
-    // Fetch from first source with match category
+    // Use the source from match data
     const source = match.sources[0];
     try {
-      const streams = await fetchSimpleStream(source.source, source.id, matchCategory);
+      const streams = await fetchSimpleStream(source.source, source.id);
       if (streams.length > 0) {
         sourcesWithStreams.add('bohosport');
         allStreams.push(...streams);
