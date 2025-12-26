@@ -29,18 +29,3 @@ verify_jwt = false
 
 [functions.fetch-live-scores]
 verify_jwt = false
-
-[functions.fetch-sports-streams]
-verify_jwt = false
-
-[functions.fetch-highlights]
-verify_jwt = false
-
-[functions.fetch-clean-sports]
-verify_jwt = false
-
-[functions.proxy-stream]
-verify_jwt = false
-
-[functions.sportsrc-proxy]
-verify_jwt = false
