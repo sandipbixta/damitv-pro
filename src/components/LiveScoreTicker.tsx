@@ -104,12 +104,10 @@ const LiveScoreTicker: React.FC = () => {
             const home = match.teams?.home?.name || '';
             const away = match.teams?.away?.name || '';
             const matchSlug = generateMatchSlug(home, away, match.title);
-            const homeBadge = match.teams?.home?.badge 
-              ? (match.teams.home.badge.startsWith('http') ? match.teams.home.badge : `https://streamed.su/api/images/badge/${match.teams.home.badge}`)
-              : null;
-            const awayBadge = match.teams?.away?.badge
-              ? (match.teams.away.badge.startsWith('http') ? match.teams.away.badge : `https://streamed.su/api/images/badge/${match.teams.away.badge}`)
-              : null;
+            // Only use badge if it's already a full URL (from TheSportsDB)
+            // Non-URL badges from the stream API are not reliable
+            const homeBadge = match.teams?.home?.badge?.startsWith('http') ? match.teams.home.badge : null;
+            const awayBadge = match.teams?.away?.badge?.startsWith('http') ? match.teams.away.badge : null;
             
             return {
               id: match.id,

@@ -94,10 +94,12 @@ class TeamLogoService {
   public getTeamLogo(teamName: string, teamBadge?: string): string | null {
     if (!teamName) return null;
     
-    // First priority: Use official API badge if available
-    if (teamBadge) {
-      return teamBadge.startsWith('http') ? teamBadge : `https://streamed.su/api/images/badge/${teamBadge}`;
+    // First priority: Use official API badge if it's already a full URL (from TheSportsDB)
+    if (teamBadge && teamBadge.startsWith('http')) {
+      return teamBadge;
     }
+    
+    // Note: For non-URL badges, we rely on the useTeamLogo hook to fetch from TheSportsDB
     
     const normalized = this.normalizeTeamName(teamName);
     
