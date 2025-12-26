@@ -1,12 +1,9 @@
-// BOHOSport API Service - https://streamapi.cc/sport/
+// BOHOSport API Service - uses Supabase Edge Function proxy
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// BOHOSport API base URL (direct calls)
-const API_BASE = 'https://streamapi.cc/sport';
-
-// Flag to track if direct API works
-let useProxyFallback = false;
+// Stream embed base URL (for building stream URLs)
+const STREAM_BASE = 'https://streamed.su';
 
 // Cache for API responses
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -49,7 +46,7 @@ const setCachedData = (key: string, data: any) => {
   cache.set(key, { data, timestamp: Date.now() });
 };
 
-// Map BOHOSport category to our sport IDs
+// Map category to our sport IDs
 const mapCategoryToSportId = (category: string): string => {
   const categoryMap: Record<string, string> = {
     'soccer': 'football',
@@ -188,77 +185,25 @@ export const fetchSports = async (): Promise<Sport[]> => {
   }
 };
 
-// Fetch all matches from BOHOSport API (with proxy fallback)
+// Fetch all matches from API via proxy
 export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'boho-matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const timeout = isMobile ? 20000 : 15000;
-
-  // Try direct API first (unless we know it doesn't work)
-  if (!useProxyFallback) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-      console.log(`🔄 Fetching matches from BOHOSport API: ${API_BASE}`);
-      
-      const response = await fetch(API_BASE, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('📦 BOHOSport API response:', data);
-
-      let matches: Match[] = [];
-
-      // Handle different response formats
-      if (Array.isArray(data)) {
-        matches = data.map(parseMatchData).filter((m): m is Match => m !== null);
-      } else if (data.matches && Array.isArray(data.matches)) {
-        matches = data.matches.map(parseMatchData).filter((m): m is Match => m !== null);
-      } else if (data.data && Array.isArray(data.data)) {
-        matches = data.data.map(parseMatchData).filter((m): m is Match => m !== null);
-      } else if (data.events && Array.isArray(data.events)) {
-        matches = data.events.map(parseMatchData).filter((m): m is Match => m !== null);
-      }
-
-      if (matches.length > 0) {
-        setCachedData(cacheKey, matches);
-        console.log(`✅ Fetched ${matches.length} matches from BOHOSport API (direct)`);
-        return matches;
-      }
-    } catch (error) {
-      console.warn('⚠️ Direct BOHOSport API failed, trying proxy:', error);
-      useProxyFallback = true;
-    }
-  }
-
-  // Fallback to edge function proxy
   try {
-    console.log('🔄 Trying BOHOSport via Supabase proxy...');
+    console.log('🔄 Fetching matches via proxy...');
     
     const { data, error } = await supabase.functions.invoke('boho-sport', {
       body: { endpoint: '' },
     });
 
     if (error) {
-      console.error('❌ BOHOSport proxy error:', error);
-      throw error;
+      console.error('❌ Proxy error:', error);
+      return [];
     }
 
-    console.log('📦 BOHOSport proxy response:', data);
+    console.log('📦 Proxy response received');
 
     let matches: Match[] = [];
 
@@ -274,10 +219,10 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
     }
 
     setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} matches from BOHOSport API (proxy)`);
+    console.log(`✅ Fetched ${matches.length} matches`);
     return matches;
   } catch (error) {
-    console.error('❌ Error fetching matches from BOHOSport (all methods failed):', error);
+    console.error('❌ Error fetching matches:', error);
     return [];
   }
 };
@@ -358,7 +303,7 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
   }
 };
 
-// Fetch stream for a match - BOHOSport provides iframe embeds
+// Fetch stream for a match - provides iframe embeds
 export const fetchSimpleStream = async (source: string, id: string): Promise<Stream[]> => {
   const cacheKey = `boho-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey);
@@ -367,24 +312,19 @@ export const fetchSimpleStream = async (source: string, id: string): Promise<Str
   try {
     console.log(`🎬 Fetching stream for ${source}/${id}`);
 
-    // Try to fetch from BOHOSport stream endpoint
-    const streamUrl = `${API_BASE}/stream/${id}`;
-    
-    const response = await fetch(streamUrl, {
-      headers: {
-        'Accept': 'application/json'
-      },
-      signal: AbortSignal.timeout(15000)
+    // Try to fetch stream via proxy
+    const { data, error } = await supabase.functions.invoke('boho-sport', {
+      body: { endpoint: `stream/${source}/${id}` },
     });
 
-    if (!response.ok) {
+    if (error || !data || data.error) {
       // If stream endpoint fails, create a default embed stream
       const defaultStream: Stream = {
         id: id,
         streamNo: 1,
         language: 'EN',
         hd: true,
-        embedUrl: `${API_BASE}/embed/${id}`,
+        embedUrl: `${STREAM_BASE}/watch/${id}`,
         source: source,
         timestamp: Date.now()
       };
@@ -392,8 +332,6 @@ export const fetchSimpleStream = async (source: string, id: string): Promise<Str
       return [defaultStream];
     }
 
-    const data = await response.json();
-    
     let streams: Stream[] = [];
 
     if (Array.isArray(data)) {
@@ -402,7 +340,7 @@ export const fetchSimpleStream = async (source: string, id: string): Promise<Str
         streamNo: stream.streamNo || index + 1,
         language: stream.language || 'EN',
         hd: stream.hd !== false,
-        embedUrl: stream.embedUrl || stream.embed || stream.url || stream.iframe || `${API_BASE}/embed/${id}`,
+        embedUrl: stream.embedUrl || stream.embed || stream.url || stream.iframe || `${STREAM_BASE}/watch/${id}`,
         source: source,
         timestamp: Date.now()
       })).filter(s => s.embedUrl);
@@ -425,7 +363,7 @@ export const fetchSimpleStream = async (source: string, id: string): Promise<Str
         streamNo: 1,
         language: 'EN',
         hd: true,
-        embedUrl: `${API_BASE}/embed/${id}`,
+        embedUrl: `${STREAM_BASE}/watch/${id}`,
         source: source,
         timestamp: Date.now()
       }];
@@ -443,7 +381,7 @@ export const fetchSimpleStream = async (source: string, id: string): Promise<Str
       streamNo: 1,
       language: 'EN',
       hd: true,
-      embedUrl: `${API_BASE}/embed/${id}`,
+      embedUrl: `${STREAM_BASE}/watch/${id}`,
       source: source,
       timestamp: Date.now()
     };
@@ -518,19 +456,19 @@ export const fetchAllStreams = async (match: Match): Promise<Record<string, Stre
   return streamsRecord;
 };
 
-// Get image URL for BOHOSport
+// Get image URL
 export const getBohoImageUrl = (path: string): string => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+  return `${STREAM_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
 // Get team badge URL
 export const getTeamBadgeUrl = (badge: string): string => {
   if (!badge) return '';
   if (badge.startsWith('http')) return badge;
-  return `${API_BASE}/images/badge/${badge}`;
+  return `${STREAM_BASE}/images/badge/${badge}`;
 };
 
 // Export API base for reference
-export const BOHO_API_BASE = API_BASE;
+export const BOHO_API_BASE = STREAM_BASE;

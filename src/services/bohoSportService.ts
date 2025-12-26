@@ -1,49 +1,36 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Match, Source } from '@/types/sports';
 
-// BOHOSport API endpoints to try
-const ENDPOINTS_TO_TRY = [
-  '', // Root endpoint
-  'live',
-  'today',
-  'matches',
-  'football',
-  'all',
-  'events',
-];
-
 // Fetch matches through Supabase Edge Function proxy
+// The edge function now handles trying multiple API bases and endpoints
 export const fetchBohoMatchesViaProxy = async (): Promise<Match[]> => {
-  for (const endpoint of ENDPOINTS_TO_TRY) {
-    try {
-      console.log(`🔄 Trying BOHOSport endpoint: ${endpoint || 'root'}`);
-      
-      const { data, error } = await supabase.functions.invoke('boho-sport', {
-        body: { endpoint },
-      });
+  try {
+    console.log('🔄 Fetching matches via BOHOSport proxy...');
+    
+    const { data, error } = await supabase.functions.invoke('boho-sport', {
+      body: { endpoint: '' },
+    });
 
-      if (error) {
-        console.error(`❌ Endpoint ${endpoint} error:`, error);
-        continue;
-      }
-
-      console.log(`📦 Endpoint ${endpoint} response:`, data);
-
-      // If we got valid data, parse and return it
-      if (data && !data.error && data.success !== false) {
-        const matches = parseBohoResponse(data);
-        if (matches.length > 0) {
-          console.log(`✅ Found ${matches.length} matches from endpoint: ${endpoint || 'root'}`);
-          return matches;
-        }
-      }
-    } catch (err) {
-      console.error(`❌ Endpoint ${endpoint} failed:`, err);
+    if (error) {
+      console.error('❌ BOHOSport proxy error:', error);
+      return [];
     }
-  }
 
-  console.log('⚠️ All BOHOSport endpoints failed, returning empty array');
-  return [];
+    console.log('📦 BOHOSport proxy response:', data);
+
+    // If we got valid data, parse and return it
+    if (data && !data.error && data.success !== false) {
+      const matches = parseBohoResponse(data);
+      console.log(`✅ Found ${matches.length} matches from BOHOSport proxy`);
+      return matches;
+    }
+
+    console.log('⚠️ BOHOSport proxy returned no valid data');
+    return [];
+  } catch (err) {
+    console.error('❌ BOHOSport proxy failed:', err);
+    return [];
+  }
 };
 
 // Parse BOHOSport API response to our Match format
