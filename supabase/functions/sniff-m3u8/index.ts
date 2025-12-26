@@ -140,6 +140,29 @@ serve(async (req) => {
       }
     }
 
+    // Click on video element if exists
+    try {
+      const video = await page.$('video');
+      if (video) {
+        console.log('🎬 Found video element, clicking...');
+        await video.click();
+        await page.waitForTimeout(3000);
+      }
+    } catch {}
+
+    // Try clicking any overlay or play icon
+    const overlaySelectors = ['.overlay', '.play-icon', '.video-overlay', '[class*="play"]', '.vjs-big-play-button'];
+    for (const sel of overlaySelectors) {
+      try {
+        const overlay = await page.$(sel);
+        if (overlay) {
+          console.log(`🖱️ Clicking overlay: ${sel}`);
+          await overlay.click();
+          await page.waitForTimeout(2000);
+        }
+      } catch {}
+    }
+
     // Look for iframes and try to get their src
     const iframes = await page.$$('iframe');
     console.log(`🔍 Found ${iframes.length} iframes`);
@@ -170,6 +193,50 @@ serve(async (req) => {
     // Wait for more network activity
     console.log(`⏳ Waiting ${waitTime}ms for dynamic content...`);
     await page.waitForTimeout(waitTime);
+
+    // Try to extract HLS source from video element via JavaScript
+    try {
+      const hlsSrc = await page.evaluate(() => {
+        const video = document.querySelector('video');
+        if (video) {
+          // Check video src
+          if (video.src && video.src.includes('.m3u8')) return video.src;
+          // Check source elements
+          const sources = video.querySelectorAll('source');
+          for (const source of sources) {
+            if (source.src && source.src.includes('.m3u8')) return source.src;
+          }
+          // Check if HLS.js is being used
+          // @ts-ignore
+          if (window.Hls && window.Hls.instances) {
+            // @ts-ignore
+            for (const hls of window.Hls.instances) {
+              if (hls.url) return hls.url;
+            }
+          }
+        }
+        // Look for any m3u8 URL in script tags
+        const scripts = document.querySelectorAll('script');
+        for (const script of scripts) {
+          const content = script.textContent || '';
+          const m3u8Match = content.match(/["']([^"']*\.m3u8[^"']*)['"]/);
+          if (m3u8Match) return m3u8Match[1];
+        }
+        return null;
+      });
+      
+      if (hlsSrc && !capturedUrls.has(hlsSrc)) {
+        capturedUrls.add(hlsSrc);
+        capturedStreams.push({
+          url: hlsSrc,
+          type: 'hls-extracted',
+          timestamp: new Date().toISOString()
+        });
+        console.log(`🎯 Extracted HLS source: ${hlsSrc.slice(0, 100)}...`);
+      }
+    } catch (e) {
+      console.log(`⚠️ Could not extract HLS: ${e.message}`);
+    }
 
     // Get page source and look for m3u8 patterns
     const content = await page.content();
