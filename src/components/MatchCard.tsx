@@ -69,15 +69,15 @@ const MatchCard: React.FC<MatchCardProps> = ({
     return format(date, "EEE, do MMM, h:mm a");
   };
 
-  // Get team badges with fallbacks - now using BOHOSport API
+  // Get team badges with fallbacks - now using streamed.su API
   const getTeamBadge = (team: any) => {
     if (team?.badge) {
       // If badge is already a full URL, use it directly
       if (team.badge.startsWith('http')) {
         return team.badge;
       }
-      // Otherwise construct the URL from BOHOSport API
-      return `https://streamapi.cc/sport/images/badge/${team.badge}`;
+      // Otherwise construct the URL from streamed.su API
+      return `https://streamed.su/api/images/badge/${team.badge}`;
     }
     const logoFromService = teamLogoService.getTeamLogo(team?.name || '', team?.badge);
     return logoFromService || '';
