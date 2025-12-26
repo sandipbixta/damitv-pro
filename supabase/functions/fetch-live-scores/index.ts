@@ -22,18 +22,24 @@ interface LiveScore {
 // Sports to fetch live scores for (v2 API uses lowercase)
 const SPORTS_V2 = ['soccer', 'basketball', 'icehockey', 'american_football', 'tennis', 'rugby', 'cricket'];
 
+// Simple in-memory cache
+let cachedScores: LiveScore[] = [];
+let cacheTimestamp = 0;
+const CACHE_TTL = 30000; // 30 seconds cache
+
 async function fetchLiveScoresForSport(apiKey: string, sport: string): Promise<LiveScore[]> {
   try {
-    // V2 API format for premium keys: /api/v2/json/livescore/{sport}
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout per sport
+
     const url = `https://www.thesportsdb.com/api/v2/json/livescore/${sport}`;
     
-    console.log(`Fetching live scores from: ${url}`);
-    
     const response = await fetch(url, {
-      headers: {
-        'X-API-KEY': apiKey,
-      },
+      headers: { 'X-API-KEY': apiKey },
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       console.log(`Failed for ${sport}: ${response.status}`);
@@ -44,7 +50,6 @@ async function fetchLiveScoresForSport(apiKey: string, sport: string): Promise<L
     const events = data?.events || data?.livescore || [];
     
     if (!events || events.length === 0) {
-      console.log(`No live events for ${sport}`);
       return [];
     }
     
@@ -64,55 +69,81 @@ async function fetchLiveScoresForSport(apiKey: string, sport: string): Promise<L
       awayBadge: event.strAwayTeamBadge || null,
     }));
   } catch (e) {
-    console.error(`Error fetching live scores for ${sport}:`, e);
+    if (e.name === 'AbortError') {
+      console.log(`Timeout for ${sport}`);
+    } else {
+      console.error(`Error fetching ${sport}:`, e);
+    }
     return [];
   }
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Return cached data if still valid
+    const now = Date.now();
+    if (cachedScores.length > 0 && (now - cacheTimestamp) < CACHE_TTL) {
+      console.log(`Returning ${cachedScores.length} cached scores`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          liveScores: cachedScores,
+          cached: true,
+          timestamp: new Date().toISOString(),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const apiKey = Deno.env.get("THESPORTSDB_API_KEY");
     if (!apiKey) {
       throw new Error("TheSportsDB API key not configured");
     }
 
-    // Fetch live scores for all sports in parallel
+    // Fetch all sports in parallel with individual timeouts
     const results = await Promise.all(
       SPORTS_V2.map(sport => fetchLiveScoresForSport(apiKey, sport))
     );
 
-    // Flatten and combine all results
     const allLiveScores = results.flat();
     
-    console.log(`Found ${allLiveScores.length} total live matches across all sports`);
+    // Update cache
+    cachedScores = allLiveScores;
+    cacheTimestamp = now;
+    
+    console.log(`Found ${allLiveScores.length} total live matches`);
 
     return new Response(
       JSON.stringify({
         success: true,
         liveScores: allLiveScores,
+        cached: false,
         timestamp: new Date().toISOString(),
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error fetching live scores:", error);
+    console.error("Error:", error);
+    // Return cached data on error if available
+    if (cachedScores.length > 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          liveScores: cachedScores,
+          cached: true,
+          fallback: true,
+          timestamp: new Date().toISOString(),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        liveScores: [],
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success: false, error: error.message, liveScores: [] }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
