@@ -22,7 +22,19 @@ const ChannelPlayer = () => {
   // Use CDN channels API
   const { channel, otherChannels, isLoading, error } = useCDNChannel(country, channelId);
   
+  // Auto-detect player type based on stream URL
   const [playerType, setPlayerType] = useState<PlayerType>('simple');
+  
+  // Update player type when channel loads - use html5 for HLS streams
+  useEffect(() => {
+    if (channel?.embedUrl) {
+      const isHLS = /\.m3u8(\?|$)/i.test(channel.embedUrl);
+      if (isHLS) {
+        console.log('📺 HLS stream detected, using html5 player');
+        setPlayerType('html5');
+      }
+    }
+  }, [channel?.embedUrl]);
   const [showPlayerSettings, setShowPlayerSettings] = useState(false);
 
   // Navigate to channels if not found
