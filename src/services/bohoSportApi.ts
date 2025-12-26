@@ -2,11 +2,19 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// SportsRC API base URL for match details - returns working embed URLs
+// Ad-free embed player (preferred)
+const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
+
+// SportsRC API base URL for match details
 const SPORTSRC_API_BASE = 'https://api.sportsrc.org';
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
+
+// Build ad-free embed URL
+const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
+  return `${DAMITV_EMBED_BASE}/?id=${matchId}&source=${source}`;
+};
 
 // Cache for API responses
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -306,51 +314,33 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
   }
 };
 
-// Fetch stream for a match via edge function - returns actual embed URLs
+// Fetch stream for a match - uses ad-free embed player
 export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
   const cacheKey = `boho-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log(`🎬 Fetching stream from edge function for source: ${source}, id: ${id}`);
+    console.log(`🎬 Building ad-free embed URL for source: ${source}, id: ${id}`);
 
-    // Call the boho-sport edge function which returns actual working embed URLs
-    const { data, error } = await supabase.functions.invoke('boho-sport', {
-      body: { endpoint: `stream/${source}/${id}` },
-    });
+    // Use ad-free embed URL
+    const adFreeUrl = buildAdFreeEmbedUrl(id, source);
+    
+    const primaryStream: Stream = {
+      id: id,
+      streamNo: 1,
+      language: 'EN',
+      hd: true,
+      embedUrl: adFreeUrl,
+      source: source,
+      timestamp: Date.now()
+    };
 
-    if (error) {
-      throw error;
-    }
-
-    // Parse the response - edge function returns array of streams with embedUrl
-    const streams: Stream[] = [];
-    if (Array.isArray(data)) {
-      data.forEach((s: any, index: number) => {
-        if (s.embedUrl) {
-          streams.push({
-            id: s.id || id,
-            streamNo: s.streamNo || index + 1,
-            language: s.language || 'EN',
-            hd: s.hd !== false,
-            embedUrl: s.embedUrl, // Use the actual embed URL from API
-            source: s.source || source,
-            timestamp: Date.now()
-          });
-        }
-      });
-    }
-
-    if (streams.length > 0) {
-      console.log(`✅ Got ${streams.length} streams from edge function`);
-      setCachedData(cacheKey, streams);
-      return streams;
-    }
-
-    throw new Error('No streams found');
+    console.log(`✅ Ad-free embed URL: ${adFreeUrl}`);
+    setCachedData(cacheKey, [primaryStream]);
+    return [primaryStream];
   } catch (error) {
-    console.error(`❌ Error fetching stream for ${source}/${id}:`, error);
+    console.error(`❌ Error building ad-free URL for ${source}/${id}:`, error);
     return [];
   }
 };
@@ -398,7 +388,7 @@ const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'foo
   }
 };
 
-// Fetch all streams for a match
+// Fetch all streams for a match - uses ad-free embed URLs as primary
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -408,60 +398,66 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
 
-  // First, try to fetch sources from SportsRC API which includes embed URLs
+  // First, try to fetch sources from SportsRC API to get source/id pairs
   const category = match.category || match.sportId || 'football';
   const apiSources = await fetchMatchSourcesFromAPI(match.id, category);
   
   if (apiSources.length > 0) {
-    // Use API sources which already have embed URLs
+    // Build ad-free embed URLs using the source/id pairs from API
     for (const source of apiSources) {
-      if (source.embedUrl) {
-        const stream: Stream = {
-          id: source.id,
-          streamNo: source.streamNo || allStreams.length + 1,
-          language: source.language || 'EN',
-          hd: source.hd !== false,
-          embedUrl: source.embedUrl, // Use the actual embed URL from API
-          source: source.source,
-          timestamp: Date.now()
-        };
-        allStreams.push(stream);
-        sourcesWithStreams.add(source.source);
-        console.log(`✅ Added stream from API: ${source.source} - ${source.embedUrl.substring(0, 50)}...`);
-      }
+      // Primary: Use ad-free damitv.pro embed URL
+      const adFreeUrl = buildAdFreeEmbedUrl(source.id, source.source);
+      
+      const stream: Stream = {
+        id: source.id,
+        streamNo: source.streamNo || allStreams.length + 1,
+        language: source.language || 'EN',
+        hd: source.hd !== false,
+        embedUrl: adFreeUrl, // Use ad-free embed URL
+        source: source.source,
+        timestamp: Date.now()
+      };
+      allStreams.push(stream);
+      sourcesWithStreams.add(source.source);
+      console.log(`✅ Added ad-free stream: ${source.source}/${source.id}`);
     }
   }
   
-  // If no streams from API, try edge function for each match source
+  // If no streams from API, try using match.sources with ad-free URLs
   if (allStreams.length === 0 && match.sources && match.sources.length > 0) {
     for (const source of match.sources) {
-      try {
-        const streams = await fetchSimpleStream(source.source, source.id, category);
-        allStreams.push(...streams);
-        if (streams.length > 0) {
-          sourcesWithStreams.add(source.source);
-        }
-      } catch (error) {
-        console.error('Error fetching stream:', error);
-      }
+      const adFreeUrl = buildAdFreeEmbedUrl(source.id, source.source);
+      const stream: Stream = {
+        id: source.id,
+        streamNo: allStreams.length + 1,
+        language: 'EN',
+        hd: true,
+        embedUrl: adFreeUrl,
+        source: source.source,
+        timestamp: Date.now()
+      };
+      allStreams.push(stream);
+      sourcesWithStreams.add(source.source);
     }
   }
 
-  // Last resort: try echo source
+  // Last resort: try echo source with ad-free URL
   if (allStreams.length === 0) {
-    try {
-      const streams = await fetchSimpleStream('echo', match.id, category);
-      if (streams.length > 0) {
-        allStreams.push(...streams);
-        sourcesWithStreams.add('echo');
-      }
-    } catch (error) {
-      console.error('Error fetching default stream:', error);
-    }
+    const adFreeUrl = buildAdFreeEmbedUrl(match.id, 'echo');
+    allStreams.push({
+      id: match.id,
+      streamNo: 1,
+      language: 'EN',
+      hd: true,
+      embedUrl: adFreeUrl,
+      source: 'echo',
+      timestamp: Date.now()
+    });
+    sourcesWithStreams.add('echo');
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`🎬 Streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
+  console.log(`🎬 Ad-free streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
 
   return {
     streams: allStreams,
