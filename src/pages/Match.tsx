@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Match as MatchType } from '@/types/sports';
-import { fetchMatch, fetchMatches } from '@/api/sportsApi';
+import { fetchMatch, fetchMatches, getBohoImageUrl } from '@/api/sportsApi';
 import { useStreamPlayer } from '@/hooks/useStreamPlayer';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { Helmet } from 'react-helmet-async';
@@ -143,10 +143,8 @@ const Match = () => {
   // Generate match poster URL for social sharing
   const getMatchPosterUrl = () => {
     if (match.poster && match.poster.trim() !== '') {
-      const baseUrl = match.poster.startsWith('http') 
-        ? match.poster 
-        : `https://streamed.su/api${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
-      return baseUrl + `?v=${Date.now()}`;
+      const baseUrl = getBohoImageUrl(match.poster);
+      if (baseUrl) return `${baseUrl}?v=${Date.now()}`;
     }
     return 'https://i.imgur.com/m4nV9S8.png';
   };

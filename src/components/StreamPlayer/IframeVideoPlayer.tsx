@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
+import { getBohoImageUrl } from '../../api/sportsApi';
 import { removeAdsFromIframe, setupDelayedAdBlocking, injectAdBlockStyles } from '../../utils/adBlocker';
 
 interface IframeVideoPlayerProps {
@@ -252,7 +253,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
             {/* Match poster as background if available */}
             {matchPoster && (
               <img 
-                src={matchPoster.startsWith('http') ? matchPoster : `https://streamed.su/api${matchPoster.startsWith('/') ? '' : '/'}${matchPoster}`}
+                src={typeof matchPoster === 'string' ? getBohoImageUrl(matchPoster) : ''}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover opacity-40"
                 onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}

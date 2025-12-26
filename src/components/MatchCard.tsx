@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Match } from '../types/sports';
 import { isMatchLive } from '../utils/matchUtils';
 import { useMatchTeamLogos } from '../hooks/useTeamLogo';
+import { getBohoImageUrl } from '../api/sportsApi';
 import { LiveViewerCount } from './LiveViewerCount';
 import { generateMatchSlug } from '../utils/matchSlug';
 
@@ -91,12 +92,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   // Generate thumbnail
   const generateThumbnail = () => {
     if (match.poster && match.poster.trim() !== '') {
-      let posterUrl = match.poster;
-      // Handle different URL formats
-      if (!match.poster.startsWith('http')) {
-        posterUrl = `https://streamed.su/api${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
-      }
-      
+      const posterUrl = getBohoImageUrl(match.poster);
+
       return (
         <img
           src={posterUrl}

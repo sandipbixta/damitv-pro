@@ -7,6 +7,7 @@ import { Play, RotateCcw, Maximize, ExternalLink, Monitor, Clock } from 'lucide-
 import IframeVideoPlayer from './IframeVideoPlayer';
 import StreamQualitySelector from '../StreamQualitySelector';
 import BufferIndicator from '../BufferIndicator';
+import { getBohoImageUrl } from '../../api/sportsApi';
 import { getConnectionInfo, getOptimizedHLSConfig, detectCasting, onConnectionChange, detectGeographicLatency } from '../../utils/connectionOptimizer';
 import { 
   trackVideoStart, 
@@ -435,7 +436,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           <div className="absolute inset-0">
             {matchPoster && (
               <img
-                src={typeof matchPoster === 'string' && matchPoster.startsWith('http') ? matchPoster : `https://streamed.su/api${matchPoster && matchPoster.startsWith('/') ? '' : '/'}${matchPoster}`}
+                src={typeof matchPoster === 'string' ? getBohoImageUrl(matchPoster) : ''}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover opacity-40"
                 loading="lazy"

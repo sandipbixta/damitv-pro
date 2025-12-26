@@ -3,15 +3,13 @@ import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { Link } from 'react-router-dom';
 import { Match } from '@/types/sports';
-import { fetchAllMatches } from '@/api/sportsApi';
+import { fetchAllMatches, getBohoImageUrl } from '@/api/sportsApi';
 import { getCarouselMatches, isHotMatch, formatViewerCount } from '@/utils/heroCarouselFilter';
 import { isMatchLive } from '@/utils/matchUtils';
 import { ViewerCount } from './ViewerCount';
 import { Clock, Calendar, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import coverPhoto from '@/assets/damitv-cover.jpeg';
-
-const POSTER_BASE_URL = 'https://streamed.su/api';
 
 export const HeroCarousel = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel(
@@ -37,9 +35,7 @@ export const HeroCarousel = () => {
   
   // Helper to convert relative poster URL to absolute
   const getAbsolutePosterUrl = (posterPath: string) => {
-    if (!posterPath) return '';
-    if (posterPath.startsWith('http')) return posterPath;
-    return `${POSTER_BASE_URL}${posterPath}`;
+    return getBohoImageUrl(posterPath);
   };
   
   // Fetch ELITE matches only (La Liga, Premier League, Champions League, UFC, WWE, top teams)
