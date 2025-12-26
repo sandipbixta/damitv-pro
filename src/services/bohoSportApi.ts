@@ -314,43 +314,61 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
   }
 };
 
-// Fetch stream for a match - uses BOHOSport ad-free embed player
+// Fetch stream for a match - uses DAMITV ad-free embed player
 export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
   const cacheKey = `boho-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log(`🎬 Building BOHOSport embed URL for source: ${source}, id: ${id}`);
+    console.log(`🎬 Building DAMITV embed URL for source: ${source}, id: ${id}`);
 
-    // Use BOHOSport ad-free embed URL format: https://embed.damitv.pro/?id={matchId}&source={source}
-    const bohoEmbedUrl = buildBohoSportEmbedUrl(id, source);
+    // Primary: DAMITV embed format (ad-free, same as bohosoccer.blogspot.com)
+    const damitvEmbedUrl = `${BOHOSPORT_EMBED_BASE}/?id=${id}&source=${source}`;
     
-    const primaryStream: Stream = {
-      id: id,
-      streamNo: 1,
-      language: 'EN',
-      hd: true,
-      embedUrl: bohoEmbedUrl,
-      source: 'bohosport',
-      timestamp: Date.now()
-    };
+    const streams: Stream[] = [
+      {
+        id: id,
+        streamNo: 1,
+        language: 'EN',
+        hd: true,
+        embedUrl: damitvEmbedUrl,
+        source: source,
+        timestamp: Date.now()
+      }
+    ];
+    
+    // Add additional sources for fallback
+    const additionalSources = ['alpha', 'bravo', 'charlie', 'delta', 'echo'];
+    additionalSources.forEach((altSource, index) => {
+      if (altSource !== source) {
+        streams.push({
+          id: id,
+          streamNo: index + 2,
+          language: 'EN',
+          hd: true,
+          embedUrl: `${BOHOSPORT_EMBED_BASE}/?id=${id}&source=${altSource}`,
+          source: altSource,
+          timestamp: Date.now()
+        });
+      }
+    });
 
-    console.log(`✅ BOHOSport embed URL: ${bohoEmbedUrl}`);
-    setCachedData(cacheKey, [primaryStream]);
-    return [primaryStream];
+    console.log(`✅ DAMITV embed URLs created: ${streams.length} streams`);
+    setCachedData(cacheKey, streams);
+    return streams;
   } catch (error) {
-    console.error(`❌ Error building BOHOSport URL for ${source}/${id}:`, error);
+    console.error(`❌ Error building DAMITV URL for ${source}/${id}:`, error);
     
     // Fallback with echo source
-    const fallbackUrl = buildBohoSportEmbedUrl(id, 'echo');
+    const fallbackUrl = `${BOHOSPORT_EMBED_BASE}/?id=${id}&source=echo`;
     const fallbackStream: Stream = {
       id: id,
       streamNo: 1,
       language: 'EN',
       hd: true,
       embedUrl: fallbackUrl,
-      source: 'bohosport',
+      source: 'echo',
       timestamp: Date.now()
     };
     return [fallbackStream];
@@ -385,7 +403,7 @@ const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'foo
   }
 };
 
-// Fetch all streams for a match
+// Fetch all streams for a match - uses DAMITV embed directly
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -394,54 +412,59 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
 }> => {
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
+  
+  // Extract match slug from URL-friendly title or use the ID
+  // Format: match-title-matchId (e.g., manchester-united-vs-newcastle-united-2267249)
+  const matchSlug = match.title
+    ? match.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + match.id
+    : match.id;
+  
+  console.log(`🎬 Building DAMITV streams for: ${matchSlug}`);
 
-  // First, try to fetch sources from SportsRC API for accurate source/id pairs
-  const category = match.category || match.sportId || 'football';
-  const apiSources = await fetchMatchSourcesFromAPI(match.id, category);
+  // Primary sources to try - these work with DAMITV embed
+  const primarySources = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
   
-  // Use API sources if available, otherwise fall back to match.sources
-  const sourcesToUse = apiSources.length > 0 ? apiSources : (match.sources || []);
-  
-  if (sourcesToUse.length === 0) {
-    // Last resort: try with match ID and echo source
-    try {
-      const streams = await fetchSimpleStream('echo', match.id);
-      if (streams.length > 0) {
-        allStreams.push(...streams);
-        sourcesWithStreams.add('echo');
-      }
-    } catch (error) {
-      console.error('Error fetching default stream:', error);
-    }
-  } else {
-    // Build streams for all available sources
-    for (const source of sourcesToUse) {
-      try {
-        const bohoEmbedUrl = buildBohoSportEmbedUrl(source.id, source.source);
-        const stream: Stream = {
-          id: source.id,
-          streamNo: allStreams.length + 1,
-          language: 'EN',
-          hd: true,
-          embedUrl: bohoEmbedUrl,
-          source: source.source,
-          timestamp: Date.now()
-        };
-        allStreams.push(stream);
-        sourcesWithStreams.add(source.source);
-        console.log(`✅ Added stream: ${source.source}/${source.id}`);
-      } catch (error) {
-        console.error('Error building stream:', error);
-      }
-    }
+  // Create streams for each source
+  primarySources.forEach((source, index) => {
+    const embedUrl = `${BOHOSPORT_EMBED_BASE}/?id=${matchSlug}&source=${source}`;
+    const stream: Stream = {
+      id: matchSlug,
+      streamNo: index + 1,
+      language: 'EN',
+      hd: index < 3, // First 3 are HD
+      embedUrl: embedUrl,
+      source: source.charAt(0).toUpperCase() + source.slice(1), // Capitalize for display
+      timestamp: Date.now()
+    };
+    allStreams.push(stream);
+    sourcesWithStreams.add(source);
+    console.log(`✅ Added DAMITV stream: ${source} - ${embedUrl}`);
+  });
+
+  // Also add match sources if available (for variety)
+  if (match.sources && match.sources.length > 0) {
+    match.sources.forEach((source, index) => {
+      const embedUrl = `${BOHOSPORT_EMBED_BASE}/?id=${source.id}&source=${source.source}`;
+      const stream: Stream = {
+        id: source.id,
+        streamNo: allStreams.length + 1,
+        language: 'EN',
+        hd: true,
+        embedUrl: embedUrl,
+        source: source.source.charAt(0).toUpperCase() + source.source.slice(1),
+        timestamp: Date.now()
+      };
+      allStreams.push(stream);
+      sourcesWithStreams.add(source.source);
+    });
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`🎬 BOHOSport streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
+  console.log(`🎬 DAMITV streams ready for ${match.title}: ${allStreams.length} streams`);
 
   return {
     streams: allStreams,
-    sourcesChecked: sourcesToUse.length || 1,
+    sourcesChecked: primarySources.length,
     sourcesWithStreams: sourceNames.length,
     sourceNames
   };
