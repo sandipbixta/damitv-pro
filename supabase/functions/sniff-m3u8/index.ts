@@ -116,39 +116,111 @@ serve(async (req) => {
       }
     }
 
-    // Try to find and click Watch buttons
-    try {
-      const watchButton = await page.$x("//button[contains(., 'Watch')] | //a[contains(., 'Watch')]");
-      if (watchButton.length > 0) {
-        console.log('🖱️ Found Watch button, clicking...');
-        await watchButton[0].click();
-        await page.waitForTimeout(waitTime);
+    // Try to find and click Watch/Play buttons
+    const buttonSelectors = [
+      "//button[contains(., 'Watch')]",
+      "//a[contains(., 'Watch')]",
+      "//button[contains(., 'Play')]",
+      "//a[contains(., 'Play')]",
+      "//div[contains(@class, 'play')]",
+      "//button[contains(@class, 'play')]",
+      "//*[contains(@class, 'video-play')]",
+    ];
+    
+    for (const selector of buttonSelectors) {
+      try {
+        const elements = await page.$x(selector);
+        if (elements.length > 0) {
+          console.log(`🖱️ Found element with ${selector}, clicking...`);
+          await elements[0].click();
+          await page.waitForTimeout(5000);
+        }
+      } catch {
+        // Continue to next selector
       }
-    } catch {
-      console.log('⚠️ No Watch button found');
     }
 
-    // Get page source and look for m3u8
+    // Look for iframes and try to get their src
+    const iframes = await page.$$('iframe');
+    console.log(`🔍 Found ${iframes.length} iframes`);
+    
+    const iframeSrcs: string[] = [];
+    for (const iframe of iframes) {
+      try {
+        const src = await iframe.evaluate((el: HTMLIFrameElement) => el.src);
+        if (src && src.length > 10) {
+          iframeSrcs.push(src);
+          console.log(`📺 Iframe src: ${src.slice(0, 100)}...`);
+          
+          // Check if iframe src contains m3u8
+          if (src.includes('.m3u8') && !capturedUrls.has(src)) {
+            capturedUrls.add(src);
+            capturedStreams.push({
+              url: src,
+              type: 'm3u8-iframe',
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+      } catch {
+        // Iframe might not be accessible
+      }
+    }
+
+    // Wait for more network activity
+    console.log(`⏳ Waiting ${waitTime}ms for dynamic content...`);
+    await page.waitForTimeout(waitTime);
+
+    // Get page source and look for m3u8 patterns
     const content = await page.content();
-    const m3u8Regex = /["']([^"']*\.m3u8[^"']*)['"]/gi;
-    let match;
-    while ((match = m3u8Regex.exec(content)) !== null) {
-      let foundUrl = match[1];
-      if (foundUrl.startsWith('//')) foundUrl = 'https:' + foundUrl;
-      
-      if (!capturedUrls.has(foundUrl) && foundUrl.length > 10) {
-        capturedUrls.add(foundUrl);
-        capturedStreams.push({
-          url: foundUrl,
-          type: 'm3u8-source',
-          timestamp: new Date().toISOString()
-        });
-        console.log(`📝 Found in source: ${foundUrl.slice(0, 100)}...`);
+    
+    // Multiple regex patterns to find stream URLs
+    const patterns = [
+      /["']([^"']*\.m3u8[^"']*)['"]/gi,
+      /src\s*[:=]\s*["']([^"']*\.m3u8[^"']*)['"]/gi,
+      /file\s*[:=]\s*["']([^"']*\.m3u8[^"']*)['"]/gi,
+      /source\s*[:=]\s*["']([^"']*\.m3u8[^"']*)['"]/gi,
+      /hls\s*[:=]\s*["']([^"']*)['"]/gi,
+      /stream\s*[:=]\s*["']([^"']*\.m3u8[^"']*)['"]/gi,
+    ];
+    
+    for (const regex of patterns) {
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        let foundUrl = match[1];
+        if (foundUrl.startsWith('//')) foundUrl = 'https:' + foundUrl;
+        
+        if (!capturedUrls.has(foundUrl) && foundUrl.length > 10 && 
+            (foundUrl.includes('.m3u8') || foundUrl.includes('/hls/'))) {
+          capturedUrls.add(foundUrl);
+          capturedStreams.push({
+            url: foundUrl,
+            type: 'm3u8-source',
+            timestamp: new Date().toISOString()
+          });
+          console.log(`📝 Found in source: ${foundUrl.slice(0, 100)}...`);
+        }
+      }
+    }
+    
+    // Look for any embed URLs that might contain streams
+    const embedPatterns = [
+      /embed[^"']*["']([^"']+)['"]/gi,
+      /player[^"']*["']([^"']+)['"]/gi,
+    ];
+    
+    const embedUrls: string[] = [];
+    for (const regex of embedPatterns) {
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        if (match[1] && match[1].startsWith('http')) {
+          embedUrls.push(match[1]);
+        }
       }
     }
 
     await browser.close();
-    console.log(`✅ Done! Found ${capturedStreams.length} streams`);
+    console.log(`✅ Done! Found ${capturedStreams.length} streams, ${iframeSrcs.length} iframes`);
 
     return new Response(
       JSON.stringify({
@@ -156,7 +228,9 @@ serve(async (req) => {
         url,
         count: capturedStreams.length,
         streams: capturedStreams.filter(s => s.url.includes('.m3u8')),
-        allCaptured: capturedStreams
+        allCaptured: capturedStreams,
+        iframes: iframeSrcs,
+        embedUrls: embedUrls.slice(0, 10)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
