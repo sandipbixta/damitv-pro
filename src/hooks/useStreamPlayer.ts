@@ -78,38 +78,37 @@ export const useStreamPlayer = () => {
     }
   }, []);
 
-  // Simplified stream fetching (like HTML example)
+  // Build DAMITV embed URL directly (no API call needed)
+  const buildDamitvStream = useCallback((matchSlug: string, source: string, streamNo: number = 1): Stream => {
+    const embedUrl = `https://embed.damitv.pro/?id=${matchSlug}&source=${source}`;
+    return {
+      id: matchSlug,
+      streamNo: streamNo,
+      language: 'EN',
+      hd: true,
+      embedUrl: embedUrl,
+      source: source,
+      timestamp: Date.now()
+    };
+  }, []);
+
+  // Simplified stream fetching - builds DAMITV embed URL directly
   const fetchStreamData = useCallback(async (source: Source, streamNo?: number) => {
     setStreamLoading(true);
     const sourceKey = `${source.source}/${source.id}`;
     setActiveSource(sourceKey);
     
     try {
-      console.log(`🎯 Fetching stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
+      console.log(`🎯 Building DAMITV stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
       
-      // Simple direct API call like HTML example
-      const streams = await fetchSimpleStream(source.source, source.id);
+      // Build DAMITV embed URL directly - no API call needed
+      const stream = buildDamitvStream(source.id, source.source, streamNo || 1);
       
-      console.log(`📺 Received ${streams.length} streams from API`);
+      // Update active source to include streamNo for proper matching
+      setActiveSource(`${source.source}/${source.id}/${streamNo || 1}`);
       
-      if (streams.length > 0) {
-        const selectedStream = streamNo 
-          ? streams.find(s => s.streamNo === streamNo)
-          : streams[0]; // Just pick first one like HTML example
-        
-        if (selectedStream) {
-          const freshStream: Stream = {
-            ...selectedStream,
-            timestamp: Date.now()
-          };
-          
-          // Update active source to include streamNo for proper matching
-          setActiveSource(`${source.source}/${source.id}/${selectedStream.streamNo || 1}`);
-          
-          setCurrentStream(freshStream);
-          console.log(`✅ Stream loaded successfully: Stream ${selectedStream.streamNo}`, selectedStream);
-        }
-      }
+      setCurrentStream(stream);
+      console.log(`✅ DAMITV stream ready: ${stream.embedUrl}`);
       
       // Smooth scroll to player
       setTimeout(() => {
@@ -124,7 +123,7 @@ export const useStreamPlayer = () => {
     } finally {
       setStreamLoading(false);
     }
-  }, []);
+  }, [buildDamitvStream]);
 
   // Match selection with comprehensive stream loading
   const handleMatchSelect = useCallback(async (match: Match) => {
