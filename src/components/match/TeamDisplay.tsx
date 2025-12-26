@@ -10,8 +10,8 @@ interface TeamDisplayProps {
 }
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ name, badge, logo, isHome = false, size = 'medium' }) => {
-  // Prioritize logo over badge, then fall back to badge URL format - now using BOHOSport API
-  const imageUrl = logo || (badge ? (badge.startsWith('http') ? badge : `https://streamapi.cc/sport/images/badge/${badge}`) : '');
+  // Prioritize logo over badge, then fall back to badge URL format
+  const imageUrl = logo || (badge ? `https://streamed.su/api/images/badge/${badge}.webp` : '');
   
   const getSizeClasses = () => {
     switch (size) {

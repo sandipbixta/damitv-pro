@@ -8,7 +8,6 @@ import MatchCard from '@/components/MatchCard';
 import MatchDetails from '@/components/MatchDetails';
 import { Match as MatchType, Stream } from '@/types/sports';
 import { ViewerCount } from '@/components/ViewerCount';
-import { supabase } from '@/integrations/supabase/client';
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -158,7 +157,7 @@ const StreamTab = ({
     );
   };
 
-  // Fetch viewer count for current active stream via proxy
+  // Fetch viewer count for current active stream
   useEffect(() => {
     const fetchCurrentViewers = async () => {
       if (!activeSource) return;
@@ -168,18 +167,18 @@ const StreamTab = ({
       
       if (source && id) {
         try {
-          // Use the proxy to fetch stream info including viewers
-          const { data, error } = await supabase.functions.invoke('boho-sport', {
-            body: { endpoint: `stream/${source}/${id}` },
+          const response = await fetch(`https://streamed.pk/api/stream/${source}/${id}`, {
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(5000)
           });
           
-          if (!error && data) {
+          if (response.ok) {
+            const data = await response.json();
+            
             // Sum up all viewers from this source
             if (Array.isArray(data)) {
               const total = data.reduce((sum: number, stream: any) => sum + (stream.viewers || 0), 0);
               setCurrentStreamViewers(total);
-            } else if (data.viewers) {
-              setCurrentStreamViewers(data.viewers);
             }
           }
         } catch (error) {

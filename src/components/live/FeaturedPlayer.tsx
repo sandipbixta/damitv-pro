@@ -49,7 +49,7 @@ const FeaturedPlayer: React.FC<FeaturedPlayerProps> = ({
       
       if (source && id) {
         try {
-          const response = await fetch(`https://streamapi.cc/sport/stream/${source}/${id}`, {
+          const response = await fetch(`https://streamed.pk/api/stream/${source}/${id}`, {
             headers: { 'Accept': 'application/json' },
             signal: AbortSignal.timeout(5000)
           });

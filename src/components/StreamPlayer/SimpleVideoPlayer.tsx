@@ -435,7 +435,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           <div className="absolute inset-0">
             {matchPoster && (
               <img
-                src={typeof matchPoster === 'string' && matchPoster.startsWith('http') ? matchPoster : `https://streamapi.cc/sport${matchPoster && matchPoster.startsWith('/') ? '' : '/'}${matchPoster}`}
+                src={typeof matchPoster === 'string' && matchPoster.startsWith('/api') ? `https://streamed.pk${matchPoster}` : matchPoster}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover opacity-40"
                 loading="lazy"

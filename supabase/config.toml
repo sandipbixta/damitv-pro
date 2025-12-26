@@ -29,12 +29,3 @@ verify_jwt = false
 
 [functions.fetch-live-scores]
 verify_jwt = false
-
-[functions.boho-sport]
-verify_jwt = false
-
-[functions.sports-api]
-verify_jwt = false
-
-[functions.fetch-highlights]
-verify_jwt = false

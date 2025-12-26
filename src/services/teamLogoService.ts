@@ -94,9 +94,9 @@ class TeamLogoService {
   public getTeamLogo(teamName: string, teamBadge?: string): string | null {
     if (!teamName) return null;
     
-    // First priority: Use official BOHOSport API badge if available
+    // First priority: Use official Streamed API badge if available
     if (teamBadge) {
-      return teamBadge.startsWith('http') ? teamBadge : `https://streamapi.cc/sport/images/badge/${teamBadge}`;
+      return `https://streamed.su/api/images/badge/${teamBadge}.webp`;
     }
     
     const normalized = this.normalizeTeamName(teamName);
