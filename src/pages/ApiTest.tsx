@@ -347,18 +347,26 @@ const ApiTest = () => {
   };
 
   // ===== SportsRC API Functions =====
-  const SPORTSRC_BASE = 'https://api.sportsrc.org';
+  const fetchSportsrc = async (params: { data: string; category?: string; id?: string; league?: string }) => {
+    const { data, error } = await supabase.functions.invoke('sportsrc-proxy', {
+      body: params,
+    });
+
+    if (error) throw error;
+    if (!data?.success) throw new Error(data?.error || 'SportsRC request failed');
+
+    return data.data as unknown;
+  };
 
   // Fetch SportsRC categories
   const fetchSportsrcCategories = async () => {
     try {
-      console.log('🏀 Fetching SportsRC categories...');
-      const response = await fetch(`${SPORTSRC_BASE}/?data=sports`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      console.log('📋 SportsRC categories:', data);
-      if (Array.isArray(data)) {
-        setSportsrcCategories(data);
+      console.log('🏀 Fetching SportsRC categories (via proxy)...');
+      const result = await fetchSportsrc({ data: 'sports' });
+      console.log('📋 SportsRC categories:', result);
+
+      if (Array.isArray(result)) {
+        setSportsrcCategories(result as SportsRCCategory[]);
       }
     } catch (err) {
       console.error('SportsRC categories error:', err);
@@ -370,21 +378,24 @@ const ApiTest = () => {
     setSportsrcLoading(true);
     setSportsrcError(null);
     setSportsrcEmbed(null);
-    
+
     try {
-      console.log(`🏀 Fetching SportsRC ${category} matches...`);
-      const response = await fetch(`${SPORTSRC_BASE}/?data=matches&category=${category}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      console.log('⚽ SportsRC matches:', data);
-      
-      if (Array.isArray(data)) {
-        setSportsrcMatches(data);
-        if (data.length === 0) {
+      console.log(`🏀 Fetching SportsRC ${category} matches (via proxy)...`);
+      const result = await fetchSportsrc({ data: 'matches', category });
+      console.log('⚽ SportsRC matches:', result);
+
+      const asAny = result as any;
+
+      if (Array.isArray(result)) {
+        setSportsrcMatches(result as SportsRCMatch[]);
+        if ((result as unknown[]).length === 0) {
           setSportsrcError(`No ${category} matches found`);
         }
-      } else if (data.matches && Array.isArray(data.matches)) {
-        setSportsrcMatches(data.matches);
+      } else if (asAny?.matches && Array.isArray(asAny.matches)) {
+        setSportsrcMatches(asAny.matches as SportsRCMatch[]);
+        if (asAny.matches.length === 0) {
+          setSportsrcError(`No ${category} matches found`);
+        }
       } else {
         setSportsrcError('Invalid response format');
       }
@@ -399,16 +410,20 @@ const ApiTest = () => {
   // Fetch SportsRC match detail (embed)
   const fetchSportsrcDetail = async (category: string, matchId: string) => {
     try {
-      console.log(`🎬 Fetching SportsRC detail for ${matchId}...`);
-      const response = await fetch(`${SPORTSRC_BASE}/?data=detail&category=${category}&id=${matchId}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      console.log('🎬 SportsRC detail:', data);
-      
-      if (data.embed) {
-        setSportsrcEmbed(data.embed);
-      } else if (data.url) {
-        setSportsrcEmbed(data.url);
+      console.log(`🎬 Fetching SportsRC detail for ${matchId} (via proxy)...`);
+      const result = await fetchSportsrc({ data: 'detail', category, id: matchId });
+      console.log('🎬 SportsRC detail:', result);
+
+      if (typeof result === 'string') {
+        setSportsrcEmbed(result);
+        return;
+      }
+
+      const asAny = result as any;
+      if (asAny?.embed) {
+        setSportsrcEmbed(asAny.embed);
+      } else if (asAny?.url) {
+        setSportsrcEmbed(asAny.url);
       } else {
         setSportsrcError('No stream embed found for this match');
       }
