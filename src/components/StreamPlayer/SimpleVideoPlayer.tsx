@@ -641,17 +641,29 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           match={match}
         />
       )}
-      {/* External open fallback on Android for non-m3u8 embeds */}
-      {!isM3U8 && isAndroid && (
-        <div className="absolute top-4 left-4">
-          <Button asChild className="bg-black/50 hover:bg-black/70 text-white border-0" size="sm">
+      {/* Open stream in new tab (helps when providers block iframes / show robot checks) */}
+      {!isM3U8 && stream?.embedUrl && (
+        <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="bg-background/70 hover:bg-background/85 border border-border/40"
+          >
             <a href={stream.embedUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="w-4 h-4 mr-2" />
-              Open
+              Open stream
             </a>
           </Button>
+
+          {stream.embedUrl.includes('embed.damitv.pro') && (
+            <div className="max-w-[16rem] rounded-md border border-border/40 bg-background/70 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
+              If you see “Confirm you are not a robot”, complete it there or open the stream.
+            </div>
+          )}
         </div>
       )}
+
 
       {/* Theater mode, quality selector and fullscreen buttons */}
       <div className="absolute top-4 right-4 flex gap-2">
