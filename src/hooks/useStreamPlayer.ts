@@ -1,29 +1,15 @@
 import { useState, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { Match, Stream, Source } from '../types/sports';
-import { fetchAllMatchStreams } from '../api/sportsApi';
+import { fetchSimpleStream, fetchAllMatchStreams } from '../api/sportsApi';
 import { trackMatchSelect, trackSourceChange } from '@/utils/videoAnalytics';
-
-// Helper function to build DAMITV embed URL (outside hook to avoid hook count issues)
-const buildDamitvStream = (matchSlug: string, source: string, streamNo: number = 1): Stream => {
-  const embedUrl = `https://embed.damitv.pro/?id=${matchSlug}&source=${source}`;
-  return {
-    id: matchSlug,
-    streamNo: streamNo,
-    language: 'EN',
-    hd: true,
-    embedUrl: embedUrl,
-    source: source,
-    timestamp: Date.now()
-  };
-};
 
 export const useStreamPlayer = () => {
   const { toast } = useToast();
   const [featuredMatch, setFeaturedMatch] = useState<Match | null>(null);
   const [currentStream, setCurrentStream] = useState<Stream | null>(null);
   const [streamLoading, setStreamLoading] = useState(false);
-  const [streamSwitching, setStreamSwitching] = useState(false);
+  const [streamSwitching, setStreamSwitching] = useState(false); // New state for switching
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [allStreams, setAllStreams] = useState<Record<string, Stream[]>>({});
   const [streamDiscovery, setStreamDiscovery] = useState<{
@@ -32,7 +18,7 @@ export const useStreamPlayer = () => {
     sourceNames: string[];
   }>({ sourcesChecked: 0, sourcesWithStreams: 0, sourceNames: [] });
 
-  // Fetch ALL streams from ALL sources
+  // Simple function to fetch ALL streams from ALL sources (like HTML example)
   const fetchAllStreamsForMatch = useCallback(async (match: Match) => {
     setStreamLoading(true);
     
@@ -43,7 +29,7 @@ export const useStreamPlayer = () => {
       const { clearStreamCache } = await import('@/api/sportsApi');
       clearStreamCache(match.id);
       
-      // Use the simple stream fetching approach
+      // Use the simple stream fetching approach but maintain compatibility
       const result = await fetchAllMatchStreams(match);
       
       // Store discovery metadata
@@ -67,7 +53,7 @@ export const useStreamPlayer = () => {
       
       setAllStreams(streamsData);
       
-      // Auto-select first available stream
+      // Auto-select first available stream (like HTML example)
       const sourceKeys = Object.keys(streamsData);
       if (sourceKeys.length > 0 && streamsData[sourceKeys[0]].length > 0) {
         const firstStream = streamsData[sourceKeys[0]][0];
@@ -75,6 +61,7 @@ export const useStreamPlayer = () => {
           ...firstStream,
           timestamp: Date.now()
         });
+        // Set active source with streamNo for proper button highlighting
         setActiveSource(`${firstStream.source}/${firstStream.id}/${firstStream.streamNo || 1}`);
         console.log(`✅ Auto-selected first stream: ${firstStream.source} Stream ${firstStream.streamNo}`);
       }
@@ -91,23 +78,38 @@ export const useStreamPlayer = () => {
     }
   }, []);
 
-  // Simplified stream fetching - builds DAMITV embed URL directly
+  // Simplified stream fetching (like HTML example)
   const fetchStreamData = useCallback(async (source: Source, streamNo?: number) => {
     setStreamLoading(true);
     const sourceKey = `${source.source}/${source.id}`;
     setActiveSource(sourceKey);
     
     try {
-      console.log(`🎯 Building DAMITV stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
+      console.log(`🎯 Fetching stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
       
-      // Build DAMITV embed URL directly - no API call needed
-      const stream = buildDamitvStream(source.id, source.source, streamNo || 1);
+      // Simple direct API call like HTML example
+      const streams = await fetchSimpleStream(source.source, source.id);
       
-      // Update active source to include streamNo for proper matching
-      setActiveSource(`${source.source}/${source.id}/${streamNo || 1}`);
+      console.log(`📺 Received ${streams.length} streams from API`);
       
-      setCurrentStream(stream);
-      console.log(`✅ DAMITV stream ready: ${stream.embedUrl}`);
+      if (streams.length > 0) {
+        const selectedStream = streamNo 
+          ? streams.find(s => s.streamNo === streamNo)
+          : streams[0]; // Just pick first one like HTML example
+        
+        if (selectedStream) {
+          const freshStream: Stream = {
+            ...selectedStream,
+            timestamp: Date.now()
+          };
+          
+          // Update active source to include streamNo for proper matching
+          setActiveSource(`${source.source}/${source.id}/${selectedStream.streamNo || 1}`);
+          
+          setCurrentStream(freshStream);
+          console.log(`✅ Stream loaded successfully: Stream ${selectedStream.streamNo}`, selectedStream);
+        }
+      }
       
       // Smooth scroll to player
       setTimeout(() => {
