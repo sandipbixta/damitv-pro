@@ -1,5 +1,7 @@
 // CDN Channels API Service
-// Fetches live TV channels from api.cdn-live.tv API
+// Fetches live TV channels via Supabase Edge Function to avoid CORS
+
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CDNChannel {
   id: string;
@@ -77,7 +79,6 @@ const countryCodeMap: Record<string, string> = {
 };
 
 class CDNChannelsApiService {
-  private baseUrl = 'https://api.cdn-live.tv/api/v1/vip/damitv/channels/';
   private cache: { data: CDNChannel[] | null; timestamp: number } = { data: null, timestamp: 0 };
   private cacheExpiry = 10 * 60 * 1000; // 10 minutes
   private isFetching = false;
@@ -126,29 +127,24 @@ class CDNChannelsApiService {
 
   private async doFetch(): Promise<CDNChannel[]> {
     try {
-      console.log('📺 Fetching channels from CDN API:', this.baseUrl);
+      console.log('📺 Fetching channels via Supabase Edge Function');
       
-      const response = await fetch(this.baseUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+      const { data, error } = await supabase.functions.invoke('cdn-channels');
 
-      if (!response.ok) {
-        throw new Error(`CDN API returned ${response.status}`);
+      if (error) {
+        throw new Error(`Edge function error: ${error.message}`);
       }
 
-      const data: CDNApiResponse = await response.json();
+      const apiData: CDNApiResponse = data;
       
-      if (!data.channels || !Array.isArray(data.channels)) {
+      if (!apiData.channels || !Array.isArray(apiData.channels)) {
         console.warn('📺 Invalid API response format');
         return this.cache.data || [];
       }
 
-      console.log(`📺 API returned ${data.total_channels} total channels`);
+      console.log(`📺 API returned ${apiData.total_channels} total channels`);
 
-      const channels = data.channels.map(ch => this.transformChannel(ch));
+      const channels = apiData.channels.map(ch => this.transformChannel(ch));
       
       // Filter out channels without embed URLs
       const validChannels = channels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
