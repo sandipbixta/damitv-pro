@@ -10,8 +10,8 @@ interface TeamDisplayProps {
 }
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ name, badge, logo, isHome = false, size = 'medium' }) => {
-  // Prioritize logo over badge, then fall back to badge URL format - using streamed.su API
-  const imageUrl = logo || (badge ? (badge.startsWith('http') ? badge : `https://streamed.su/api/images/badge/${badge}`) : '');
+  // Prioritize logo (from TheSportsDB) over badge - only use badge if it's already a full URL
+  const imageUrl = logo || (badge && badge.startsWith('http') ? badge : '');
   
   const getSizeClasses = () => {
     switch (size) {

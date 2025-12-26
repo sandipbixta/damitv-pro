@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Match } from '../types/sports';
 import { isMatchLive } from '../utils/matchUtils';
-import { teamLogoService } from '../services/teamLogoService';
+import { useMatchTeamLogos } from '../hooks/useTeamLogo';
 import { LiveViewerCount } from './LiveViewerCount';
 import { generateMatchSlug } from '../utils/matchSlug';
 
@@ -26,6 +26,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
 }) => {
   const [countdown, setCountdown] = React.useState<string>('');
   const [isMatchStarting, setIsMatchStarting] = React.useState(false);
+
+  // Use TheSportsDB API for team logos
+  const { homeLogo, awayLogo } = useMatchTeamLogos(
+    match.teams?.home,
+    match.teams?.away
+  );
 
   // Calculate countdown for upcoming matches
   React.useEffect(() => {
@@ -69,22 +75,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
     return format(date, "EEE, do MMM, h:mm a");
   };
 
-  // Get team badges with fallbacks - now using streamed.su API
-  const getTeamBadge = (team: any) => {
-    if (team?.badge) {
-      // If badge is already a full URL, use it directly
-      if (team.badge.startsWith('http')) {
-        return team.badge;
-      }
-      // Otherwise construct the URL from streamed.su API
-      return `https://streamed.su/api/images/badge/${team.badge}`;
-    }
-    const logoFromService = teamLogoService.getTeamLogo(team?.name || '', team?.badge);
-    return logoFromService || '';
-  };
-
-  const homeBadge = getTeamBadge(match.teams?.home);
-  const awayBadge = getTeamBadge(match.teams?.away);
+  const homeBadge = homeLogo || '';
+  const awayBadge = awayLogo || '';
   const home = match.teams?.home?.name || '';
   const away = match.teams?.away?.name || '';
   const hasStream = match.sources?.length > 0;
