@@ -357,11 +357,11 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   }
 };
 
-// Fetch match details with full stream info from SportsRC API
-const fetchMatchStreamsFromAPI = async (matchId: string, category: string = 'football'): Promise<Stream[]> => {
+// Fetch match details from SportsRC API to get correct stream sources
+const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football'): Promise<Source[]> => {
   try {
     const url = `${SPORTSRC_API_BASE}/?data=detail&category=${category}&id=${matchId}`;
-    console.log(`🔍 Fetching streams from: ${url}`);
+    console.log(`🔍 Fetching match sources from: ${url}`);
     
     const response = await fetch(url);
     if (!response.ok) {
@@ -371,24 +371,16 @@ const fetchMatchStreamsFromAPI = async (matchId: string, category: string = 'foo
     const result = await response.json();
     
     if (result.success && result.data?.sources && Array.isArray(result.data.sources)) {
-      console.log(`✅ Found ${result.data.sources.length} streams from SportsRC API`);
-      
-      // Use the embed URLs directly from the API response
-      return result.data.sources.map((s: any, index: number) => ({
-        id: s.id,
-        streamNo: s.streamNo || index + 1,
-        language: s.language || 'EN',
-        hd: s.hd !== false,
-        embedUrl: s.embedUrl, // Use the actual embed URL from API
+      console.log(`✅ Found ${result.data.sources.length} sources from SportsRC API`);
+      return result.data.sources.map((s: any) => ({
         source: s.source,
-        timestamp: Date.now(),
-        viewers: s.viewers || 0
+        id: s.id
       }));
     }
     
     return [];
   } catch (error) {
-    console.error('❌ Error fetching streams from API:', error);
+    console.error('❌ Error fetching match sources from API:', error);
     return [];
   }
 };
@@ -400,26 +392,15 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   sourcesWithStreams: number;
   sourceNames: string[];
 }> => {
-  // First, try to fetch streams directly from SportsRC API (includes correct embed URLs)
-  const category = match.category || match.sportId || 'football';
-  const apiStreams = await fetchMatchStreamsFromAPI(match.id, category);
-  
-  if (apiStreams.length > 0) {
-    const sourceNames = [...new Set(apiStreams.map(s => s.source))];
-    console.log(`🎬 Streams ready for ${match.title}: ${apiStreams.length} streams from ${sourceNames.join(', ')}`);
-    
-    return {
-      streams: apiStreams,
-      sourcesChecked: sourceNames.length,
-      sourcesWithStreams: sourceNames.length,
-      sourceNames
-    };
-  }
-
-  // Fallback: build embed URLs using the old method
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
-  const sourcesToUse = match.sources || [];
+
+  // First, try to fetch sources from SportsRC API for accurate source/id pairs
+  const category = match.category || match.sportId || 'football';
+  const apiSources = await fetchMatchSourcesFromAPI(match.id, category);
+  
+  // Use API sources if available, otherwise fall back to match.sources
+  const sourcesToUse = apiSources.length > 0 ? apiSources : (match.sources || []);
   
   if (sourcesToUse.length === 0) {
     // Last resort: try with match ID and echo source
@@ -433,7 +414,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
       console.error('Error fetching default stream:', error);
     }
   } else {
-    // Build streams for all available sources using BOHOSport embed
+    // Build streams for all available sources
     for (const source of sourcesToUse) {
       try {
         const bohoEmbedUrl = buildBohoSportEmbedUrl(source.id, source.source);
@@ -448,6 +429,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
         };
         allStreams.push(stream);
         sourcesWithStreams.add(source.source);
+        console.log(`✅ Added stream: ${source.source}/${source.id}`);
       } catch (error) {
         console.error('Error building stream:', error);
       }
@@ -455,7 +437,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`🎬 Fallback streams for ${match.title}: ${allStreams.length} streams`);
+  console.log(`🎬 BOHOSport streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
 
   return {
     streams: allStreams,
