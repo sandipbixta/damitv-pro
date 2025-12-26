@@ -1,21 +1,21 @@
 project_id = "wxvsteaayxgygihpshoz"
 
-[functions.sitemap]
+[functions.boho-sport]
 verify_jwt = false
 
-[functions.fetch-team-stats]
+[functions.cdn-channels]
 verify_jwt = false
 
-[functions.update-team-stats-scheduled]
+[functions.fetch-live-scores]
 verify_jwt = false
 
-[functions.send-subscription-confirmation]
-verify_jwt = false
-
-[functions.fetch-team-logo]
+[functions.fetch-highlights]
 verify_jwt = false
 
 [functions.fetch-match-details]
+verify_jwt = false
+
+[functions.fetch-team-logo]
 verify_jwt = false
 
 [functions.social-webhook]
@@ -24,17 +24,5 @@ verify_jwt = false
 [functions.goal-alerts]
 verify_jwt = false
 
-[functions.google-indexing]
-verify_jwt = false
-
-[functions.fetch-live-scores]
-verify_jwt = false
-
-[functions.boho-sport]
-verify_jwt = false
-
-[functions.sports-api]
-verify_jwt = false
-
-[functions.fetch-highlights]
+[functions.sitemap]
 verify_jwt = false
