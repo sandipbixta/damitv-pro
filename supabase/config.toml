@@ -29,12 +29,3 @@ verify_jwt = false
 
 [functions.fetch-live-scores]
 verify_jwt = false
-
-[functions.scrape-hls-streams]
-verify_jwt = false
-
-[functions.sniff-m3u8]
-verify_jwt = false
-
-[functions.extract-m3u8]
-verify_jwt = false
