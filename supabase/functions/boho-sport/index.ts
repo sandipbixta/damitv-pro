@@ -49,18 +49,17 @@ async function tryFetch(baseUrl: string, endpoint: string): Promise<{ success: b
       }
     }
 
-    // Check if response has valid match data
-    const hasMatches = Array.isArray(data) || 
-                       (data && (data.matches || data.events || data.data || data.live));
+    // Check if response has valid data
+    const hasData = Array.isArray(data) || 
+                    (data && (data.matches || data.events || data.data || data.live || data.embedUrl || data.embed));
     
-    if (response.ok && hasMatches) {
-      const count = Array.isArray(data) ? data.length : 
-                    (data.matches?.length || data.events?.length || data.data?.length || data.live?.length || 0);
+    if (response.ok && hasData) {
+      const count = Array.isArray(data) ? data.length : 'object';
       console.log(`✅ Success from ${apiUrl}: ${count} items`);
       return { success: true, data, status: response.status };
     }
 
-    console.log(`⚠️ No match data from ${apiUrl}`);
+    console.log(`⚠️ No valid data from ${apiUrl}`);
     return { success: false, data, status: response.status };
   } catch (error) {
     console.log(`❌ Failed ${apiUrl}: ${error.message}`);
@@ -90,6 +89,41 @@ serve(async (req) => {
     }
 
     console.log(`📡 BOHOSport proxy request - endpoint: "${endpoint}"`);
+
+    // Check if this is a stream request
+    const isStreamRequest = endpoint.startsWith('stream/');
+    
+    if (isStreamRequest) {
+      // For stream requests, try each API base with the exact endpoint
+      for (const baseUrl of API_BASES) {
+        const result = await tryFetch(baseUrl, endpoint);
+        if (result.success) {
+          console.log(`🎉 Found working stream endpoint: ${baseUrl}/${endpoint}`);
+          return new Response(JSON.stringify(result.data), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      
+      // If stream endpoints fail, return empty with embed URL suggestion
+      console.log('⚠️ No stream data found, returning default embed');
+      const parts = endpoint.split('/');
+      const source = parts[1] || 'main';
+      const id = parts[2] || 'unknown';
+      
+      return new Response(JSON.stringify([{
+        embedUrl: `https://streamed.su/watch/${id}`,
+        source: source,
+        id: id,
+        streamNo: 1,
+        language: 'EN',
+        hd: true
+      }]), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Endpoints to try for match data
     const endpointsToTry = endpoint ? [endpoint] : [
