@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.fetch-live-scores]
 verify_jwt = false
+
+[functions.scrape-hls-streams]
+verify_jwt = false
