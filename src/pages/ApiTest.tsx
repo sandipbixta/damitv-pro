@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, RefreshCw, Play, X, Maximize, Volume2, VolumeX, Server, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Loader2, RefreshCw, Play, X, Maximize, Volume2, VolumeX, Server, AlertTriangle, Calendar, Filter } from 'lucide-react';
 import Hls from 'hls.js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -123,6 +125,8 @@ const ApiTest = () => {
   const [footballLoading, setFootballLoading] = useState(false);
   const [footballError, setFootballError] = useState<string | null>(null);
   const [footballStatus, setFootballStatus] = useState<'all' | 'live' | 'vs'>('all');
+  const [footballLeague, setFootballLeague] = useState<string>('all');
+  const [footballDate, setFootballDate] = useState<string>('');
   
   // Player state
   const [selectedStream, setSelectedStream] = useState<{ name: string; url: string; referer?: string } | null>(null);
@@ -163,8 +167,20 @@ const ApiTest = () => {
     return streams;
   };
 
+  // Popular leagues for filtering
+  const popularLeagues = [
+    'Premier League',
+    'La Liga', 
+    'Serie A',
+    'Bundesliga',
+    'Ligue 1',
+    'Champions League',
+    'Europa League',
+    'MLS'
+  ];
+
   // Fetch Football Live Streaming API (RapidAPI)
-  const fetchFootballLive = async (status?: 'live' | 'vs' | 'all') => {
+  const fetchFootballLive = async (status?: 'live' | 'vs' | 'all', league?: string, date?: string) => {
     setFootballLoading(true);
     setFootballError(null);
     
@@ -174,6 +190,13 @@ const ApiTest = () => {
       let url = `https://${RAPIDAPI_HOST}/matches?page=1`;
       if (status && status !== 'all') {
         url += `&status=${status}`;
+      }
+      if (league && league !== 'all') {
+        url += `&league=${encodeURIComponent(league)}`;
+      }
+      if (date) {
+        // Format date as DDMMYYYY
+        url += `&date=${date}`;
       }
       
       const response = await fetch(url, {
@@ -290,7 +313,7 @@ const ApiTest = () => {
 
   // Auto-load Football API on mount
   useEffect(() => {
-    fetchFootballLive(footballStatus);
+    fetchFootballLive(footballStatus, footballLeague, footballDate);
   }, []);
 
   // Initialize HLS player when stream is selected
@@ -526,36 +549,94 @@ const ApiTest = () => {
                     <Play className="h-5 w-5 text-green-500" />
                     Football Live API ({footballMatches.length})
                   </CardTitle>
-                  <div className="flex gap-2">
+                  <Button onClick={() => fetchFootballLive(footballStatus, footballLeague, footballDate)} variant="outline" size="sm" disabled={footballLoading}>
+                    <RefreshCw className={`h-4 w-4 ${footballLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  RapidAPI Football Live Streaming - Direct HLS streams with multiple servers per match
+                </p>
+                
+                {/* Filters */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {/* Status Filter */}
+                  <div className="flex gap-1">
                     <Button 
                       variant={footballStatus === 'all' ? 'default' : 'outline'} 
                       size="sm"
-                      onClick={() => { setFootballStatus('all'); fetchFootballLive('all'); }}
+                      onClick={() => { setFootballStatus('all'); fetchFootballLive('all', footballLeague, footballDate); }}
                     >
                       All
                     </Button>
                     <Button 
                       variant={footballStatus === 'live' ? 'default' : 'outline'} 
                       size="sm"
-                      onClick={() => { setFootballStatus('live'); fetchFootballLive('live'); }}
+                      onClick={() => { setFootballStatus('live'); fetchFootballLive('live', footballLeague, footballDate); }}
                     >
-                      Live
+                      🔴 Live
                     </Button>
                     <Button 
                       variant={footballStatus === 'vs' ? 'default' : 'outline'} 
                       size="sm"
-                      onClick={() => { setFootballStatus('vs'); fetchFootballLive('vs'); }}
+                      onClick={() => { setFootballStatus('vs'); fetchFootballLive('vs', footballLeague, footballDate); }}
                     >
                       Upcoming
                     </Button>
-                    <Button onClick={() => fetchFootballLive(footballStatus)} variant="outline" size="sm" disabled={footballLoading}>
-                      <RefreshCw className={`h-4 w-4 ${footballLoading ? 'animate-spin' : ''}`} />
-                    </Button>
+                  </div>
+                  
+                  {/* League Filter */}
+                  <Select 
+                    value={footballLeague} 
+                    onValueChange={(value) => { 
+                      setFootballLeague(value); 
+                      fetchFootballLive(footballStatus, value, footballDate); 
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px] h-8">
+                      <Filter className="h-3 w-3 mr-1" />
+                      <SelectValue placeholder="All Leagues" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Leagues</SelectItem>
+                      {popularLeagues.map(league => (
+                        <SelectItem key={league} value={league}>{league}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Date Filter */}
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="date"
+                      className="h-8 w-[140px]"
+                      value={footballDate ? `${footballDate.slice(4, 8)}-${footballDate.slice(2, 4)}-${footballDate.slice(0, 2)}` : ''}
+                      onChange={(e) => {
+                        const date = e.target.value;
+                        if (date) {
+                          // Convert YYYY-MM-DD to DDMMYYYY
+                          const parts = date.split('-');
+                          const formatted = `${parts[2]}${parts[1]}${parts[0]}`;
+                          setFootballDate(formatted);
+                          fetchFootballLive(footballStatus, footballLeague, formatted);
+                        } else {
+                          setFootballDate('');
+                          fetchFootballLive(footballStatus, footballLeague, '');
+                        }
+                      }}
+                    />
+                    {footballDate && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2"
+                        onClick={() => { setFootballDate(''); fetchFootballLive(footballStatus, footballLeague, ''); }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  RapidAPI Football Live Streaming - Direct HLS streams with multiple servers per match
-                </p>
               </CardHeader>
               <CardContent>
                 {footballLoading && (
