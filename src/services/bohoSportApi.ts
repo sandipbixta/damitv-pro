@@ -84,17 +84,6 @@ const mapCategoryToSportId = (category: string): string => {
   return categoryMap[category?.toLowerCase()] || category?.toLowerCase() || 'other';
 };
 
-// Normalize poster/image path to absolute URL
-const normalizePosterUrl = (path: string | undefined | null): string => {
-  if (!path || typeof path !== 'string') return '';
-  const trimmed = path.trim();
-  if (!trimmed) return '';
-  // Already an absolute URL
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-  // Relative path - prepend API base
-  return `${STREAM_BASE}/api${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
-};
-
 // Parse BOHOSport match data to our Match format
 const parseMatchData = (item: any): Match | null => {
   try {
@@ -155,7 +144,7 @@ const parseMatchData = (item: any): Match | null => {
       category: sportId,
       sportId: sportId,
       date: matchDate,
-      poster: normalizePosterUrl(item.poster || item.image || item.thumbnail),
+      poster: item.poster || item.image || item.thumbnail || '',
       popular: item.popular === true || item.featured === true,
       teams: {
         home: {
