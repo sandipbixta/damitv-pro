@@ -373,13 +373,13 @@ const fetchMatchStreamsFromAPI = async (matchId: string, category: string = 'foo
     if (result.success && result.data?.sources && Array.isArray(result.data.sources)) {
       console.log(`✅ Found ${result.data.sources.length} streams from SportsRC API`);
       
-      // Use the embed URLs directly from the API response
+      // Build embed URLs using damitv.pro with id and source params
       return result.data.sources.map((s: any, index: number) => ({
         id: s.id,
         streamNo: s.streamNo || index + 1,
         language: s.language || 'EN',
         hd: s.hd !== false,
-        embedUrl: s.embedUrl, // Use the actual embed URL from API
+        embedUrl: `${BOHOSPORT_EMBED_BASE}/?id=${s.id}&source=${s.source}`,
         source: s.source,
         timestamp: Date.now(),
         viewers: s.viewers || 0
