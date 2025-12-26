@@ -1,11 +1,11 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import Hls from 'hls.js';
 import { Stream, Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
 import { Button } from '../ui/button';
 import { Play, RotateCcw, Maximize, ExternalLink, Monitor, Clock } from 'lucide-react';
 import IframeVideoPlayer from './IframeVideoPlayer';
-import EnhancedVideoControls from './EnhancedVideoControls';
+import StreamQualitySelector from '../StreamQualitySelector';
 import BufferIndicator from '../BufferIndicator';
 import { getBohoImageUrl } from '../../api/sportsApi';
 import { getConnectionInfo, getOptimizedHLSConfig, detectCasting, onConnectionChange, detectGeographicLatency } from '../../utils/connectionOptimizer';
@@ -61,14 +61,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   const isCasting = detectCasting();
   const progressTrackerRef = useRef<ReturnType<typeof createProgressTracker> | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // New state for enhanced controls
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [useCustomControls, setUseCustomControls] = useState(true);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -578,130 +570,67 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       )}
 
       {isM3U8 ? (
-        <>
-          <video
-            ref={videoRef}
-            className="w-full h-full object-contain rounded-2xl"
-            controls={!useCustomControls}
-            autoPlay
-            muted={isMuted}
-            playsInline
-            preload="auto"
-            crossOrigin="anonymous"
-            onError={handleError}
-            onLoadStart={() => console.log('Video load started')}
-            onCanPlay={() => {
-              console.log('Video can play');
-              setIsBuffering(false);
-            }}
-            onPlaying={() => {
-              console.log('Video playing');
-              setIsBuffering(false);
-              setIsPlaying(true);
-              if (progressTrackerRef.current && !progressIntervalRef.current) {
-                progressIntervalRef.current = setInterval(() => {
-                  progressTrackerRef.current?.tick();
-                }, 1000);
-              }
-            }}
-            onPause={() => {
-              console.log('Video paused');
-              setIsPlaying(false);
-              trackVideoPause(match?.id || stream?.embedUrl || 'unknown');
-              if (progressIntervalRef.current) {
-                clearInterval(progressIntervalRef.current);
-                progressIntervalRef.current = null;
-              }
-            }}
-            onPlay={() => {
-              console.log('Video resumed');
-              setIsPlaying(true);
-              trackVideoResume(match?.id || stream?.embedUrl || 'unknown');
-              if (progressTrackerRef.current && !progressIntervalRef.current) {
-                progressIntervalRef.current = setInterval(() => {
-                  progressTrackerRef.current?.tick();
-                }, 1000);
-              }
-            }}
-            onWaiting={() => {
-              console.log('Video buffering...');
-              setIsBuffering(true);
-              trackVideoBuffering(match?.id || stream?.embedUrl);
-            }}
-            onLoadedData={() => {
-              console.log('Video data loaded');
-              setIsBuffering(false);
-            }}
-            onLoadedMetadata={() => {
-              if (videoRef.current) {
-                setDuration(videoRef.current.duration);
-              }
-            }}
-            onTimeUpdate={() => {
-              if (videoRef.current) {
-                setCurrentTime(videoRef.current.currentTime);
-              }
-            }}
-            onVolumeChange={() => {
-              if (videoRef.current) {
-                setVolume(videoRef.current.volume);
-                setIsMuted(videoRef.current.muted);
-              }
-            }}
-            onProgress={() => console.log('Video buffering progress')}
-            style={{ 
-              backgroundColor: 'black',
-              transform: 'translateZ(0)',
-              willChange: 'transform'
-            }}
-          />
-          
-          {/* Enhanced Custom Controls for HLS */}
-          {useCustomControls && (
-            <EnhancedVideoControls
-              videoRef={videoRef}
-              isPlaying={isPlaying}
-              isBuffering={isBuffering}
-              duration={duration}
-              currentTime={currentTime}
-              volume={volume}
-              isMuted={isMuted}
-              isFullscreen={isFullscreen}
-              isTheaterMode={isTheaterMode}
-              currentQuality={currentQuality === -1 ? 'Auto' : `${availableQualities[currentQuality - 1]?.height || currentQuality}p`}
-              availableQualities={[
-                { level: -1, name: 'Auto' },
-                ...availableQualities.map((q, i) => ({
-                  level: i + 1,
-                  name: `${q.height}p`,
-                  bitrate: q.bitrate
-                }))
-              ]}
-              onPlay={() => videoRef.current?.play()}
-              onPause={() => videoRef.current?.pause()}
-              onSeek={(time) => {
-                if (videoRef.current) {
-                  videoRef.current.currentTime = time;
-                }
-              }}
-              onVolumeChange={(vol) => {
-                if (videoRef.current) {
-                  videoRef.current.volume = vol;
-                  videoRef.current.muted = vol === 0;
-                }
-              }}
-              onMuteToggle={() => {
-                if (videoRef.current) {
-                  videoRef.current.muted = !videoRef.current.muted;
-                }
-              }}
-              onFullscreenToggle={toggleFullscreen}
-              onTheaterModeToggle={onTheaterModeToggle}
-              onQualityChange={handleQualityChange}
-              onRetry={onRetry}
-            />
-          )}
-        </>
+        <video
+          ref={videoRef}
+          className="w-full h-full object-contain rounded-2xl"
+          controls
+          autoPlay
+          muted={false}
+          playsInline
+          preload="auto"
+          crossOrigin="anonymous"
+          onError={handleError}
+          onLoadStart={() => console.log('Video load started')}
+          onCanPlay={() => {
+            console.log('Video can play');
+            setIsBuffering(false);
+          }}
+          onPlaying={() => {
+            console.log('Video playing');
+            setIsBuffering(false);
+            // Start progress tracking
+            if (progressTrackerRef.current && !progressIntervalRef.current) {
+              progressIntervalRef.current = setInterval(() => {
+                progressTrackerRef.current?.tick();
+              }, 1000);
+            }
+          }}
+          onPause={() => {
+            console.log('Video paused');
+            trackVideoPause(match?.id || stream?.embedUrl || 'unknown');
+            // Stop progress tracking
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current);
+              progressIntervalRef.current = null;
+            }
+          }}
+          onPlay={() => {
+            console.log('Video resumed');
+            trackVideoResume(match?.id || stream?.embedUrl || 'unknown');
+            // Resume progress tracking
+            if (progressTrackerRef.current && !progressIntervalRef.current) {
+              progressIntervalRef.current = setInterval(() => {
+                progressTrackerRef.current?.tick();
+              }, 1000);
+            }
+          }}
+          onWaiting={() => {
+            console.log('Video buffering...');
+            setIsBuffering(true);
+            trackVideoBuffering(match?.id || stream?.embedUrl);
+          }}
+          onLoadedData={() => {
+            console.log('Video data loaded');
+            setIsBuffering(false);
+          }}
+          onProgress={() => console.log('Video buffering progress')}
+          style={{ 
+            backgroundColor: 'black',
+            // Force hardware acceleration
+            transform: 'translateZ(0)',
+            willChange: 'transform'
+          }}
+        />
       ) : (
         <IframeVideoPlayer
           src={stream.embedUrl.startsWith('http://') ? stream.embedUrl.replace(/^http:\/\//i, 'https://') : stream.embedUrl}
@@ -712,7 +641,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           match={match}
         />
       )}
-      
       {/* External open fallback on Android for non-m3u8 embeds */}
       {!isM3U8 && isAndroid && (
         <div className="absolute top-4 left-4">
@@ -724,6 +652,38 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           </Button>
         </div>
       )}
+
+      {/* Theater mode, quality selector and fullscreen buttons */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        {/* Quality Selector - only show for HLS streams */}
+        {isM3U8 && availableQualities.length > 0 && (
+          <StreamQualitySelector
+            currentLevel={currentQuality}
+            availableLevels={availableQualities}
+            onQualityChange={handleQualityChange}
+          />
+        )}
+        
+        {onTheaterModeToggle && (
+          <Button
+            onClick={onTheaterModeToggle}
+            className={`bg-black/50 hover:bg-black/70 text-white border-0 ${isTheaterMode ? 'bg-blue-600/70 hover:bg-blue-600/90' : ''}`}
+            size="sm"
+          >
+            <Monitor className="w-4 h-4" />
+          </Button>
+        )}
+        <Button
+          onClick={toggleFullscreen}
+          className="bg-black/50 hover:bg-black/70 text-white border-0"
+          size="sm"
+        >
+          <Maximize className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Buffer Indicator - center overlay */}
+      <BufferIndicator isBuffering={isBuffering} />
 
       </div>
       
