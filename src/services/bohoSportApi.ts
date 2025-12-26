@@ -2,19 +2,11 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// BOHOSport embed base URL (ad-free iframe player)
-const BOHOSPORT_EMBED_BASE = 'https://embed.damitv.pro';
-
-// SportsRC API base URL for match details
+// SportsRC API base URL for match details - returns working embed URLs
 const SPORTSRC_API_BASE = 'https://api.sportsrc.org';
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
-
-// Build BOHOSport embed URL with query parameters
-const buildBohoSportEmbedUrl = (matchId: string, source: string): string => {
-  return `${BOHOSPORT_EMBED_BASE}/?id=${matchId}&source=${source}`;
-};
 
 // Cache for API responses
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -314,51 +306,66 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
   }
 };
 
-// Fetch stream for a match - uses BOHOSport ad-free embed player
+// Fetch stream for a match via edge function - returns actual embed URLs
 export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
   const cacheKey = `boho-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log(`🎬 Building BOHOSport embed URL for source: ${source}, id: ${id}`);
+    console.log(`🎬 Fetching stream from edge function for source: ${source}, id: ${id}`);
 
-    // Use BOHOSport ad-free embed URL format: https://embed.damitv.pro/?id={matchId}&source={source}
-    const bohoEmbedUrl = buildBohoSportEmbedUrl(id, source);
-    
-    const primaryStream: Stream = {
-      id: id,
-      streamNo: 1,
-      language: 'EN',
-      hd: true,
-      embedUrl: bohoEmbedUrl,
-      source: 'bohosport',
-      timestamp: Date.now()
-    };
+    // Call the boho-sport edge function which returns actual working embed URLs
+    const { data, error } = await supabase.functions.invoke('boho-sport', {
+      body: { endpoint: `stream/${source}/${id}` },
+    });
 
-    console.log(`✅ BOHOSport embed URL: ${bohoEmbedUrl}`);
-    setCachedData(cacheKey, [primaryStream]);
-    return [primaryStream];
+    if (error) {
+      throw error;
+    }
+
+    // Parse the response - edge function returns array of streams with embedUrl
+    const streams: Stream[] = [];
+    if (Array.isArray(data)) {
+      data.forEach((s: any, index: number) => {
+        if (s.embedUrl) {
+          streams.push({
+            id: s.id || id,
+            streamNo: s.streamNo || index + 1,
+            language: s.language || 'EN',
+            hd: s.hd !== false,
+            embedUrl: s.embedUrl, // Use the actual embed URL from API
+            source: s.source || source,
+            timestamp: Date.now()
+          });
+        }
+      });
+    }
+
+    if (streams.length > 0) {
+      console.log(`✅ Got ${streams.length} streams from edge function`);
+      setCachedData(cacheKey, streams);
+      return streams;
+    }
+
+    throw new Error('No streams found');
   } catch (error) {
-    console.error(`❌ Error building BOHOSport URL for ${source}/${id}:`, error);
-    
-    // Fallback with echo source
-    const fallbackUrl = buildBohoSportEmbedUrl(id, 'echo');
-    const fallbackStream: Stream = {
-      id: id,
-      streamNo: 1,
-      language: 'EN',
-      hd: true,
-      embedUrl: fallbackUrl,
-      source: 'bohosport',
-      timestamp: Date.now()
-    };
-    return [fallbackStream];
+    console.error(`❌ Error fetching stream for ${source}/${id}:`, error);
+    return [];
   }
 };
 
-// Fetch match details from SportsRC API to get correct stream sources
-const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football'): Promise<Source[]> => {
+// Extended source interface with embedUrl
+interface FullSource extends Source {
+  embedUrl?: string;
+  streamNo?: number;
+  language?: string;
+  hd?: boolean;
+  viewers?: number;
+}
+
+// Fetch match details from SportsRC API to get correct stream sources with embed URLs
+const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football'): Promise<FullSource[]> => {
   try {
     const url = `${SPORTSRC_API_BASE}/?data=detail&category=${category}&id=${matchId}`;
     console.log(`🔍 Fetching match sources from: ${url}`);
@@ -372,9 +379,15 @@ const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'foo
     
     if (result.success && result.data?.sources && Array.isArray(result.data.sources)) {
       console.log(`✅ Found ${result.data.sources.length} sources from SportsRC API`);
+      // Return full source objects including embedUrl
       return result.data.sources.map((s: any) => ({
         source: s.source,
-        id: s.id
+        id: s.id,
+        embedUrl: s.embedUrl, // This is the actual working embed URL
+        streamNo: s.streamNo,
+        language: s.language,
+        hd: s.hd,
+        viewers: s.viewers
       }));
     }
     
@@ -395,17 +408,49 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
 
-  // First, try to fetch sources from SportsRC API for accurate source/id pairs
+  // First, try to fetch sources from SportsRC API which includes embed URLs
   const category = match.category || match.sportId || 'football';
   const apiSources = await fetchMatchSourcesFromAPI(match.id, category);
   
-  // Use API sources if available, otherwise fall back to match.sources
-  const sourcesToUse = apiSources.length > 0 ? apiSources : (match.sources || []);
+  if (apiSources.length > 0) {
+    // Use API sources which already have embed URLs
+    for (const source of apiSources) {
+      if (source.embedUrl) {
+        const stream: Stream = {
+          id: source.id,
+          streamNo: source.streamNo || allStreams.length + 1,
+          language: source.language || 'EN',
+          hd: source.hd !== false,
+          embedUrl: source.embedUrl, // Use the actual embed URL from API
+          source: source.source,
+          timestamp: Date.now()
+        };
+        allStreams.push(stream);
+        sourcesWithStreams.add(source.source);
+        console.log(`✅ Added stream from API: ${source.source} - ${source.embedUrl.substring(0, 50)}...`);
+      }
+    }
+  }
   
-  if (sourcesToUse.length === 0) {
-    // Last resort: try with match ID and echo source
+  // If no streams from API, try edge function for each match source
+  if (allStreams.length === 0 && match.sources && match.sources.length > 0) {
+    for (const source of match.sources) {
+      try {
+        const streams = await fetchSimpleStream(source.source, source.id, category);
+        allStreams.push(...streams);
+        if (streams.length > 0) {
+          sourcesWithStreams.add(source.source);
+        }
+      } catch (error) {
+        console.error('Error fetching stream:', error);
+      }
+    }
+  }
+
+  // Last resort: try echo source
+  if (allStreams.length === 0) {
     try {
-      const streams = await fetchSimpleStream('echo', match.id);
+      const streams = await fetchSimpleStream('echo', match.id, category);
       if (streams.length > 0) {
         allStreams.push(...streams);
         sourcesWithStreams.add('echo');
@@ -413,35 +458,14 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
     } catch (error) {
       console.error('Error fetching default stream:', error);
     }
-  } else {
-    // Build streams for all available sources
-    for (const source of sourcesToUse) {
-      try {
-        const bohoEmbedUrl = buildBohoSportEmbedUrl(source.id, source.source);
-        const stream: Stream = {
-          id: source.id,
-          streamNo: allStreams.length + 1,
-          language: 'EN',
-          hd: true,
-          embedUrl: bohoEmbedUrl,
-          source: source.source,
-          timestamp: Date.now()
-        };
-        allStreams.push(stream);
-        sourcesWithStreams.add(source.source);
-        console.log(`✅ Added stream: ${source.source}/${source.id}`);
-      } catch (error) {
-        console.error('Error building stream:', error);
-      }
-    }
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`🎬 BOHOSport streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
+  console.log(`🎬 Streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
 
   return {
     streams: allStreams,
-    sourcesChecked: sourcesToUse.length || 1,
+    sourcesChecked: apiSources.length || match.sources?.length || 1,
     sourcesWithStreams: sourceNames.length,
     sourceNames
   };
