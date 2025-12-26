@@ -1,7 +1,28 @@
 
 import { Sport, Match, Stream } from '../types/sports';
 
-const API_BASE = 'https://streamed.pk/api';
+// Primary and fallback API endpoints
+const API_ENDPOINTS = [
+  'https://streamed.pk/api',
+  'https://api.streamapi.cc/sport',  // BOHOSport fallback API
+  'https://streamapi.cc/sport',       // Alternative fallback
+];
+
+let currentApiIndex = 0;
+const API_BASE = () => API_ENDPOINTS[currentApiIndex];
+
+// Switch to next available API endpoint
+const switchToFallbackApi = () => {
+  currentApiIndex = (currentApiIndex + 1) % API_ENDPOINTS.length;
+  console.log(`🔄 Switching to fallback API: ${API_ENDPOINTS[currentApiIndex]}`);
+  return API_ENDPOINTS[currentApiIndex];
+};
+
+// Reset to primary API
+export const resetToPrimaryApi = () => {
+  currentApiIndex = 0;
+  console.log('✅ Reset to primary API');
+};
 
 // Cache for API responses to avoid repeated calls
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -65,23 +86,23 @@ const filterAndReorderSports = (sports: Sport[]): Sport[] => {
   return [...sportsWithoutTennis, tennisSport];
 };
 
-export const fetchSports = async (): Promise<Sport[]> => {
+export const fetchSports = async (retryCount = 0): Promise<Sport[]> => {
   const cacheKey = 'sports';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   // Detect mobile and adjust timeout
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const timeout = isMobile ? 15000 : 10000; // Longer timeout for mobile
+  const timeout = isMobile ? 15000 : 10000;
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
-    const response = await fetch(`${API_BASE}/sports`, {
+    const response = await fetch(`${API_BASE()}/sports`, {
       signal: controller.signal,
       headers: {
-'Accept': 'application/json'
+        'Accept': 'application/json'
       }
     });
     
@@ -94,58 +115,42 @@ export const fetchSports = async (): Promise<Sport[]> => {
       throw new Error('Invalid sports data format');
     }
     
-    // Filter and reorder sports
     const reorderedData = filterAndReorderSports(data);
     setCachedData(cacheKey, reorderedData);
-    console.log(`✅ Fetched ${reorderedData.length} sports from streamed.pk API`);
+    console.log(`✅ Fetched ${reorderedData.length} sports from ${API_BASE()}`);
     return reorderedData;
   } catch (error) {
-    console.error('❌ Error fetching sports from streamed.pk:', error);
+    console.error(`❌ Error fetching sports from ${API_BASE()}:`, error);
     
-    // On mobile, try one more time with a simpler request
-    if (isMobile && !error.message.includes('retry')) {
-      console.log('🔄 Retrying with mobile-optimized request...');
-      try {
-        const retryResponse = await fetch(`${API_BASE}/sports`, {
-          method: 'GET',
-          cache: 'no-cache'
-        });
-        
-        if (retryResponse.ok) {
-          const retryData = await retryResponse.json();
-          if (Array.isArray(retryData)) {
-            const reorderedRetryData = filterAndReorderSports(retryData);
-            setCachedData(cacheKey, reorderedRetryData);
-            console.log(`✅ Mobile retry successful: ${reorderedRetryData.length} sports`);
-            return reorderedRetryData;
-          }
-        }
-      } catch (retryError) {
-        console.error('❌ Mobile retry failed:', retryError);
-      }
+    // Try fallback API if we haven't exhausted all options
+    if (retryCount < API_ENDPOINTS.length - 1) {
+      switchToFallbackApi();
+      console.log(`🔄 Trying fallback API (attempt ${retryCount + 2}/${API_ENDPOINTS.length})`);
+      return fetchSports(retryCount + 1);
     }
     
+    // Reset to primary for next request
+    resetToPrimaryApi();
     throw error;
   }
 };
 
-export const fetchMatches = async (sportId: string): Promise<Match[]> => {
+export const fetchMatches = async (sportId: string, retryCount = 0): Promise<Match[]> => {
   const cacheKey = `matches-${sportId}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
-  // Detect mobile and adjust timeout
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const timeout = isMobile ? 20000 : 15000; // Even longer timeout for mobile matches
+  const timeout = isMobile ? 20000 : 15000;
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
-    const response = await fetch(`${API_BASE}/matches/${sportId}`, {
+    const response = await fetch(`${API_BASE()}/matches/${sportId}`, {
       signal: controller.signal,
       headers: {
-'Accept': 'application/json'
+        'Accept': 'application/json'
       }
     });
     
@@ -158,7 +163,6 @@ export const fetchMatches = async (sportId: string): Promise<Match[]> => {
       throw new Error('Invalid matches data format');
     }
     
-    // Simple transform - no filtering
     const validMatches = matches.filter(match => 
       match && 
       match.id && 
@@ -256,15 +260,15 @@ export const fetchMatches = async (sportId: string): Promise<Match[]> => {
 };
 
 // New functions to support different match endpoints
-export const fetchLiveMatches = async (): Promise<Match[]> => {
+export const fetchLiveMatches = async (retryCount = 0): Promise<Match[]> => {
   const cacheKey = 'matches-live';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    const response = await fetch(`${API_BASE}/matches/live`, {
+    const response = await fetch(`${API_BASE()}/matches/live`, {
       headers: {
-'Accept': 'application/json'
+        'Accept': 'application/json'
       }
     });
     
@@ -283,23 +287,31 @@ export const fetchLiveMatches = async (): Promise<Match[]> => {
     }));
     
     setCachedData(cacheKey, validMatches);
-    console.log(`✅ Fetched ${validMatches.length} live matches from streamed.pk API`);
+    console.log(`✅ Fetched ${validMatches.length} live matches from ${API_BASE()}`);
     return validMatches;
   } catch (error) {
-    console.error('❌ Error fetching live matches from streamed.pk:', error);
+    console.error(`❌ Error fetching live matches from ${API_BASE()}:`, error);
+    
+    // Try fallback API
+    if (retryCount < API_ENDPOINTS.length - 1) {
+      switchToFallbackApi();
+      return fetchLiveMatches(retryCount + 1);
+    }
+    
+    resetToPrimaryApi();
     throw error;
   }
 };
 
-export const fetchAllMatches = async (): Promise<Match[]> => {
+export const fetchAllMatches = async (retryCount = 0): Promise<Match[]> => {
   const cacheKey = 'matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    const response = await fetch(`${API_BASE}/matches/all`, {
+    const response = await fetch(`${API_BASE()}/matches/all`, {
       headers: {
-'Accept': 'application/json'
+        'Accept': 'application/json'
       }
     });
     
@@ -318,10 +330,18 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
     }));
     
     setCachedData(cacheKey, validMatches);
-    console.log(`✅ Fetched ${validMatches.length} matches from streamed.pk API`);
+    console.log(`✅ Fetched ${validMatches.length} matches from ${API_BASE()}`);
     return validMatches;
   } catch (error) {
-    console.error('❌ Error fetching all matches from streamed.pk:', error);
+    console.error(`❌ Error fetching all matches from ${API_BASE()}:`, error);
+    
+    // Try fallback API
+    if (retryCount < API_ENDPOINTS.length - 1) {
+      switchToFallbackApi();
+      return fetchAllMatches(retryCount + 1);
+    }
+    
+    resetToPrimaryApi();
     throw error;
   }
 };
@@ -360,8 +380,8 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
   }
 };
 
-// Simple direct stream fetching like the HTML example
-export const fetchSimpleStream = async (source: string, id: string): Promise<Stream[]> => {
+// Simple direct stream fetching with fallback API support
+export const fetchSimpleStream = async (source: string, id: string, retryCount = 0): Promise<Stream[]> => {
   const cacheKey = `simple-stream-${source}-${id}`;
   
   try {
@@ -369,10 +389,10 @@ export const fetchSimpleStream = async (source: string, id: string): Promise<Str
     const cached = getCachedData(cacheKey);
     if (cached) return cached;
 
-    console.log(`🎬 Fetching streams for ${source}/${id}`);
+    console.log(`🎬 Fetching streams for ${source}/${id} from ${API_BASE()}`);
     
-    // Direct API call like the HTML example
-    const response = await fetch(`${API_BASE}/stream/${source}/${id}`, {
+    // Direct API call
+    const response = await fetch(`${API_BASE()}/stream/${source}/${id}`, {
       headers: {
         'Accept': 'application/json',
       },
@@ -401,16 +421,24 @@ export const fetchSimpleStream = async (source: string, id: string): Promise<Str
         source: source,
         timestamp: Date.now()
       }))
-      .filter(stream => stream.embedUrl); // Only check if URL exists
+      .filter(stream => stream.embedUrl);
 
     // Cache the results
     setCachedData(cacheKey, validStreams);
 
-    console.log(`✅ Found ${validStreams.length} valid streams`);
+    console.log(`✅ Found ${validStreams.length} valid streams from ${API_BASE()}`);
     return validStreams;
 
   } catch (error) {
-    console.error(`❌ Error fetching streams for ${source}/${id}:`, error);
+    console.error(`❌ Error fetching streams for ${source}/${id} from ${API_BASE()}:`, error);
+    
+    // Try fallback API for streams
+    if (retryCount < API_ENDPOINTS.length - 1) {
+      switchToFallbackApi();
+      return fetchSimpleStream(source, id, retryCount + 1);
+    }
+    
+    resetToPrimaryApi();
     return [];
   }
 };
