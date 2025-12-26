@@ -102,7 +102,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       let posterUrl = match.poster;
       // Handle different URL formats
       if (!match.poster.startsWith('http')) {
-        posterUrl = `https://streamapi.cc/sport${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
+        posterUrl = `https://streamed.su/api${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
       }
       
       return (

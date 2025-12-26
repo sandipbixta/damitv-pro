@@ -1,6 +1,5 @@
 import { Match } from '@/types/sports';
-
-const API_BASE = 'https://streamapi.cc/sport';
+import { supabase } from '@/integrations/supabase/client';
 
 // Cache for viewer counts to minimize API calls (5 minute cache)
 interface ViewerCountCache {
@@ -30,24 +29,21 @@ const validateViewerCount = (viewers: any): number | null => {
 };
 
 /**
- * Fetch viewer count from stream API for a specific source
+ * Fetch viewer count from stream API for a specific source via Supabase proxy
  */
 export const fetchViewerCountFromSource = async (
   source: string,
   id: string
 ): Promise<number | null> => {
   try {
-    const response = await fetch(`${API_BASE}/stream/${source}/${id}`, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(5000)
+    const { data, error } = await supabase.functions.invoke('boho-sport', {
+      body: { endpoint: `stream/${source}/${id}` },
     });
 
-    if (!response.ok) {
-      console.warn(`Stream API returned ${response.status} for ${source}/${id}`);
+    if (error) {
+      console.warn(`Stream API error for ${source}/${id}:`, error);
       return null;
     }
-
-    const data = await response.json();
     
     // Check if viewers field exists and is valid
     if (data && typeof data.viewers === 'number') {

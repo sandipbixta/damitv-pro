@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const BOHO_API = "https://streamapi.cc/sport";
+const BOHO_API = "https://streamed.su/api";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

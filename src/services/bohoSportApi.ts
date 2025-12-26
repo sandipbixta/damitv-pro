@@ -148,12 +148,12 @@ const parseMatchData = (item: any): Match | null => {
       popular: item.popular === true || item.featured === true,
       teams: {
         home: {
-          name: homeTeam || item.home_team || item.homeTeam || '',
-          badge: item.home_badge || item.homeBadge || item.home_logo || ''
+          name: homeTeam || item.teams?.home?.name || item.home_team || item.homeTeam || '',
+          badge: item.teams?.home?.badge || item.home_badge || item.homeBadge || item.home_logo || ''
         },
         away: {
-          name: awayTeam || item.away_team || item.awayTeam || '',
-          badge: item.away_badge || item.awayBadge || item.away_logo || ''
+          name: awayTeam || item.teams?.away?.name || item.away_team || item.awayTeam || '',
+          badge: item.teams?.away?.badge || item.away_badge || item.awayBadge || item.away_logo || ''
         }
       },
       sources: sources,
