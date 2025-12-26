@@ -119,7 +119,10 @@ const StreamSources = ({
           console.log(`Fetching streams for: ${source.source}/${source.id}`);
           const streamData = await fetchStream(source.source, source.id);
           
-          const streams = streamData
+          // Ensure streamData is always an array
+          const streamArray = Array.isArray(streamData) ? streamData : (streamData ? [streamData] : []);
+          
+          const streams = streamArray
             .map((s: any) => {
               const url = s?.embedUrl || '';
               const normalized = url.startsWith('//') ? 'https:' + url : url.replace(/^http:\/\//i, 'https://');

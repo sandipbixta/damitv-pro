@@ -105,10 +105,10 @@ const LiveScoreTicker: React.FC = () => {
             const away = match.teams?.away?.name || '';
             const matchSlug = generateMatchSlug(home, away, match.title);
             const homeBadge = match.teams?.home?.badge 
-              ? `https://streamed.pk/api/images/badge/${match.teams.home.badge}.webp`
+              ? (match.teams.home.badge.startsWith('http') ? match.teams.home.badge : `https://streamapi.cc/sport/images/badge/${match.teams.home.badge}`)
               : null;
             const awayBadge = match.teams?.away?.badge
-              ? `https://streamed.pk/api/images/badge/${match.teams.away.badge}.webp`
+              ? (match.teams.away.badge.startsWith('http') ? match.teams.away.badge : `https://streamapi.cc/sport/images/badge/${match.teams.away.badge}`)
               : null;
             
             return {

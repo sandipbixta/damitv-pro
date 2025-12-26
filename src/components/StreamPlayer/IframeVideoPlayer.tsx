@@ -252,7 +252,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
             {/* Match poster as background if available */}
             {matchPoster && (
               <img 
-                src={matchPoster.startsWith('/api') ? `https://streamed.pk${matchPoster}` : matchPoster}
+                src={matchPoster.startsWith('http') ? matchPoster : `https://streamapi.cc/sport${matchPoster.startsWith('/') ? '' : '/'}${matchPoster}`}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover opacity-40"
                 onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
