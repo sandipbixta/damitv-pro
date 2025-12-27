@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Loader2, ExternalLink } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -27,10 +27,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   const [lastSrc, setLastSrc] = useState('');
   const [reloadCount, setReloadCount] = useState(0);
   const [countdown, setCountdown] = useState<string>('');
-  const [showOpenInTab, setShowOpenInTab] = useState(false);
-  
-  // Detect if this is a CDN player URL that may not work in iframe
-  const isCDNPlayerUrl = src?.includes('cdn-live.tv/api/v1/channels/player');
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -133,14 +129,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   useEffect(() => {
     if (!isLoading) return;
     
-    // Show "Open in Tab" option for CDN player URLs after 5 seconds
-    const openTabTimeout = setTimeout(() => {
-      if (isLoading && isCDNPlayerUrl) {
-        console.log('⏰ CDN player iframe taking too long - showing open in tab option');
-        setShowOpenInTab(true);
-      }
-    }, 5000);
-    
     const timeout = setTimeout(() => {
       if (isLoading) {
         console.log('⏰ Iframe load timeout - assuming successful');
@@ -149,11 +137,8 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
       }
     }, 15000);
 
-    return () => {
-      clearTimeout(timeout);
-      clearTimeout(openTabTimeout);
-    };
-  }, [isLoading, onLoad, reloadCount, isCDNPlayerUrl]);
+    return () => clearTimeout(timeout);
+  }, [isLoading, onLoad, reloadCount]);
 
   // Auto-hide controls
   useEffect(() => {
@@ -329,21 +314,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
             <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
             <p className="text-white/40 text-xs font-medium uppercase tracking-widest">DAMITV</p>
           </div>
-          
-          {/* Open in New Tab option for CDN player URLs */}
-          {showOpenInTab && isCDNPlayerUrl && (
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <p className="text-white/60 text-xs">Stream not loading? Try opening directly</p>
-              <Button
-                onClick={() => window.open(src, '_blank')}
-                className="bg-[#ff5a36] hover:bg-[#ff5a36]/90 text-white font-semibold"
-                size="sm"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open in New Tab
-              </Button>
-            </div>
-          )}
         </div>
       )}
 
@@ -356,8 +326,9 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         onLoad={handleIframeLoad}
         onError={handleIframeError}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-        referrerPolicy="no-referrer"
+        referrerPolicy="origin"
         loading="eager"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox"
         style={{ 
           border: 'none'
         }}

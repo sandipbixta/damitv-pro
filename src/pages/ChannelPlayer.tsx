@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import ChannelPlayerSelector, { PlayerType } from '@/components/StreamPlayer/ChannelPlayerSelector';
 import { useCDNChannel } from '@/hooks/useCDNChannels';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
-import { ArrowLeft, Share, Star, ChevronRight, Settings, ExternalLink, Play } from 'lucide-react';
+import { ArrowLeft, Share, Star, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,23 +23,20 @@ const ChannelPlayer = () => {
   const { channel, otherChannels, isLoading, error } = useCDNChannel(country, channelId);
   
   // Auto-detect player type based on stream URL
-  const [playerType, setPlayerType] = useState<PlayerType>('simple');
-  const [isCDNPlayerUrl, setIsCDNPlayerUrl] = useState(false);
+  const [playerType, setPlayerType] = useState<PlayerType>('iframe');
   
-  // Update player type when channel loads - detect CDN player URLs and HLS streams
+  // Update player type when channel loads - detect HLS streams
   useEffect(() => {
     if (channel?.embedUrl) {
       const isHLS = /\.m3u8(\?|$)/i.test(channel.embedUrl);
       const isCDNPlayer = channel.embedUrl.includes('cdn-live.tv/api/v1/channels/player');
       
-      setIsCDNPlayerUrl(isCDNPlayer);
-      
       if (isHLS) {
         console.log('📺 HLS stream detected, using html5 player');
         setPlayerType('html5');
       } else if (isCDNPlayer) {
-        console.log('📺 CDN player URL detected - opening in new window recommended');
-        setPlayerType('iframe'); // Use iframe but show open in new tab option
+        console.log('📺 CDN player URL detected, using iframe player');
+        setPlayerType('iframe'); // CDN player pages work best with iframe
       }
     }
   }, [channel?.embedUrl]);
@@ -162,25 +159,6 @@ const ChannelPlayer = () => {
 
       {/* Video Player - Full width, optimized for mobile */}
       <div className="w-full">
-        {/* CDN Player URL - Show prominent open button since iframe may not work */}
-        {isCDNPlayerUrl && (
-          <div className="bg-gradient-to-r from-[#ff5a36]/20 to-[#151922] border border-[#ff5a36]/30 rounded-xl p-4 mx-4 mb-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-center sm:text-left">
-                <h3 className="text-white font-semibold mb-1">📺 This channel has its own player</h3>
-                <p className="text-gray-400 text-sm">For best experience, open in a new tab</p>
-              </div>
-              <Button
-                onClick={() => window.open(channel.embedUrl, '_blank')}
-                className="bg-[#ff5a36] hover:bg-[#ff5a36]/90 text-white font-semibold px-6"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open Channel Player
-              </Button>
-            </div>
-          </div>
-        )}
-        
         <ChannelPlayerSelector
           stream={stream}
           isLoading={false}
