@@ -333,15 +333,22 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         </div>
       )}
 
-      {/* Branded Loading State */}
+      {/* Premium Loading State */}
       {isLoading && !countdown && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted to-background">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0a] via-[#111111] to-[#0a0a0a]">
+          {/* Animated rings */}
           <div className="relative">
-            <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-primary/20" />
+            <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-primary/30 animate-ping" />
+            <div className="absolute inset-0 w-16 h-16 rounded-full border border-primary/20" />
+            <div className="relative w-16 h-16 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
           </div>
-          <p className="mt-4 text-foreground font-medium">Loading stream...</p>
-          <p className="text-muted-foreground text-sm mt-1">DAMITV</p>
+          <p className="mt-6 text-white/90 font-semibold text-sm tracking-wide">Connecting to stream...</p>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+            <p className="text-white/40 text-xs font-medium uppercase tracking-widest">DAMITV</p>
+          </div>
         </div>
       )}
 
