@@ -6,6 +6,12 @@ import { adTracking } from './adTracking';
  * Respects cooldown period to prevent spam
  */
 export const triggerStreamChangeAd = (): void => {
+  // Check if direct link ads are enabled
+  if (!adConfig.directLinkEnabled) {
+    console.log('⏸️ Direct link ads disabled');
+    return;
+  }
+
   // Check if cooldown period has passed
   if (!isAdCooldownPassed(adConfig.directLink.sessionKey, adConfig.directLink.cooldownMinutes)) {
     console.log('⏳ Stream change ad on cooldown');
