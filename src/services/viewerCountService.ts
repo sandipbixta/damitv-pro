@@ -122,21 +122,39 @@ export const fetchBatchViewerCounts = async (
   // Filter to only live matches
   const liveMatches = matches.filter(isMatchLive);
   
-  console.log(`🔄 Refreshing viewer counts for ${liveMatches.length} matches`);
+  // Limit total matches to prevent too many API calls
+  const limitedMatches = liveMatches.slice(0, 20);
   
-  // Fetch in batches of 10 to speed up (parallel requests)
-  const batchSize = 10;
-  for (let i = 0; i < liveMatches.length; i += batchSize) {
-    const batch = liveMatches.slice(i, i + batchSize);
+  console.log(`🔄 Refreshing viewer counts for ${limitedMatches.length} of ${liveMatches.length} live matches`);
+  
+  // Fetch in smaller batches of 3 to prevent overwhelming the edge function
+  const batchSize = 3;
+  for (let i = 0; i < limitedMatches.length; i += batchSize) {
+    const batch = limitedMatches.slice(i, i + batchSize);
     
-    const promises = batch.map(async (match) => {
-      const count = await fetchMatchViewerCount(match);
-      if (count !== null && count > 0) {
-        viewerCounts.set(match.id, count);
+    try {
+      const promises = batch.map(async (match) => {
+        try {
+          const count = await fetchMatchViewerCount(match);
+          if (count !== null && count > 0) {
+            viewerCounts.set(match.id, count);
+          }
+        } catch (error) {
+          // Silently ignore individual match errors
+          console.debug(`Viewer count failed for ${match.id}`);
+        }
+      });
+      
+      await Promise.all(promises);
+      
+      // Add small delay between batches to prevent rate limiting
+      if (i + batchSize < limitedMatches.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-    });
-    
-    await Promise.all(promises);
+    } catch (error) {
+      console.warn('Batch viewer count fetch failed:', error);
+      // Continue with next batch instead of failing completely
+    }
   }
   
   console.log(`✅ Found ${viewerCounts.size} matches with viewer data`);
