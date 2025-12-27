@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Home, Loader2, Shield, Play } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -18,9 +18,6 @@ interface IframeVideoPlayerProps {
   match?: Match | ManualMatch | null;
 }
 
-// Number of clicks to absorb before allowing through to iframe
-const CLICKS_TO_ABSORB = 3;
-
 const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, title, matchStartTime, match }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -30,38 +27,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   const [lastSrc, setLastSrc] = useState('');
   const [reloadCount, setReloadCount] = useState(0);
   const [countdown, setCountdown] = useState<string>('');
-  
-  // Pop-up blocker state
-  const [clicksAbsorbed, setClicksAbsorbed] = useState(0);
-  const [showOverlay, setShowOverlay] = useState(true);
-  const [overlayMessage, setOverlayMessage] = useState('Click to play');
-  
-  // Handle overlay clicks - absorb first few clicks to block pop-ups
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const newCount = clicksAbsorbed + 1;
-    setClicksAbsorbed(newCount);
-    
-    if (newCount >= CLICKS_TO_ABSORB) {
-      // All ad-triggering clicks absorbed, allow through
-      setShowOverlay(false);
-      console.log('🛡️ Pop-up blocker: All ad clicks absorbed, playing stream');
-    } else {
-      // Show progress message
-      const remaining = CLICKS_TO_ABSORB - newCount;
-      setOverlayMessage(remaining === 1 ? 'Click once more to play' : `Click ${remaining} more times to play`);
-      console.log(`🛡️ Pop-up blocker: Absorbed click ${newCount}/${CLICKS_TO_ABSORB}`);
-    }
-  }, [clicksAbsorbed]);
-  
-  // Reset overlay when source changes
-  useEffect(() => {
-    setClicksAbsorbed(0);
-    setShowOverlay(true);
-    setOverlayMessage('Click to play');
-  }, [src]);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
