@@ -326,9 +326,8 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         onLoad={handleIframeLoad}
         onError={handleIframeError}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-        referrerPolicy="origin"
+        referrerPolicy="no-referrer"
         loading="eager"
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox"
         style={{ 
           border: 'none'
         }}

@@ -13,11 +13,6 @@ export const usePopunderAd = () => {
   const hasTriggeredRef = useRef(false);
 
   useEffect(() => {
-    // Check if popunder is enabled
-    if (!adConfig.popunder.enabled) {
-      return;
-    }
-
     // Prevent multiple triggers in the same component lifecycle
     if (hasTriggeredRef.current) {
       return;

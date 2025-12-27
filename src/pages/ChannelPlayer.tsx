@@ -23,20 +23,15 @@ const ChannelPlayer = () => {
   const { channel, otherChannels, isLoading, error } = useCDNChannel(country, channelId);
   
   // Auto-detect player type based on stream URL
-  const [playerType, setPlayerType] = useState<PlayerType>('iframe');
+  const [playerType, setPlayerType] = useState<PlayerType>('simple');
   
-  // Update player type when channel loads - detect HLS streams
+  // Update player type when channel loads - use html5 for HLS streams
   useEffect(() => {
     if (channel?.embedUrl) {
       const isHLS = /\.m3u8(\?|$)/i.test(channel.embedUrl);
-      const isCDNPlayer = channel.embedUrl.includes('cdn-live.tv/api/v1/channels/player');
-      
       if (isHLS) {
         console.log('📺 HLS stream detected, using html5 player');
         setPlayerType('html5');
-      } else if (isCDNPlayer) {
-        console.log('📺 CDN player URL detected, using iframe player');
-        setPlayerType('iframe'); // CDN player pages work best with iframe
       }
     }
   }, [channel?.embedUrl]);
