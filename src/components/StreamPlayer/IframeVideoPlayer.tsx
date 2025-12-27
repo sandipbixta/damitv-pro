@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Loader2, Play, Volume2, Maximize, Settings, PictureInPicture2, SkipBack, SkipForward } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Match } from '../../types/sports';
@@ -332,53 +332,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         }}
       />
 
-      {/* Bottom Control Bar */}
-      {!countdown && !isLoading && (
-        <div 
-          className={`absolute bottom-0 left-0 right-0 z-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-          onMouseEnter={() => setShowControls(true)}
-        >
-          {/* Progress bar */}
-          <div className="w-full h-1 bg-white/20 relative">
-            <div className="absolute left-0 top-0 h-full bg-primary w-0" />
-          </div>
-          
-          {/* Controls */}
-          <div className="bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
-            {/* Left controls */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <button className="text-white/80 hover:text-white transition-colors p-1">
-                <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
-              </button>
-              <button className="text-white/80 hover:text-white transition-colors p-1">
-                <Volume2 className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-              <span className="text-white/80 text-xs sm:text-sm font-mono tracking-wide">
-                <span className="text-white">LIVE</span>
-              </span>
-            </div>
-
-            {/* Right controls */}
-            <div className="flex items-center gap-1 sm:gap-3">
-              <button className="text-white/60 hover:text-white transition-colors p-1.5 hidden sm:block">
-                <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button className="text-white/60 hover:text-white transition-colors p-1.5 hidden sm:block">
-                <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button className="text-white/60 hover:text-white transition-colors p-1.5">
-                <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button className="text-white/60 hover:text-white transition-colors p-1.5">
-                <PictureInPicture2 className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button className="text-white/60 hover:text-white transition-colors p-1.5">
-                <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
