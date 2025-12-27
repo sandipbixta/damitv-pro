@@ -2,17 +2,15 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// Ad-free embed player (preferred)
-const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
-
-// Legacy stream base URL (fallback only)
+// Embed player base URL (same format as API returns)
+const EMBED_BASE = 'https://embedsports.top/embed';
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build ad-free embed URL
-const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
-  return `${DAMITV_EMBED_BASE}/?id=${matchId}&source=${source}`;
+// Build embed URL using the same format that API returns
+const buildEmbedUrl = (id: string, source: string, streamNo: number = 1): string => {
+  return `${EMBED_BASE}/${source}/${id}/${streamNo}`;
 };
 
 // Cache for API responses
@@ -323,23 +321,23 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
     console.log(`🎬 Building ad-free embed URL for source: ${source}, id: ${id}`);
 
     // Use ad-free embed URL
-    const adFreeUrl = buildAdFreeEmbedUrl(id, source);
+    const embedUrl = buildEmbedUrl(id, source);
     
     const primaryStream: Stream = {
       id: id,
       streamNo: 1,
       language: 'EN',
       hd: true,
-      embedUrl: adFreeUrl,
+      embedUrl: embedUrl,
       source: source,
       timestamp: Date.now()
     };
 
-    console.log(`✅ Ad-free embed URL: ${adFreeUrl}`);
+    console.log(`✅ Embed URL: ${embedUrl}`);
     setCachedData(cacheKey, [primaryStream]);
     return [primaryStream];
   } catch (error) {
-    console.error(`❌ Error building ad-free URL for ${source}/${id}:`, error);
+    console.error(`❌ Error building URL for ${source}/${id}:`, error);
     return [];
   }
 };
@@ -363,21 +361,21 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source);
+        const embedUrl = buildEmbedUrl(src.id, src.source, streamNumber);
         
         allStreams.push({
           id: src.id,
           streamNo: streamNumber,
           language: 'EN',
           hd: true,
-          embedUrl: adFreeUrl,
+          embedUrl: embedUrl,
           source: src.source,
           timestamp: Date.now(),
           name: `Stream ${streamNumber}`
         } as Stream);
         
         sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${adFreeUrl}`);
+        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${embedUrl}`);
         streamNumber++;
       }
     }
