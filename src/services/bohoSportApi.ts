@@ -5,8 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Ad-free embed player (preferred)
 const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 
-// SportsRC API base URL for match details
-const SPORTSRC_API_BASE = 'https://api.sportsrc.org';
+// Legacy stream base URL (fallback only)
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
@@ -354,36 +353,47 @@ interface FullSource extends Source {
   viewers?: number;
 }
 
-// Fetch match details from SportsRC API to get correct stream sources with embed URLs
-const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football'): Promise<FullSource[]> => {
+// Fetch stream sources from edge function - returns id/source pairs for damitv.pro
+const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football', sources?: Source[]): Promise<FullSource[]> => {
   try {
-    const url = `${SPORTSRC_API_BASE}/?data=detail&category=${category}&id=${matchId}`;
-    console.log(`🔍 Fetching match sources from: ${url}`);
-    
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (result.success && result.data?.sources && Array.isArray(result.data.sources)) {
-      console.log(`✅ Found ${result.data.sources.length} sources from SportsRC API`);
-      // Return full source objects including embedUrl
-      return result.data.sources.map((s: any) => ({
+    // Use provided sources from match data if available
+    if (sources && sources.length > 0) {
+      console.log(`🔍 Using ${sources.length} sources from match data for damitv.pro`);
+      return sources.map((s, index) => ({
         source: s.source,
         id: s.id,
-        embedUrl: s.embedUrl, // This is the actual working embed URL
-        streamNo: s.streamNo,
-        language: s.language,
-        hd: s.hd,
-        viewers: s.viewers
+        streamNo: index + 1,
+        language: 'EN',
+        hd: true
       }));
+    }
+    
+    // Fallback: try to get from edge function stream endpoint
+    const firstSource = sources?.[0];
+    if (firstSource) {
+      const endpoint = `stream/${firstSource.source}/${firstSource.id}`;
+      console.log(`🔍 Fetching sources from edge function: ${endpoint}`);
+      
+      const { data, error } = await supabase.functions.invoke('boho-sport', {
+        body: { endpoint }
+      });
+      
+      if (!error && Array.isArray(data) && data.length > 0) {
+        console.log(`✅ Found ${data.length} sources from edge function`);
+        return data.map((s: any) => ({
+          source: s.source,
+          id: s.id,
+          streamNo: s.streamNo,
+          language: s.language || 'EN',
+          hd: s.hd !== false,
+          viewers: s.viewers
+        }));
+      }
     }
     
     return [];
   } catch (error) {
-    console.error('❌ Error fetching match sources from API:', error);
+    console.error('❌ Error fetching match sources:', error);
     return [];
   }
 };
@@ -398,9 +408,9 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
 
-  // First, try to fetch sources from SportsRC API to get source/id pairs
+  // First, try to get sources from match data for damitv.pro URLs
   const category = match.category || match.sportId || 'football';
-  const apiSources = await fetchMatchSourcesFromAPI(match.id, category);
+  const apiSources = await fetchMatchSourcesFromAPI(match.id, category, match.sources);
   
   if (apiSources.length > 0) {
     // Build ad-free embed URLs using the source/id pairs from API
