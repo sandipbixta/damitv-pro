@@ -351,54 +351,67 @@ interface FullSource extends Source {
   language?: string;
   hd?: boolean;
   viewers?: number;
+  name?: string;
 }
 
-// Fetch stream sources from edge function - returns id/source pairs for damitv.pro
-const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football', sources?: Source[]): Promise<FullSource[]> => {
+// All known stream source endpoints to check
+const STREAM_SOURCES = ['admin', 'charlie', 'delta', 'echo', 'golf'];
+
+// Fetch streams from a specific source endpoint
+const fetchStreamsFromSource = async (
+  sourceName: string, 
+  matchSlug: string
+): Promise<FullSource[]> => {
   try {
-    // Use provided sources from match data if available
-    if (sources && sources.length > 0) {
-      console.log(`🔍 Using ${sources.length} sources from match data for damitv.pro`);
-      return sources.map((s, index) => ({
-        source: s.source,
-        id: s.id,
-        streamNo: index + 1,
-        language: 'EN',
-        hd: true
+    const endpoint = `stream/${sourceName}/${matchSlug}`;
+    console.log(`🔍 Checking source: ${sourceName} with slug: ${matchSlug}`);
+    
+    const { data, error } = await supabase.functions.invoke('boho-sport', {
+      body: { endpoint }
+    });
+    
+    if (error || !data) {
+      console.log(`⚠️ No data from ${sourceName}`);
+      return [];
+    }
+    
+    const streams = Array.isArray(data) ? data : [data];
+    
+    return streams
+      .filter((s: any) => s && (s.embedUrl || s.embed))
+      .map((s: any, index: number) => ({
+        source: sourceName,
+        id: s.id || matchSlug,
+        embedUrl: s.embedUrl || s.embed,
+        streamNo: s.streamNo || index + 1,
+        language: s.language || 'EN',
+        hd: s.hd !== false,
+        viewers: s.viewers || 0,
+        name: s.name || `${sourceName.toUpperCase()} ${s.streamNo || index + 1}`
       }));
-    }
-    
-    // Fallback: try to get from edge function stream endpoint
-    const firstSource = sources?.[0];
-    if (firstSource) {
-      const endpoint = `stream/${firstSource.source}/${firstSource.id}`;
-      console.log(`🔍 Fetching sources from edge function: ${endpoint}`);
-      
-      const { data, error } = await supabase.functions.invoke('boho-sport', {
-        body: { endpoint }
-      });
-      
-      if (!error && Array.isArray(data) && data.length > 0) {
-        console.log(`✅ Found ${data.length} sources from edge function`);
-        return data.map((s: any) => ({
-          source: s.source,
-          id: s.id,
-          streamNo: s.streamNo,
-          language: s.language || 'EN',
-          hd: s.hd !== false,
-          viewers: s.viewers
-        }));
-      }
-    }
-    
-    return [];
   } catch (error) {
-    console.error('❌ Error fetching match sources:', error);
+    console.error(`❌ Error fetching from ${sourceName}:`, error);
     return [];
   }
 };
 
-// Fetch all streams for a match - uses ad-free embed URLs as primary
+// Build match slug from match data for API requests
+const buildMatchSlug = (match: Match): string => {
+  // Try to build slug from match title: "Team A vs Team B" -> "team-a-vs-team-b"
+  const title = match.title || '';
+  const cleanTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  // Add category and match ID for uniqueness
+  const category = match.category || match.sportId || 'football';
+  return `${cleanTitle}-${category}-${match.id}`;
+};
+
+// Fetch all streams for a match from ALL source endpoints
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -407,37 +420,124 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
 }> => {
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
-
-  // First, try to get sources from match data for damitv.pro URLs
-  const category = match.category || match.sportId || 'football';
-  const apiSources = await fetchMatchSourcesFromAPI(match.id, category, match.sources);
+  const matchSlug = buildMatchSlug(match);
   
-  if (apiSources.length > 0) {
-    // Build ad-free embed URLs using the source/id pairs from API
-    for (const source of apiSources) {
-      // Primary: Use ad-free damitv.pro embed URL
-      const adFreeUrl = buildAdFreeEmbedUrl(source.id, source.source);
+  console.log(`🔍 Fetching streams for: ${match.title} (slug: ${matchSlug})`);
+  
+  // Method 1: Try fetching from all known sources in parallel
+  const sourcePromises = STREAM_SOURCES.map(source => 
+    fetchStreamsFromSource(source, matchSlug)
+  );
+  
+  // Also try with match.sources if available
+  const matchSourcePromises = (match.sources || []).map(async (src) => {
+    try {
+      const endpoint = `stream/${src.source}/${src.id}`;
+      const { data, error } = await supabase.functions.invoke('boho-sport', {
+        body: { endpoint }
+      });
       
-      const stream: Stream = {
-        id: source.id,
-        streamNo: source.streamNo || allStreams.length + 1,
-        language: source.language || 'EN',
-        hd: source.hd !== false,
-        embedUrl: adFreeUrl, // Use ad-free embed URL
-        source: source.source,
-        timestamp: Date.now()
-      };
-      allStreams.push(stream);
-      sourcesWithStreams.add(source.source);
-      console.log(`✅ Added ad-free stream: ${source.source}/${source.id}`);
+      if (error || !data) return [];
+      
+      const streams = Array.isArray(data) ? data : [data];
+      return streams
+        .filter((s: any) => s && (s.embedUrl || s.embed))
+        .map((s: any, index: number) => ({
+          source: s.source || src.source,
+          id: s.id || src.id,
+          embedUrl: s.embedUrl || s.embed,
+          streamNo: s.streamNo || index + 1,
+          language: s.language || 'EN',
+          hd: s.hd !== false,
+          viewers: s.viewers || 0,
+          name: s.name || `${(s.source || src.source).toUpperCase()} ${s.streamNo || index + 1}`
+        }));
+    } catch {
+      return [];
+    }
+  });
+  
+  // Also try PPV-style endpoints for popular matches
+  const ppvPromises = ['admin'].map(async (source) => {
+    try {
+      // Try PPV format: ppv-team-a-vs-team-b
+      const teams = match.title.split(/\s+vs\s+/i);
+      if (teams.length !== 2) return [];
+      
+      const ppvSlug = `ppv-${teams[0].trim().toLowerCase().replace(/\s+/g, '-')}-vs-${teams[1].trim().toLowerCase().replace(/\s+/g, '-')}`;
+      const endpoint = `stream/${source}/${ppvSlug}`;
+      
+      const { data, error } = await supabase.functions.invoke('boho-sport', {
+        body: { endpoint }
+      });
+      
+      if (error || !data) return [];
+      
+      const streams = Array.isArray(data) ? data : [data];
+      return streams
+        .filter((s: any) => s && (s.embedUrl || s.embed))
+        .map((s: any, index: number) => ({
+          source: s.source || source,
+          id: s.id || ppvSlug,
+          embedUrl: s.embedUrl || s.embed,
+          streamNo: s.streamNo || index + 1,
+          language: s.language || 'EN',
+          hd: s.hd !== false,
+          viewers: s.viewers || 0,
+          name: s.name || `PPV ${s.streamNo || index + 1}`
+        }));
+    } catch {
+      return [];
+    }
+  });
+  
+  // Wait for all parallel requests
+  const [sourceResults, matchSourceResults, ppvResults] = await Promise.all([
+    Promise.all(sourcePromises),
+    Promise.all(matchSourcePromises),
+    Promise.all(ppvPromises)
+  ]);
+  
+  // Combine all results
+  const allResults = [...sourceResults.flat(), ...matchSourceResults.flat(), ...ppvResults.flat()];
+  
+  // Deduplicate by embedUrl
+  const seen = new Set<string>();
+  for (const stream of allResults) {
+    const key = stream.embedUrl || `${stream.source}/${stream.id}/${stream.streamNo}`;
+    if (!seen.has(key) && stream.embedUrl) {
+      seen.add(key);
+      
+      // Normalize embed URL to HTTPS
+      let embedUrl = stream.embedUrl;
+      if (embedUrl.startsWith('//')) {
+        embedUrl = 'https:' + embedUrl;
+      } else if (embedUrl.startsWith('http://')) {
+        embedUrl = embedUrl.replace('http://', 'https://');
+      }
+      
+      allStreams.push({
+        id: stream.id,
+        streamNo: allStreams.length + 1,
+        language: stream.language || 'EN',
+        hd: stream.hd !== false,
+        embedUrl: embedUrl,
+        source: stream.source,
+        timestamp: Date.now(),
+        viewers: stream.viewers,
+        name: stream.name
+      } as Stream);
+      
+      sourcesWithStreams.add(stream.source);
     }
   }
   
-  // If no streams from API, try using match.sources with ad-free URLs
+  // Fallback: If no streams found, create ad-free embed URLs from match.sources
   if (allStreams.length === 0 && match.sources && match.sources.length > 0) {
+    console.log('⚠️ No API streams found, using ad-free fallback');
     for (const source of match.sources) {
       const adFreeUrl = buildAdFreeEmbedUrl(source.id, source.source);
-      const stream: Stream = {
+      allStreams.push({
         id: source.id,
         streamNo: allStreams.length + 1,
         language: 'EN',
@@ -445,13 +545,12 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
         embedUrl: adFreeUrl,
         source: source.source,
         timestamp: Date.now()
-      };
-      allStreams.push(stream);
+      });
       sourcesWithStreams.add(source.source);
     }
   }
-
-  // Last resort: try echo source with ad-free URL
+  
+  // Last resort: echo source
   if (allStreams.length === 0) {
     const adFreeUrl = buildAdFreeEmbedUrl(match.id, 'echo');
     allStreams.push({
@@ -467,11 +566,11 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`🎬 Ad-free streams ready for ${match.title}: ${allStreams.length} streams from ${sourceNames.join(', ')}`);
+  console.log(`✅ Found ${allStreams.length} streams from sources: ${sourceNames.join(', ')}`);
 
   return {
     streams: allStreams,
-    sourcesChecked: apiSources.length || match.sources?.length || 1,
+    sourcesChecked: STREAM_SOURCES.length + (match.sources?.length || 0),
     sourcesWithStreams: sourceNames.length,
     sourceNames
   };
