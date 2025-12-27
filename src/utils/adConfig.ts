@@ -8,7 +8,7 @@ export const adConfig = {
     sessionKey: 'directLinkAdTriggered'
   },
   popunder: {
-    enabled: false, // TEMPORARILY DISABLED
+    enabled: true, // ENABLED
     scriptSrc: '//foreseehawancestor.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
     cooldownMinutes: 360, // 6 hours
     sessionKey: 'popunderAdTriggered_v2', // Updated key to reset stale entries
