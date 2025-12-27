@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/use-mobile';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
@@ -300,14 +301,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
       {/* Premium Loading State */}
       {isLoading && !countdown && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0a] via-[#111111] to-[#0a0a0a]">
-          {/* Welcome text */}
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 text-center px-4">
-            Welcome to <span className="text-primary">DamiTV</span>
-          </h2>
-          <p className="text-white/60 text-sm sm:text-base mb-8 text-center px-4">
-            Your ultimate place to watch live streams
-          </p>
-          
           {/* Animated rings */}
           <div className="relative">
             <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-primary/30 animate-ping" />
@@ -339,7 +332,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
           border: 'none'
         }}
       />
-
     </div>
   );
 };
