@@ -51,7 +51,7 @@ async function tryFetch(baseUrl: string, endpoint: string): Promise<{ success: b
 
     // Check if response has valid data
     const hasData = Array.isArray(data) || 
-                    (data && (data.matches || data.events || data.data || data.live || data.embedUrl || data.embed));
+                    (data && (data.matches || data.events || data.data || data.live || data.embedUrl || data.embed || data.sources));
     
     if (response.ok && hasData) {
       const count = Array.isArray(data) ? data.length : 'object';
@@ -67,6 +67,64 @@ async function tryFetch(baseUrl: string, endpoint: string): Promise<{ success: b
   }
 }
 
+// Fetch all available streams for a match from multiple providers
+async function fetchAllStreamsForMatch(matchId: string, source: string): Promise<any[]> {
+  const allStreams: any[] = [];
+  const streamEndpoints = [
+    `stream/${source}/${matchId}`,
+    `streams/${source}/${matchId}`,
+    `watch/${source}/${matchId}`,
+  ];
+
+  // Try to fetch from each API base
+  for (const baseUrl of API_BASES) {
+    for (const endpoint of streamEndpoints) {
+      const result = await tryFetch(baseUrl, endpoint);
+      if (result.success) {
+        // Handle different response formats
+        let streams = [];
+        
+        if (Array.isArray(result.data)) {
+          streams = result.data;
+        } else if (result.data.sources && Array.isArray(result.data.sources)) {
+          streams = result.data.sources;
+        } else if (result.data.streams && Array.isArray(result.data.streams)) {
+          streams = result.data.streams;
+        } else if (result.data.embedUrl || result.data.embed) {
+          streams = [result.data];
+        }
+        
+        // Add source identifier to each stream
+        streams.forEach((stream: any, index: number) => {
+          // Avoid duplicates by checking embedUrl
+          const embedUrl = stream.embedUrl || stream.embed || stream.url;
+          const isDuplicate = allStreams.some(s => 
+            (s.embedUrl === embedUrl) || 
+            (s.source === stream.source && s.id === stream.id && s.streamNo === stream.streamNo)
+          );
+          
+          if (!isDuplicate && embedUrl) {
+            allStreams.push({
+              ...stream,
+              embedUrl: embedUrl,
+              source: stream.source || source,
+              id: stream.id || matchId,
+              streamNo: stream.streamNo || allStreams.length + 1,
+              language: stream.language || stream.lang || 'EN',
+              hd: stream.hd !== false,
+              apiBase: baseUrl
+            });
+          }
+        });
+        
+        console.log(`📺 Found ${streams.length} streams from ${baseUrl}/${endpoint}`);
+      }
+    }
+  }
+  
+  return allStreams;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -77,6 +135,7 @@ serve(async (req) => {
     // Get endpoint from query params or request body
     const url = new URL(req.url);
     let endpoint = url.searchParams.get('endpoint') || '';
+    const fetchAll = url.searchParams.get('fetchAll') === 'true';
     
     // Also try to get from body if POST
     if (req.method === 'POST') {
@@ -88,13 +147,28 @@ serve(async (req) => {
       }
     }
 
-    console.log(`📡 BOHOSport proxy request - endpoint: "${endpoint}"`);
+    console.log(`📡 BOHOSport proxy request - endpoint: "${endpoint}", fetchAll: ${fetchAll}`);
 
     // Check if this is a stream request
     const isStreamRequest = endpoint.startsWith('stream/');
     
     if (isStreamRequest) {
-      // For stream requests, try each API base with the exact endpoint
+      const parts = endpoint.split('/');
+      const source = parts[1] || 'main';
+      const id = parts[2] || 'unknown';
+      
+      // Fetch from all providers to get more stream options
+      const allStreams = await fetchAllStreamsForMatch(id, source);
+      
+      if (allStreams.length > 0) {
+        console.log(`🎉 Total unique streams found: ${allStreams.length}`);
+        return new Response(JSON.stringify(allStreams), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // Fallback: try each API base with the exact endpoint (original behavior)
       for (const baseUrl of API_BASES) {
         const result = await tryFetch(baseUrl, endpoint);
         if (result.success) {
@@ -108,9 +182,6 @@ serve(async (req) => {
       
       // If stream endpoints fail, return empty with embed URL suggestion
       console.log('⚠️ No stream data found, returning default embed');
-      const parts = endpoint.split('/');
-      const source = parts[1] || 'main';
-      const id = parts[2] || 'unknown';
       
       return new Response(JSON.stringify([{
         embedUrl: `https://streamed.su/watch/${id}`,
