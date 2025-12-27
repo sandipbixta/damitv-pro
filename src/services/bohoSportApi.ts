@@ -353,54 +353,12 @@ interface FullSource extends Source {
   viewers?: number;
 }
 
-// Fetch stream sources from edge function - returns all available streams from API
+// Fetch stream sources from edge function - returns id/source pairs for damitv.pro
 const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'football', sources?: Source[]): Promise<FullSource[]> => {
   try {
-    const allSources: FullSource[] = [];
-    
-    // Try to get streams from API for each source
+    // Use provided sources from match data if available
     if (sources && sources.length > 0) {
-      for (const src of sources) {
-        const endpoint = `stream/${src.source}/${src.id}`;
-        console.log(`🔍 Fetching streams from API: ${endpoint}`);
-        
-        try {
-          const { data, error } = await supabase.functions.invoke('boho-sport', {
-            body: { endpoint }
-          });
-          
-          if (!error && Array.isArray(data) && data.length > 0) {
-            console.log(`✅ Found ${data.length} streams from ${src.source}`);
-            data.forEach((s: any, index: number) => {
-              // Check if this stream is already added (avoid duplicates)
-              const embedUrl = s.embedUrl || s.embed || s.url;
-              const isDuplicate = allSources.some(existing => 
-                existing.embedUrl === embedUrl ||
-                (existing.source === s.source && existing.id === s.id && existing.streamNo === s.streamNo)
-              );
-              
-              if (!isDuplicate) {
-                allSources.push({
-                  source: s.source || src.source,
-                  id: s.id || src.id,
-                  embedUrl: embedUrl,
-                  streamNo: s.streamNo || allSources.length + 1,
-                  language: s.language || 'EN',
-                  hd: s.hd !== false,
-                  viewers: s.viewers
-                });
-              }
-            });
-          }
-        } catch (fetchError) {
-          console.log(`⚠️ Could not fetch from ${src.source}:`, fetchError);
-        }
-      }
-    }
-    
-    // If no streams found from API, use match sources as fallback for damitv.pro URLs
-    if (allSources.length === 0 && sources && sources.length > 0) {
-      console.log(`⚠️ No API streams, using ${sources.length} match sources for damitv.pro`);
+      console.log(`🔍 Using ${sources.length} sources from match data for damitv.pro`);
       return sources.map((s, index) => ({
         source: s.source,
         id: s.id,
@@ -410,7 +368,30 @@ const fetchMatchSourcesFromAPI = async (matchId: string, category: string = 'foo
       }));
     }
     
-    return allSources;
+    // Fallback: try to get from edge function stream endpoint
+    const firstSource = sources?.[0];
+    if (firstSource) {
+      const endpoint = `stream/${firstSource.source}/${firstSource.id}`;
+      console.log(`🔍 Fetching sources from edge function: ${endpoint}`);
+      
+      const { data, error } = await supabase.functions.invoke('boho-sport', {
+        body: { endpoint }
+      });
+      
+      if (!error && Array.isArray(data) && data.length > 0) {
+        console.log(`✅ Found ${data.length} sources from edge function`);
+        return data.map((s: any) => ({
+          source: s.source,
+          id: s.id,
+          streamNo: s.streamNo,
+          language: s.language || 'EN',
+          hd: s.hd !== false,
+          viewers: s.viewers
+        }));
+      }
+    }
+    
+    return [];
   } catch (error) {
     console.error('❌ Error fetching match sources:', error);
     return [];
@@ -432,23 +413,23 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const apiSources = await fetchMatchSourcesFromAPI(match.id, category, match.sources);
   
   if (apiSources.length > 0) {
-    // Use streams from API - they may already have embedUrl or use damitv.pro
+    // Build ad-free embed URLs using the source/id pairs from API
     for (const source of apiSources) {
-      // Use API embedUrl if available, otherwise build damitv.pro URL
-      const embedUrl = source.embedUrl || buildAdFreeEmbedUrl(source.id, source.source);
+      // Primary: Use ad-free damitv.pro embed URL
+      const adFreeUrl = buildAdFreeEmbedUrl(source.id, source.source);
       
       const stream: Stream = {
         id: source.id,
         streamNo: source.streamNo || allStreams.length + 1,
         language: source.language || 'EN',
         hd: source.hd !== false,
-        embedUrl: embedUrl,
+        embedUrl: adFreeUrl, // Use ad-free embed URL
         source: source.source,
         timestamp: Date.now()
       };
       allStreams.push(stream);
       sourcesWithStreams.add(source.source);
-      console.log(`✅ Added stream ${stream.streamNo}: ${source.source} (${embedUrl.substring(0, 50)}...)`);
+      console.log(`✅ Added ad-free stream: ${source.source}/${source.id}`);
     }
   }
   
