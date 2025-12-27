@@ -344,47 +344,7 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   }
 };
 
-// All known stream source endpoints
-const STREAM_SOURCES = ['admin', 'charlie', 'delta', 'echo', 'golf'];
-
-// Build match ID for ad-free embed (from match.sources or match.id)
-const getStreamIdForSource = (match: Match, sourceName: string): string | null => {
-  // Check if match has a source with this name
-  const matchSource = match.sources?.find(s => s.source === sourceName);
-  if (matchSource) {
-    return matchSource.id;
-  }
-  
-  // For echo/delta, build slug from match title
-  if (['echo', 'delta', 'charlie'].includes(sourceName)) {
-    const title = match.title || '';
-    const cleanTitle = title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-    const category = match.category || match.sportId || 'football';
-    return `${cleanTitle}-${category}-${match.id}`;
-  }
-  
-  // For admin, try PPV format
-  if (sourceName === 'admin') {
-    const teams = match.title.split(/\s+vs\s+/i);
-    if (teams.length === 2) {
-      return `ppv-${teams[0].trim().toLowerCase().replace(/\s+/g, '-')}-vs-${teams[1].trim().toLowerCase().replace(/\s+/g, '-')}`;
-    }
-  }
-  
-  // For golf, use match ID directly
-  if (sourceName === 'golf') {
-    return match.id;
-  }
-  
-  return null;
-};
-
-// Fetch all streams for a match - creates ad-free embed URLs for all sources
+// Fetch all streams for a match - uses ONLY real source IDs from API (no fabricated IDs)
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -395,36 +355,14 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const sourcesWithStreams = new Set<string>();
   
   console.log(`🎬 Building ad-free streams for: ${match.title}`);
+  console.log(`📡 Match sources from API:`, match.sources);
   
-  // Create ad-free embed URLs for all known sources
-  let streamNumber = 1;
-  for (const sourceName of STREAM_SOURCES) {
-    const streamId = getStreamIdForSource(match, sourceName);
+  // ONLY use real source IDs from the API - don't fabricate any
+  if (match.sources && match.sources.length > 0) {
+    let streamNumber = 1;
     
-    if (streamId) {
-      const adFreeUrl = buildAdFreeEmbedUrl(streamId, sourceName);
-      
-      allStreams.push({
-        id: streamId,
-        streamNo: streamNumber,
-        language: 'EN',
-        hd: true,
-        embedUrl: adFreeUrl,
-        source: sourceName,
-        timestamp: Date.now(),
-        name: `Stream ${streamNumber}`
-      } as Stream);
-      
-      sourcesWithStreams.add(sourceName);
-      console.log(`✅ Added Stream ${streamNumber}: ${adFreeUrl}`);
-      streamNumber++;
-    }
-  }
-  
-  // Also add streams from match.sources that aren't in STREAM_SOURCES
-  if (match.sources) {
     for (const src of match.sources) {
-      if (!STREAM_SOURCES.includes(src.source)) {
+      if (src.source && src.id) {
         const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source);
         
         allStreams.push({
@@ -439,17 +377,20 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
         } as Stream);
         
         sourcesWithStreams.add(src.source);
+        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${adFreeUrl}`);
         streamNumber++;
       }
     }
+  } else {
+    console.warn(`⚠️ No sources available for match: ${match.title}`);
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`✅ Created ${allStreams.length} ad-free streams: ${sourceNames.join(', ')}`);
+  console.log(`✅ Created ${allStreams.length} ad-free streams from real API sources`);
 
   return {
     streams: allStreams,
-    sourcesChecked: STREAM_SOURCES.length,
+    sourcesChecked: match.sources?.length || 0,
     sourcesWithStreams: sourceNames.length,
     sourceNames
   };
