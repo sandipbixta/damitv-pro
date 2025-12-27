@@ -1,6 +1,10 @@
 
 // Ad configuration utility
 export const adConfig = {
+  // TEMPORARILY DISABLED - set to true to re-enable
+  popunderEnabled: false,
+  directLinkEnabled: false,
+  
   directLink: {
     url: 'https://foreseehawancestor.com/umr66h0d?key=580a7a980918e6f2337c20ccf5d82054',
     cooldownMinutes: 360, // 6 hours
@@ -9,7 +13,7 @@ export const adConfig = {
   popunder: {
     scriptSrc: '//foreseehawancestor.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
     cooldownMinutes: 360, // 6 hours
-    sessionKey: 'popunderAdTriggered_v2', // Updated key to reset stale entries
+    sessionKey: 'popunderAdTriggered_v2',
     delaySeconds: 3
   },
 };

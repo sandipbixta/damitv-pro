@@ -18,6 +18,12 @@ export const usePopunderAd = () => {
       return;
     }
 
+    // Check if popunder is enabled
+    if (!adConfig.popunderEnabled) {
+      console.log('⏸️ Popunder ads disabled');
+      return;
+    }
+
     if (!shouldShowAds()) {
       return;
     }
