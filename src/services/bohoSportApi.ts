@@ -397,6 +397,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   console.log(`🎬 Building ad-free streams for: ${match.title}`);
   
   // Create ad-free embed URLs for all known sources
+  let streamNumber = 1;
   for (const sourceName of STREAM_SOURCES) {
     const streamId = getStreamIdForSource(match, sourceName);
     
@@ -405,17 +406,18 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
       
       allStreams.push({
         id: streamId,
-        streamNo: allStreams.length + 1,
+        streamNo: streamNumber,
         language: 'EN',
         hd: true,
         embedUrl: adFreeUrl,
         source: sourceName,
         timestamp: Date.now(),
-        name: sourceName.toUpperCase()
+        name: `Stream ${streamNumber}`
       } as Stream);
       
       sourcesWithStreams.add(sourceName);
-      console.log(`✅ Added ${sourceName}: ${adFreeUrl}`);
+      console.log(`✅ Added Stream ${streamNumber}: ${adFreeUrl}`);
+      streamNumber++;
     }
   }
   
@@ -427,16 +429,17 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
         
         allStreams.push({
           id: src.id,
-          streamNo: allStreams.length + 1,
+          streamNo: streamNumber,
           language: 'EN',
           hd: true,
           embedUrl: adFreeUrl,
           source: src.source,
           timestamp: Date.now(),
-          name: src.source.toUpperCase()
+          name: `Stream ${streamNumber}`
         } as Stream);
         
         sourcesWithStreams.add(src.source);
+        streamNumber++;
       }
     }
   }
