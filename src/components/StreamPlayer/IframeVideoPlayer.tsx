@@ -102,27 +102,14 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     onError();
   };
 
-  // Smart iframe reloading - only when src actually changes and with proper delay
+  // Track src changes - the iframe src is set directly in JSX
   useEffect(() => {
     if (!src || src === lastSrc) return;
     
-    console.log('🔄 Stream URL changed, reloading iframe...');
+    console.log('🔄 Stream URL changed:', src.substring(0, 80) + '...');
     setLastSrc(src);
     setIsLoading(true);
     setReloadCount(prev => prev + 1);
-    
-    if (iframeRef.current) {
-      // Clear existing src first
-      iframeRef.current.src = 'about:blank';
-      
-      // Wait longer before setting new src to ensure clean reload
-      setTimeout(() => {
-        if (iframeRef.current && src) {
-          console.log('🎯 Setting new iframe src:', src.substring(0, 80) + '...');
-          iframeRef.current.src = src;
-        }
-      }, 300);
-    }
   }, [src, lastSrc]);
 
   // Timeout handling with longer duration for streaming content
