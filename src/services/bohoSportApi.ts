@@ -2,13 +2,13 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// Embed player base URL (same format as API returns)
-const EMBED_BASE = 'https://embedsports.top/embed';
+// Ad-free embed player base URL
+const EMBED_BASE = 'https://embed.damitv.pro/embed';
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build embed URL using the same format that API returns
+// Build ad-free embed URL
 const buildEmbedUrl = (id: string, source: string, streamNo: number = 1): string => {
   return `${EMBED_BASE}/${source}/${id}/${streamNo}`;
 };
