@@ -6,10 +6,16 @@ export const adConfig = {
   directLinkEnabled: true,
   streamPlayAdEnabled: true,
   
+  // Global throttle to prevent rapid-fire ads (minimum gap between ANY ads)
+  globalThrottle: {
+    minutes: 2, // 2 minute minimum between any ads
+    sessionKey: 'lastAdTriggered'
+  },
+  
   directLink: {
     url: 'https://foreseehawancestor.com/umr66h0d?key=580a7a980918e6f2337c20ccf5d82054',
-    cooldownMinutes: 360, // 6 hours
-    sessionKey: 'directLinkAdTriggered'
+    perMatchCooldownMinutes: 360, // 6 hours per match
+    sessionKeyPrefix: 'directLinkAdTriggered' // Will be appended with :matchId
   },
   popunder: {
     scriptSrc: '//temperweekly.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
@@ -18,10 +24,19 @@ export const adConfig = {
     delaySeconds: 0 // No delay for stream play
   },
   streamPlayAd: {
-    scriptSrc: '//temperweekly.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
-    cooldownMinutes: 360, // 6 hours
-    sessionKey: 'streamPlayAdTriggered'
+    perMatchCooldownMinutes: 360, // 6 hours per match
+    sessionKeyPrefix: 'streamPlayAdTriggered' // Will be appended with :matchId
   }
+};
+
+// Helper to check global throttle (minimum time between ANY ads)
+export const isGlobalThrottlePassed = (): boolean => {
+  return isAdCooldownPassed(adConfig.globalThrottle.sessionKey, adConfig.globalThrottle.minutes);
+};
+
+// Helper to mark global throttle
+export const markGlobalThrottle = (): void => {
+  markAdTriggered(adConfig.globalThrottle.sessionKey);
 };
 
 // Helper to determine if ads should be shown

@@ -55,7 +55,7 @@ const ChannelPlayer = () => {
   };
 
   const handleChannelSwitch = (newChannelId: string) => {
-    triggerStreamChangeAd();
+    triggerStreamChangeAd(channelId || newChannelId);
     navigate(`/channel/${country}/${newChannelId}`);
   };
 

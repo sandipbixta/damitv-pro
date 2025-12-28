@@ -183,10 +183,12 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
 
   // Handle play button click - trigger ad and load stream
   const handlePlayClick = () => {
-    console.log('▶️ Play button clicked - triggering ad and loading stream');
+    // Generate match ID for per-match ad tracking
+    const matchId = match?.id || stream?.id || stream?.embedUrl || 'unknown';
+    console.log(`▶️ Play button clicked - triggering ad for match: ${matchId}`);
     
-    // Trigger the stream play ad
-    triggerStreamPlayAd();
+    // Trigger the stream play ad with matchId for per-match tracking
+    triggerStreamPlayAd(matchId);
     
     // Show brief loading state
     setIsLoadingAfterClick(true);
