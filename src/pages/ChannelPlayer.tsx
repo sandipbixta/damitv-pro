@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import MatchDetails from '@/components/MatchDetails';
 import { triggerStreamChangeAd } from '@/utils/streamAdTrigger';
+import AdsterraSocialBar from '@/components/AdsterraSocialBar';
 
 const ChannelPlayer = () => {
   const { country, channelId } = useParams();
@@ -80,6 +81,7 @@ const ChannelPlayer = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0F1C] text-white">
+      <AdsterraSocialBar />
       <Helmet>
         <title>{channel.title} - Live Stream | DamiTV</title>
         <meta name="description" content={`Watch ${channel.title} live stream online for free on DamiTV`} />

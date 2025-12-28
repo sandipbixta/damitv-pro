@@ -23,6 +23,7 @@ import NotFoundState from '@/components/match/NotFoundState';
 import MatchCard from '@/components/MatchCard';
 import MatchAnalysis from '@/components/match/MatchAnalysis';
 import { ViewerStats } from '@/components/match/ViewerStats';
+import AdsterraSocialBar from '@/components/AdsterraSocialBar';
 
 
 const Match = () => {
@@ -153,6 +154,7 @@ const Match = () => {
 
   return (
     <div className="min-h-screen bg-sports-dark text-sports-light">
+      <AdsterraSocialBar />
       <SEOMetaTags
         title={seoTitle}
         description={seoDescription}

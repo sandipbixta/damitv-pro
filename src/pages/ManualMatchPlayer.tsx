@@ -8,6 +8,7 @@ import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { Helmet } from 'react-helmet-async';
 import VideoPlayerSelector from '@/components/StreamPlayer/VideoPlayerSelector';
 import MatchDetails from '@/components/MatchDetails';
+import AdsterraSocialBar from '@/components/AdsterraSocialBar';
 
 const ManualMatchPlayer = () => {
   const { matchId } = useParams();
@@ -133,6 +134,7 @@ const ManualMatchPlayer = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0F1C]">
+      <AdsterraSocialBar />
       <Helmet>
         <title>{seoTitle}</title>
         <meta name="description" content={seoDescription} />

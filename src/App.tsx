@@ -6,8 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { usePopunderAd } from "./hooks/usePopunderAd";
-import AdsterraSocialBar from "./components/AdsterraSocialBar";
 import SEOPageTracker from "./components/SEOPageTracker";
 import MonetizationTracker from "./components/MonetizationTracker";
 
@@ -62,9 +60,6 @@ const queryClient = new QueryClient({
 });
 
 const App: React.FC = () => {
-  // Initialize ad hooks
-  usePopunderAd();
-
   return (
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
@@ -72,7 +67,6 @@ const App: React.FC = () => {
           
           <MonetizationTracker>
             <TooltipProvider>
-              <AdsterraSocialBar />
               <TelegramFAB />
               <Toaster />
               <Sonner />
