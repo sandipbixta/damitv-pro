@@ -30,7 +30,8 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
   };
   
   const handleClick = () => {
-    triggerStreamChangeAd();
+    // Use title as unique identifier for channel-based ad tracking
+    triggerStreamChangeAd(title || embedUrl);
     onClick?.();
   };
   
