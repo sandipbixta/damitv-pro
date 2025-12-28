@@ -69,9 +69,9 @@ export const useStreamPlayer = () => {
   const fetchStreamData = useCallback(async (source: Source, streamNo?: number) => {
     console.log(`🎯 Selecting stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
     
-    // Build ad-free embed URL with autoplay
+    // Build ad-free embed URL with autoplay (muted for browser compatibility)
     const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
-    const embedUrl = `${DAMITV_EMBED_BASE}/?id=${source.id}&source=${source.source}&autoplay=1`;
+    const embedUrl = `${DAMITV_EMBED_BASE}/?id=${source.id}&source=${source.source}&autoplay=1&muted=1`;
     
     const stream: Stream = {
       id: source.id,

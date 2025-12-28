@@ -8,9 +8,9 @@ const EMBED_BASE = 'https://embed.damitv.pro/embed';
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build ad-free embed URL with autoplay
+// Build ad-free embed URL with autoplay and muted (browsers require muted for autoplay)
 const buildEmbedUrl = (id: string, source: string, streamNo: number = 1): string => {
-  return `${EMBED_BASE}/${source}/${id}/${streamNo}?autoplay=1`;
+  return `${EMBED_BASE}/${source}/${id}/${streamNo}?autoplay=1&muted=1`;
 };
 
 // Cache for API responses
