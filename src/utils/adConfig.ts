@@ -1,9 +1,10 @@
 
 // Ad configuration utility
 export const adConfig = {
-  // TEMPORARILY DISABLED - set to true to re-enable
-  popunderEnabled: false,
-  directLinkEnabled: false,
+  // Ads only trigger on stream play and stream link change
+  popunderEnabled: true,
+  directLinkEnabled: true,
+  streamPlayAdEnabled: true,
   
   directLink: {
     url: 'https://foreseehawancestor.com/umr66h0d?key=580a7a980918e6f2337c20ccf5d82054',
@@ -11,11 +12,16 @@ export const adConfig = {
     sessionKey: 'directLinkAdTriggered'
   },
   popunder: {
-    scriptSrc: '//foreseehawancestor.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
+    scriptSrc: '//temperweekly.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
     cooldownMinutes: 360, // 6 hours
     sessionKey: 'popunderAdTriggered_v2',
-    delaySeconds: 3
+    delaySeconds: 0 // No delay for stream play
   },
+  streamPlayAd: {
+    scriptSrc: '//temperweekly.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js',
+    cooldownMinutes: 360, // 6 hours
+    sessionKey: 'streamPlayAdTriggered'
+  }
 };
 
 // Helper to determine if ads should be shown

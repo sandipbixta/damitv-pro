@@ -19,6 +19,7 @@ import {
   trackFullscreen,
   createProgressTracker 
 } from '../../utils/videoAnalytics';
+import { triggerStreamPlayAd } from '@/hooks/useStreamPlayAd';
 
 
 interface SimpleVideoPlayerProps {
@@ -61,6 +62,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   const isCasting = detectCasting();
   const progressTrackerRef = useRef<ReturnType<typeof createProgressTracker> | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Click-to-play state - require user click to load stream (triggers ad)
+  const [requiresPlayClick, setRequiresPlayClick] = useState(true);
+  const [isLoadingAfterClick, setIsLoadingAfterClick] = useState(false);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -174,6 +179,23 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
         onAutoFallback();
       }, 1500); // Wait 1.5s before trying next source
     }
+  };
+
+  // Handle play button click - trigger ad and load stream
+  const handlePlayClick = () => {
+    console.log('▶️ Play button clicked - triggering ad and loading stream');
+    
+    // Trigger the stream play ad
+    triggerStreamPlayAd();
+    
+    // Show brief loading state
+    setIsLoadingAfterClick(true);
+    
+    // After brief delay, load the actual stream
+    setTimeout(() => {
+      setRequiresPlayClick(false);
+      setIsLoadingAfterClick(false);
+    }, 1500);
   };
 
   const toggleFullscreen = () => {
@@ -386,6 +408,68 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
         <div className="text-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p>Loading stream...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show click-to-play overlay when stream is available but user hasn't clicked play yet
+  if (stream && requiresPlayClick && !error) {
+    const matchAny = match as any;
+    const homeTeamName = matchAny?.teams?.home?.name ?? matchAny?.teams?.home ?? '';
+    const awayTeamName = matchAny?.teams?.away?.name ?? matchAny?.teams?.away ?? '';
+    const matchPoster = matchAny?.poster ?? null;
+    const matchTitle = match?.title || 'Live Stream';
+
+    return (
+      <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video rounded-2xl overflow-hidden relative bg-background cursor-pointer group`}>
+        {/* Background */}
+        <div className="absolute inset-0">
+          {matchPoster && (
+            <img
+              src={typeof matchPoster === 'string' ? getBohoImageUrl(matchPoster) : ''}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity"
+              loading="lazy"
+              decoding="async"
+              onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+        </div>
+
+        {/* Play Button Overlay */}
+        <div 
+          className="absolute inset-0 flex flex-col items-center justify-center z-10"
+          onClick={handlePlayClick}
+        >
+          {isLoadingAfterClick ? (
+            <div className="text-center text-white">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-3 border-b-3 border-primary mx-auto mb-4"></div>
+              <p className="text-lg font-medium">Loading stream...</p>
+            </div>
+          ) : (
+            <>
+              {/* Play Button */}
+              <div className="w-24 h-24 rounded-full bg-primary/90 flex items-center justify-center shadow-2xl group-hover:bg-primary group-hover:scale-110 transition-all duration-300 mb-6">
+                <Play className="w-12 h-12 text-white ml-1" fill="white" />
+              </div>
+              
+              {/* Match Info */}
+              <div className="text-center px-4">
+                {homeTeamName && awayTeamName ? (
+                  <div className="space-y-2">
+                    <h3 className="text-white text-2xl sm:text-3xl font-bold">
+                      {homeTeamName} <span className="text-white/60 font-normal">vs</span> {awayTeamName}
+                    </h3>
+                  </div>
+                ) : (
+                  <h3 className="text-white text-2xl sm:text-3xl font-bold">{matchTitle}</h3>
+                )}
+                <p className="text-white/70 text-lg mt-3">Click to Watch Live</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
