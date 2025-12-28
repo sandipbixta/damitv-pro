@@ -129,10 +129,16 @@ const LiveFootballSection: React.FC = () => {
       </div>
       
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {events.map((event) => (
+        {events.map((event) => {
+          // Build URL with query params for the stream player
+          const streamUrl = event.url 
+            ? `/stream?url=${encodeURIComponent(event.url)}&title=${encodeURIComponent(event.title)}&league=${encodeURIComponent(event.league || '')}&home=${encodeURIComponent(event.home_team || '')}&away=${encodeURIComponent(event.away_team || '')}`
+            : '#';
+          
+          return (
           <Link
             key={event.id}
-            to={event.url ? `/channel/${encodeURIComponent(event.url)}` : '#'}
+            to={streamUrl}
             className="group"
           >
             <Card className="relative overflow-hidden bg-gradient-to-br from-[#1a1f2e] to-[#242836] border-[#343a4d] hover:border-green-500/50 transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-lg group-hover:shadow-green-500/20">
@@ -203,7 +209,8 @@ const LiveFootballSection: React.FC = () => {
               </div>
             </Card>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
