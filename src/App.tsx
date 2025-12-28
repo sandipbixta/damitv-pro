@@ -46,7 +46,6 @@ import WatchPremierLeague from "./pages/WatchPremierLeague";
 import NbaStreaming from "./pages/NbaStreaming";
 import UfcStreaming from "./pages/UfcStreaming";
 import Highlights from "./pages/Highlights";
-import CDNStreamPlayer from "./pages/CDNStreamPlayer";
 
 import TelegramFAB from "./components/TelegramFAB";
 
@@ -117,11 +116,6 @@ const App: React.FC = () => {
               <Route path="/channel/:country/:channelId" element={
                 <SEOPageTracker contentType="channels">
                   <ChannelPlayer />
-                </SEOPageTracker>
-              } />
-              <Route path="/stream" element={
-                <SEOPageTracker contentType="match">
-                  <CDNStreamPlayer />
                 </SEOPageTracker>
               } />
               <Route path="/analytics" element={
