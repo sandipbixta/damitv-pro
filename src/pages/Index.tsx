@@ -25,6 +25,7 @@ import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
+import LiveFootballSection from '../components/LiveFootballSection';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -238,6 +239,9 @@ const Index = () => {
         <HeroCarousel />
 
         <FeaturedMatches visibleManualMatches={visibleManualMatches} />
+
+        {/* Live Football Section from CDN API */}
+        <LiveFootballSection />
 
         <div className="mb-10">
           <div className="flex justify-between items-center mb-6">
