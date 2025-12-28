@@ -2,14 +2,15 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// Ad-free embed player (no ads injected)
-const ADFREE_EMBED_BASE = 'https://embed.damitv.pro';
+// Ad-free embed player (rfrsh.me - no ads)
+const ADFREE_EMBED_BASE = 'https://rfrsh.me/embed';
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
-const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
-  return `${ADFREE_EMBED_BASE}/?id=${matchId}&source=${source}`;
+// Build ad-free embed URL: https://rfrsh.me/embed/{source}/{id}/{streamNo}
+const buildAdFreeEmbedUrl = (source: string, id: string, streamNo: number = 1): string => {
+  return `${ADFREE_EMBED_BASE}/${source}/${id}/${streamNo}`;
 };
 
 // Cache for API responses
@@ -319,8 +320,8 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   try {
     console.log(`🎬 Building ad-free embed URL for source: ${source}, id: ${id}`);
 
-    // Use ad-free embed URL
-    const adFreeUrl = buildAdFreeEmbedUrl(id, source);
+    // Use ad-free embed URL with rfrsh.me format
+    const adFreeUrl = buildAdFreeEmbedUrl(source, id, 1);
     
     const primaryStream: Stream = {
       id: id,
@@ -360,7 +361,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source);
+        const adFreeUrl = buildAdFreeEmbedUrl(src.source, src.id, streamNumber);
         
         allStreams.push({
           id: src.id,
