@@ -69,9 +69,9 @@ export const useStreamPlayer = () => {
   const fetchStreamData = useCallback(async (source: Source, streamNo?: number) => {
     console.log(`🎯 Selecting stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
     
-    // Build ad-free embed URL instantly
-    const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
-    const embedUrl = `${DAMITV_EMBED_BASE}/?id=${source.id}&source=${source.source}`;
+    // Build ad-free embed URL with rfrsh.me format
+    const ADFREE_EMBED_BASE = 'https://rfrsh.me/embed';
+    const embedUrl = `${ADFREE_EMBED_BASE}/${source.source}/${source.id}/${streamNo || 1}`;
     
     const stream: Stream = {
       id: source.id,
