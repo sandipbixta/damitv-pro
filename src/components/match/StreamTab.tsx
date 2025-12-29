@@ -270,6 +270,7 @@ const StreamTab = ({
                 match={m}
                 sportId={sportId}
                 isPriority
+                isCompact={true}
               />
             ))}
           </div>

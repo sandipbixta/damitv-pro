@@ -93,6 +93,7 @@ const PopularGames: React.FC<PopularGamesProps> = ({
             match={match}
             sportId={selectedSport || ''}
             isPriority={true}
+            isCompact={true}
           />
         ))}
       </div>

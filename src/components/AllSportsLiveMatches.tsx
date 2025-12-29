@@ -256,6 +256,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
                 <MatchCard
                   match={match}
                   sportId={match.sportId || sportId}
+                  isCompact={true}
                 />
               </div>
             ))}
