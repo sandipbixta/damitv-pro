@@ -7,6 +7,7 @@ import { useMatchTeamLogos } from '../hooks/useTeamLogo';
 import { getBohoImageUrl } from '../api/sportsApi';
 import { LiveViewerCount } from './LiveViewerCount';
 import { generateMatchSlug } from '../utils/matchSlug';
+import { matchImageService } from '../services/matchImageService';
 
 interface MatchCardProps {
   match: Match;
@@ -97,10 +98,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
     return sport.charAt(0).toUpperCase() + sport.slice(1).replace(/-/g, ' ');
   };
 
-  // Generate thumbnail
+  // Generate thumbnail - combines TheSportsDB and FanCode images
   const generateThumbnail = () => {
     const poster = typeof match.poster === 'string' ? match.poster.trim() : '';
 
+    // Priority 1: Use existing poster from API (TheSportsDB)
     if (!posterFailed && poster) {
       const posterUrl = getBohoImageUrl(poster);
 
@@ -118,7 +120,31 @@ const MatchCard: React.FC<MatchCardProps> = ({
       );
     }
 
-    // Fallback with team badges
+    // Priority 2: Get FanCode image based on tournament/team
+    const fancodeImage = matchImageService.getMatchImage({
+      poster: posterFailed ? '' : poster,
+      competition: match.title,
+      category: match.category,
+      sportId: sportId || match.sportId,
+      teams: match.teams,
+    });
+
+    if (fancodeImage) {
+      return (
+        <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center p-4">
+          <img
+            src={fancodeImage}
+            alt={match.title}
+            className="max-w-[80%] max-h-[80%] object-contain"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        </div>
+      );
+    }
+
+    // Priority 3: Fallback with team badges
     if (homeBadge || awayBadge) {
       return (
         <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center gap-6">
@@ -143,6 +169,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       );
     }
 
+    // Priority 4: Default fallback
     return (
       <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center">
         <span className="text-muted-foreground font-bold text-lg tracking-widest">DAMITV</span>
