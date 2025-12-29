@@ -251,10 +251,10 @@ const LiveScoreTicker: React.FC = () => {
         {/* Scrolling content */}
         <div
           ref={trackRef}
-          className={`flex pl-24 ${isPaused ? '' : 'animate-scroll-left'}`}
+          className="flex pl-24 animate-scroll-left"
           style={{
             animationDuration: `${durationSec}s`,
-            ...(isPaused ? { animationPlayState: 'paused' } : {}),
+            animationPlayState: isPaused ? 'paused' : 'running',
           }}
         >
           {duplicatedItems.map((item, index) => (
