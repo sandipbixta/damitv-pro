@@ -148,29 +148,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
     );
   };
 
-  // Team row component - FanCode style with bold text
-  const TeamRow = ({ name, badge }: { name: string; badge: string }) => (
-    <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full overflow-hidden bg-muted/50 flex items-center justify-center flex-shrink-0">
-        {badge ? (
-          <img
-            src={badge}
-            alt={name}
-            className="w-full h-full object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-              const parent = (e.target as HTMLImageElement).parentElement;
-              if (parent) {
-                parent.innerHTML = `<span class="text-xs font-bold text-muted-foreground">${name.substring(0, 2).toUpperCase()}</span>`;
-              }
-            }}
-          />
-        ) : (
-          <span className="text-xs font-bold text-muted-foreground">
-            {name.substring(0, 2).toUpperCase()}
-          </span>
-        )}
-      </div>
+  // Team row component - simplified without logos
+  const TeamRow = ({ name }: { name: string }) => (
+    <div className="flex items-center">
       <span className="text-foreground font-bold text-sm truncate">{name}</span>
     </div>
   );
@@ -211,9 +191,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
           
           {/* Teams */}
           {home && away ? (
-            <div className="flex flex-col gap-3">
-              <TeamRow name={home} badge={homeBadge} />
-              <TeamRow name={away} badge={awayBadge} />
+            <div className="flex flex-col gap-2">
+              <TeamRow name={home} />
+              <TeamRow name={away} />
             </div>
           ) : (
             <h3 className="font-bold text-foreground text-sm line-clamp-2">
