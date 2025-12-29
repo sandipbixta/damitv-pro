@@ -160,8 +160,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   const cardContent = (
     <div className="group cursor-pointer h-full">
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
-        {/* Thumbnail Section - Compact or normal height */}
-        <div className={`relative ${isCompact ? 'h-24' : 'h-36'} overflow-hidden flex-shrink-0`}>
+        {/* Thumbnail Section - Compact has bigger image */}
+        <div className={`relative ${isCompact ? 'h-32' : 'h-36'} overflow-hidden flex-shrink-0`}>
           {generateThumbnail()}
           
           {/* Gradient overlay at bottom */}
@@ -184,8 +184,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
           {/* Remove viewer count from thumbnail - moved to bottom */}
         </div>
 
-        {/* Info Section */}
-        <div className={`${isCompact ? 'p-2.5 gap-2' : 'p-4 gap-3'} flex flex-col flex-1`}>
+        {/* Info Section - Compact has smaller text area */}
+        <div className={`${isCompact ? 'p-2 gap-1' : 'p-4 gap-3'} flex flex-col flex-1`}>
           {/* Sport & Competition */}
           <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-bold truncate">
             {getSportName()} {match.title && !home && !away && `• ${match.title}`}
