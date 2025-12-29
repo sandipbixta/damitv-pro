@@ -99,19 +99,19 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
       <p className="text-gray-400 text-sm mb-4">
         Top live matches sorted by viewer count - updated in real-time
       </p>
-      <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'} gap-3 md:gap-4 auto-rows-fr`}>
+      <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'} gap-3 md:gap-4`}>
         {isLoading && filteredMatches.length === 0 ?
       // Show skeleton loaders while loading
       Array.from({
         length: 8
-      }).map((_, i) => <div key={`skeleton-${i}`} className="h-full">
-              <div className="bg-card rounded-lg p-4 animate-pulse">
-                <div className="h-32 bg-muted rounded mb-2"></div>
-                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-1/2"></div>
+      }).map((_, i) => <div key={`skeleton-${i}`}>
+              <div className="bg-card rounded-lg p-3 animate-pulse">
+                <div className="h-16 bg-muted rounded mb-2"></div>
+                <div className="h-3 bg-muted rounded w-3/4 mb-1"></div>
+                <div className="h-2 bg-muted rounded w-1/2"></div>
               </div>
-            </div>) : filteredMatches.slice(0, 8).map((match, index) => <div key={`popular-${match.id}-${index}`} className="h-full">
-              <MatchCard match={match} sportId={selectedSport || ''} isPriority={true} />
+            </div>) : filteredMatches.slice(0, 8).map((match, index) => <div key={`popular-${match.id}-${index}`}>
+              <MatchCard match={match} sportId={selectedSport || ''} isPriority={true} isCompact={true} />
             </div>)}
       </div>
     </div>;

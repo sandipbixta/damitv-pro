@@ -15,6 +15,7 @@ interface MatchCardProps {
   onClick?: () => void;
   preventNavigation?: boolean;
   isPriority?: boolean;
+  isCompact?: boolean;
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({
@@ -23,7 +24,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   sportId,
   onClick,
   preventNavigation,
-  isPriority
+  isPriority,
+  isCompact = false
 }) => {
   const [countdown, setCountdown] = React.useState<string>('');
   const [isMatchStarting, setIsMatchStarting] = React.useState(false);
@@ -158,8 +160,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   const cardContent = (
     <div className="group cursor-pointer h-full">
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
-        {/* Thumbnail Section - Fixed height for consistency */}
-        <div className="relative h-36 overflow-hidden flex-shrink-0">
+        {/* Thumbnail Section - Compact or normal height */}
+        <div className={`relative ${isCompact ? 'h-24' : 'h-36'} overflow-hidden flex-shrink-0`}>
           {generateThumbnail()}
           
           {/* Gradient overlay at bottom */}
@@ -183,7 +185,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
 
         {/* Info Section */}
-        <div className="p-4 flex flex-col flex-1 gap-3">
+        <div className={`${isCompact ? 'p-2.5 gap-2' : 'p-4 gap-3'} flex flex-col flex-1`}>
           {/* Sport & Competition */}
           <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-bold truncate">
             {getSportName()} {match.title && !home && !away && `• ${match.title}`}
