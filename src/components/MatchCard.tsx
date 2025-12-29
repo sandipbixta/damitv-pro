@@ -153,7 +153,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
   // Team row component - simplified without logos
   const TeamRow = ({ name }: { name: string }) => (
     <div className="flex items-center">
-      <span className="text-foreground font-bold text-sm truncate">{name}</span>
+      <span
+        className={`text-foreground font-bold truncate ${isCompact ? 'text-xs sm:text-sm' : 'text-sm'}`}
+      >
+        {name}
+      </span>
     </div>
   );
 
@@ -161,21 +165,23 @@ const MatchCard: React.FC<MatchCardProps> = ({
     <div className="group cursor-pointer h-full">
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
         {/* Thumbnail Section - Compact has bigger image */}
-        <div className={`relative ${isCompact ? 'h-32' : 'h-36'} overflow-hidden flex-shrink-0`}>
+        <div
+          className={`relative ${isCompact ? 'h-32 sm:h-36' : 'h-36 sm:h-40'} overflow-hidden flex-shrink-0`}
+        >
           {generateThumbnail()}
-          
+
           {/* Gradient overlay at bottom */}
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-          
+
           {/* WATCH IN / LIVE Badge - Smaller size */}
           <div className="absolute bottom-2 left-2 z-10">
             {isLive || isMatchStarting ? (
-              <div className="bg-destructive text-destructive-foreground text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide flex items-center gap-1">
+              <div className="bg-destructive text-destructive-foreground text-[10px] sm:text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
                 LIVE
               </div>
             ) : countdown ? (
-              <div className="bg-primary text-primary-foreground text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide italic">
+              <div className="bg-primary text-primary-foreground text-[10px] sm:text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide italic">
                 WATCH IN {countdown}
               </div>
             ) : null}
@@ -185,15 +191,15 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
 
         {/* Info Section - Compact has smaller text area */}
-        <div className={`${isCompact ? 'p-2 gap-1' : 'p-4 gap-3'} flex flex-col flex-1`}>
+        <div className={`${isCompact ? 'p-2 gap-1 sm:p-3 sm:gap-2' : 'p-4 gap-3'} flex flex-col flex-1`}>
           {/* Sport & Competition */}
-          <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-bold truncate">
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-widest font-bold truncate">
             {getSportName()} {match.title && !home && !away && `• ${match.title}`}
           </p>
-          
+
           {/* Teams */}
           {home && away ? (
-            <div className="flex flex-col gap-2">
+            <div className={`flex flex-col ${isCompact ? 'gap-1.5 sm:gap-2' : 'gap-2'}`}>
               <TeamRow name={home} />
               <TeamRow name={away} />
             </div>
@@ -202,9 +208,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
               {match.title}
             </h3>
           )}
-          
+
           {/* Bottom section - Viewer count on left, Match status on right */}
-          <div className="mt-auto pt-3 border-t border-border/40">
+          <div className={`mt-auto border-t border-border/40 ${isCompact ? 'pt-2 sm:pt-3' : 'pt-3'}`}>
             {isLive ? (
               <div className="flex items-center justify-between">
                 {/* Viewer count on left */}
@@ -212,13 +218,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
                   <LiveViewerCount match={match} size="sm" />
                 </div>
                 {/* Match is Live on right */}
-                <span className="text-destructive font-bold text-xs flex items-center gap-1.5">
-                  <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                <span className={`text-destructive font-bold flex items-center gap-1.5 ${isCompact ? 'text-[11px] sm:text-xs' : 'text-xs'}`}>
+                  <span className={`${isCompact ? 'w-1.5 h-1.5' : 'w-2 h-2'} bg-destructive rounded-full animate-pulse`} />
                   Match is Live
                 </span>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className={`${isCompact ? 'text-[11px] sm:text-xs' : 'text-xs'} text-muted-foreground font-medium`}>
                 {match.date ? formatMatchDate(match.date) : 'Time TBD'}
               </p>
             )}
