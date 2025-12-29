@@ -107,6 +107,7 @@ const MatchesTabContent: React.FC<MatchesTabContentProps> = ({
                 sportId={match.sportId || "1"}
                 onClick={() => onMatchSelect(match)}
                 preventNavigation={true}
+                isCompact={true}
               />
             </div>
           ))}
@@ -155,6 +156,7 @@ const MatchesTabContent: React.FC<MatchesTabContentProps> = ({
                   sportId={match.sportId || "1"}
                   onClick={() => onMatchSelect(match)}
                   preventNavigation={true}
+                  isCompact={true}
                 />
               </div>
             ))}
