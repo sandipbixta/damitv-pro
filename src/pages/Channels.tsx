@@ -82,13 +82,10 @@ const Channels = () => {
                 "@type": "ListItem",
                 "position": 1,
                 "item": {
-                  "@type": "SportsEvent",
-                  "name": "Premier League Live Streams",
+                  "@type": "BroadcastService",
+                  "name": "Premier League Channels",
                   "url": "https://damitv.pro/channels",
-                  "location": {
-                    "@type": "VirtualLocation",
-                    "name": "DamiTV"
-                  },
+                  "broadcastDisplayName": "Premier League TV Channels",
                   "description": "Watch all Premier League matches live on DamiTV"
                 }
               },
@@ -96,13 +93,10 @@ const Channels = () => {
                 "@type": "ListItem",
                 "position": 2,
                 "item": {
-                  "@type": "SportsEvent",
-                  "name": "Champions League Live Streams",
+                  "@type": "BroadcastService",
+                  "name": "Champions League Channels",
                   "url": "https://damitv.pro/channels",
-                  "location": {
-                    "@type": "VirtualLocation",
-                    "name": "DamiTV"
-                  },
+                  "broadcastDisplayName": "Champions League TV Channels",
                   "description": "Champions League football matches streaming live"
                 }
               },
@@ -110,13 +104,10 @@ const Channels = () => {
                 "@type": "ListItem",
                 "position": 3,
                 "item": {
-                  "@type": "SportsEvent",
-                  "name": "La Liga Live Streams",
+                  "@type": "BroadcastService",
+                  "name": "La Liga Channels",
                   "url": "https://damitv.pro/channels",
-                  "location": {
-                    "@type": "VirtualLocation",
-                    "name": "DamiTV"
-                  },
+                  "broadcastDisplayName": "La Liga TV Channels",
                   "description": "Spanish La Liga football streaming online"
                 }
               }
