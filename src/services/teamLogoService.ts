@@ -8,6 +8,48 @@ interface CountryLogoMapping {
   [key: string]: string;
 }
 
+interface TournamentLogoMapping {
+  [key: string]: string;
+}
+
+// FanCode tournament/league logo mappings
+const TOURNAMENT_LOGO_MAPPINGS: TournamentLogoMapping = {
+  // Cricket
+  'ilt20': 'https://images.fancode.com/skillup-uploads/cms-media/DPW-ILT20-Tour-Logo.png',
+  'international league t20': 'https://images.fancode.com/skillup-uploads/cms-media/DPW-ILT20-Tour-Logo.png',
+  'one day cup': 'https://images.fancode.com/skillup-uploads/prod-images/2024/11/One-Day-Cup.png',
+  'sheffield shield': 'https://images.fancode.com/skillup-uploads/prod-images/2024/11/Sheffleld-Shield.png',
+  'icc cwc league': 'https://images.fancode.com/skillup-uploads/cms-media/ICC-CWC-League-2,-2023-27-(16th-July)-Tour-Logo-(1).png',
+  'icc world cup': 'https://images.fancode.com/skillup-uploads/cms-media/ICC-CWC-League-2,-2023-27-(16th-July)-Tour-Logo-(1).png',
+  'bbl': 'https://images.fancode.com/skillup-uploads/prod-images/2024/11/One-Day-Cup.png',
+  'big bash': 'https://images.fancode.com/skillup-uploads/prod-images/2024/11/One-Day-Cup.png',
+  
+  // Football
+  'afcon': 'https://images.fancode.com/skillup-uploads/cms-media/Afcon-Tour.png',
+  'africa cup of nations': 'https://images.fancode.com/skillup-uploads/cms-media/Afcon-Tour.png',
+  'la liga': 'https://images.fancode.com/skillup-uploads/cms-media/LALIGA-2025-26-Tour.png',
+  'laliga': 'https://images.fancode.com/skillup-uploads/cms-media/LALIGA-2025-26-Tour.png',
+  'carabao cup': 'https://images.fancode.com/skillup-uploads/prod-images/2024/08/Carabao_Cup.png',
+  'efl cup': 'https://images.fancode.com/skillup-uploads/prod-images/2024/08/Carabao_Cup.png',
+  'league cup': 'https://images.fancode.com/skillup-uploads/prod-images/2024/08/Carabao_Cup.png',
+  'copa del rey': 'https://images.fancode.com/skillup-uploads/prod-images/2024/12/Copa-Del-Rey-Tour-Logo.png',
+  'saudi pro league': 'https://images.fancode.com/skillup-uploads/cms-media/TLG-Sofi_Tour-Logo.png',
+  'roshn saudi league': 'https://images.fancode.com/skillup-uploads/cms-media/TLG-Sofi_Tour-Logo.png',
+};
+
+// Cricket team logos from FanCode
+const CRICKET_TEAM_MAPPINGS: TeamLogoMapping = {
+  // Big Bash League
+  'sydney thunder': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+  'brisbane heat': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+  'melbourne stars': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+  'melbourne renegades': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+  'sydney sixers': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+  'perth scorchers': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+  'hobart hurricanes': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+  'adelaide strikers': 'https://images.fancode.com/skillup-uploads/prod-images/2019/11/default-tour-logo.png',
+};
+
 // Common team name mappings to logo URLs
 const TEAM_LOGO_MAPPINGS: TeamLogoMapping = {
   // Football/Soccer
@@ -38,6 +80,9 @@ const TEAM_LOGO_MAPPINGS: TeamLogoMapping = {
   'dallas cowboys': 'https://logoeps.com/wp-content/uploads/2013/03/dallas-cowboys-vector-logo.png',
   'green bay packers': 'https://logoeps.com/wp-content/uploads/2013/03/green-bay-packers-vector-logo.png',
   'pittsburgh steelers': 'https://logoeps.com/wp-content/uploads/2013/03/pittsburgh-steelers-vector-logo.png',
+  
+  // Cricket teams merged
+  ...CRICKET_TEAM_MAPPINGS,
 };
 
 // Country flag mappings using flagpedia or similar service
@@ -63,6 +108,18 @@ const COUNTRY_LOGO_MAPPINGS: CountryLogoMapping = {
   'japan': 'https://flagpedia.net/data/flags/w580/jp.webp',
   'south korea': 'https://flagpedia.net/data/flags/w580/kr.webp',
   'china': 'https://flagpedia.net/data/flags/w580/cn.webp',
+  'nepal': 'https://flagpedia.net/data/flags/w580/np.webp',
+  'uae': 'https://flagpedia.net/data/flags/w580/ae.webp',
+  'pakistan': 'https://flagpedia.net/data/flags/w580/pk.webp',
+  'bangladesh': 'https://flagpedia.net/data/flags/w580/bd.webp',
+  'sri lanka': 'https://flagpedia.net/data/flags/w580/lk.webp',
+  'south africa': 'https://flagpedia.net/data/flags/w580/za.webp',
+  'new zealand': 'https://flagpedia.net/data/flags/w580/nz.webp',
+  'west indies': 'https://flagpedia.net/data/flags/w580/jm.webp',
+  'afghanistan': 'https://flagpedia.net/data/flags/w580/af.webp',
+  'zimbabwe': 'https://flagpedia.net/data/flags/w580/zw.webp',
+  'ireland': 'https://flagpedia.net/data/flags/w580/ie.webp',
+  'scotland': 'https://flagpedia.net/data/flags/w580/gb-sct.webp',
 };
 
 class TeamLogoService {
@@ -131,11 +188,41 @@ class TeamLogoService {
     return COUNTRY_LOGO_MAPPINGS[normalized] || null;
   }
 
+  // Get tournament/league logo based on competition name
+  public getTournamentLogo(competitionName: string): string | null {
+    if (!competitionName) return null;
+    
+    const normalized = this.normalizeTeamName(competitionName);
+    
+    // Direct match
+    if (TOURNAMENT_LOGO_MAPPINGS[normalized]) {
+      return TOURNAMENT_LOGO_MAPPINGS[normalized];
+    }
+    
+    // Partial match
+    for (const [key, logo] of Object.entries(TOURNAMENT_LOGO_MAPPINGS)) {
+      if (normalized.includes(key) || key.includes(normalized)) {
+        return logo;
+      }
+    }
+    
+    return null;
+  }
+
   // Method to enhance match data with logos
   public enhanceMatchWithLogos(match: any): any {
-    if (!match.teams) return match;
-
     const enhancedMatch = { ...match };
+    
+    // Add tournament logo if available
+    if (match.competition || match.league || match.tournament) {
+      const competitionName = match.competition || match.league || match.tournament;
+      const tournamentLogo = this.getTournamentLogo(competitionName);
+      if (tournamentLogo) {
+        enhancedMatch.tournamentLogo = tournamentLogo;
+      }
+    }
+    
+    if (!match.teams) return enhancedMatch;
     
     if (match.teams.home?.name && !match.teams.home.logo) {
       const logo = this.getTeamLogo(match.teams.home.name, match.teams.home.badge);
@@ -165,7 +252,12 @@ class TeamLogoService {
   public addCountryMapping(countryName: string, flagUrl: string): void {
     COUNTRY_LOGO_MAPPINGS[this.normalizeTeamName(countryName)] = flagUrl;
   }
+
+  // Method to add tournament mappings dynamically
+  public addTournamentMapping(tournamentName: string, logoUrl: string): void {
+    TOURNAMENT_LOGO_MAPPINGS[this.normalizeTeamName(tournamentName)] = logoUrl;
+  }
 }
 
 export const teamLogoService = new TeamLogoService();
-export { TeamLogoService };
+export { TeamLogoService, TOURNAMENT_LOGO_MAPPINGS };
