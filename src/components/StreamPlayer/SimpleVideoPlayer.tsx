@@ -424,7 +424,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     const matchTitle = match?.title || 'Live Stream';
 
     return (
-      <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video rounded-2xl overflow-hidden relative bg-background cursor-pointer group`}>
+      <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video rounded-lg sm:rounded-2xl overflow-hidden relative bg-background cursor-pointer group`}>
         {/* Background */}
         <div className="absolute inset-0">
           {matchPoster && (
@@ -442,33 +442,33 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
 
         {/* Play Button Overlay */}
         <div 
-          className="absolute inset-0 flex flex-col items-center justify-center z-10"
+          className="absolute inset-0 flex flex-col items-center justify-center z-10 px-3 sm:px-4"
           onClick={handlePlayClick}
         >
           {isLoadingAfterClick ? (
             <div className="text-center text-white">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-3 border-b-3 border-primary mx-auto mb-4"></div>
-              <p className="text-lg font-medium">Loading stream...</p>
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-16 sm:w-16 border-t-2 sm:border-t-3 border-b-2 sm:border-b-3 border-primary mx-auto mb-2 sm:mb-4"></div>
+              <p className="text-sm sm:text-lg font-medium">Loading stream...</p>
             </div>
           ) : (
             <>
-              {/* Play Button */}
-              <div className="w-24 h-24 rounded-full bg-primary/90 flex items-center justify-center shadow-2xl group-hover:bg-primary group-hover:scale-110 transition-all duration-300 mb-6">
-                <Play className="w-12 h-12 text-white ml-1" fill="white" />
+              {/* Play Button - smaller on mobile */}
+              <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-primary/90 flex items-center justify-center shadow-2xl group-hover:bg-primary group-hover:scale-110 transition-all duration-300 mb-3 sm:mb-6">
+                <Play className="w-7 h-7 sm:w-12 sm:h-12 text-white ml-0.5 sm:ml-1" fill="white" />
               </div>
               
-              {/* Match Info */}
-              <div className="text-center px-4">
+              {/* Match Info - responsive text */}
+              <div className="text-center px-2 sm:px-4 max-w-full">
                 {homeTeamName && awayTeamName ? (
-                  <div className="space-y-2">
-                    <h3 className="text-white text-2xl sm:text-3xl font-bold">
+                  <div className="space-y-1 sm:space-y-2">
+                    <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">
                       {homeTeamName} <span className="text-white/60 font-normal">vs</span> {awayTeamName}
                     </h3>
                   </div>
                 ) : (
-                  <h3 className="text-white text-2xl sm:text-3xl font-bold">{matchTitle}</h3>
+                  <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">{matchTitle}</h3>
                 )}
-                <p className="text-white/70 text-lg mt-3">Click to Watch Live</p>
+                <p className="text-white/70 text-xs sm:text-lg mt-1.5 sm:mt-3">Tap to Watch Live</p>
               </div>
             </>
           )}
