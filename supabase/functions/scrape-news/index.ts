@@ -64,6 +64,17 @@ serve(async (req) => {
     // Extract articles from anchor tags with their associated images
     const articles: { title: string; description: string; link: string; image: string; source: string }[] = [];
     
+    // Helper function to check if URL is an actual article (has date pattern in URL)
+    const isArticleUrl = (url: string): boolean => {
+      // Article URLs typically have date pattern like /2024/12/30/ or numeric IDs
+      const datePattern = /\/\d{4}\/\d{2}\/\d{2}\//;
+      const articlePattern = /\.(html|htm)$/i;
+      const hasDateOrId = datePattern.test(url) || /\/\d{6,}/.test(url);
+      // Exclude category pages and sections
+      const isCategory = /\/(womens-world-cup|champions-league|la-liga|premier-league|transfers)\.html/i.test(url);
+      return hasDateOrId && articlePattern.test(url) && !isCategory;
+    };
+    
     // Parse article blocks - look for article/div structures with images and links
     const articleBlockRegex = /<article[^>]*>[\s\S]*?<\/article>|<div[^>]*class="[^"]*ue-c-cover-content[^"]*"[^>]*>[\s\S]*?<\/div>/gi;
     let articleMatch;
@@ -80,8 +91,8 @@ serve(async (req) => {
       if (linkMatch && linkMatch[2].length > 15) {
         const link = linkMatch[1].startsWith('http') ? linkMatch[1] : `https://www.marca.com${linkMatch[1]}`;
         
-        // Only include football/soccer related articles
-        if (link.includes('/football/') || link.includes('/soccer/') || link.includes('/en/football')) {
+        // Only include actual article URLs (not category pages)
+        if ((link.includes('/football/') || link.includes('/soccer/') || link.includes('/en/football')) && isArticleUrl(link)) {
           articles.push({
             title: linkMatch[2].trim(),
             description: '',
@@ -100,9 +111,10 @@ serve(async (req) => {
       const title = headlineMatch[1].trim();
       const link = headlineMatch[2];
       
-      // Only include football/soccer articles
+      // Only include actual article URLs (not category pages)
       if (title.length > 20 && link.includes('marca.com') && 
-          (link.includes('/football/') || link.includes('/soccer/') || link.includes('/en/football'))) {
+          (link.includes('/football/') || link.includes('/soccer/') || link.includes('/en/football')) &&
+          isArticleUrl(link)) {
         
         // Check if we already have this article
         const exists = articles.some(a => a.link === link || a.title === title);
@@ -129,7 +141,7 @@ serve(async (req) => {
       const link = headlineMatch[1].startsWith('http') ? headlineMatch[1] : `https://www.marca.com${headlineMatch[1]}`;
       const title = headlineMatch[2].trim();
       
-      if (title.length > 15 && (link.includes('/football/') || link.includes('/soccer/'))) {
+      if (title.length > 15 && (link.includes('/football/') || link.includes('/soccer/')) && isArticleUrl(link)) {
         const exists = articles.some(a => a.link === link || a.title === title);
         if (!exists) {
           articles.push({
