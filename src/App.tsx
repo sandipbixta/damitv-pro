@@ -44,6 +44,7 @@ import WatchPremierLeague from "./pages/WatchPremierLeague";
 import NbaStreaming from "./pages/NbaStreaming";
 import UfcStreaming from "./pages/UfcStreaming";
 import Highlights from "./pages/Highlights";
+import News from "./pages/News";
 
 import TelegramFAB from "./components/TelegramFAB";
 
@@ -170,6 +171,11 @@ const App: React.FC = () => {
               <Route path="/highlights" element={
                 <SEOPageTracker pageTitle="Sports Highlights - Watch Latest Match Videos" contentType="home">
                   <Highlights />
+                </SEOPageTracker>
+              } />
+              <Route path="/news" element={
+                <SEOPageTracker pageTitle="Football & Sports News - Latest Updates" contentType="home">
+                  <News />
                 </SEOPageTracker>
               } />
               <Route path="*" element={<NotFound />} />
