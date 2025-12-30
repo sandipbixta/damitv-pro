@@ -155,26 +155,22 @@ serve(async (req) => {
       }
     }
 
-    // Deduplicate and clean articles
-    const uniqueArticles = articles.reduce((acc: typeof articles, article) => {
-      const exists = acc.some(a => 
-        a.title.toLowerCase() === article.title.toLowerCase() || 
-        a.link === article.link
-      );
-      if (!exists && article.title && article.link) {
-        acc.push(article);
-      }
-      return acc;
-    }, []);
-
-    // Assign images to articles without images
-    uniqueArticles.forEach((article, index) => {
-      if (!article.image && images.length > 0) {
-        article.image = images[index % images.length]?.src || '';
-      }
+    // Deduplicate by link URL (most reliable unique identifier)
+    const seenLinks = new Set<string>();
+    const uniqueArticles = articles.filter(article => {
+      if (!article.title || !article.link) return false;
+      const normalizedLink = article.link.toLowerCase().trim();
+      if (seenLinks.has(normalizedLink)) return false;
+      seenLinks.add(normalizedLink);
+      return true;
     });
 
-    console.log(`Scraped ${uniqueArticles.length} football articles and ${images.length} images from Marca`);
+    // Log each article for debugging
+    uniqueArticles.forEach((article, index) => {
+      console.log(`Article ${index}: "${article.title.slice(0, 40)}..." -> ${article.link}`);
+    });
+
+    console.log(`Scraped ${uniqueArticles.length} unique football articles and ${images.length} images from Marca`);
 
     return new Response(
       JSON.stringify({ 
