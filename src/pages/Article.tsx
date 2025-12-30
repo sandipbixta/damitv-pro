@@ -4,9 +4,8 @@ import PageLayout from '../components/PageLayout';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ExternalLink, Clock, User } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Clock, User, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 
 interface ArticleData {
   title: string;
@@ -157,12 +156,9 @@ const Article = () => {
         </Link>
 
         {loading && (
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-3/4 bg-[#343a4d]" />
-            <Skeleton className="h-64 w-full bg-[#343a4d]" />
-            <Skeleton className="h-4 w-full bg-[#343a4d]" />
-            <Skeleton className="h-4 w-full bg-[#343a4d]" />
-            <Skeleton className="h-4 w-2/3 bg-[#343a4d]" />
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Loading article...</p>
           </div>
         )}
 

@@ -59,39 +59,71 @@ serve(async (req) => {
     const html = data.data?.html || data.html || '';
     const metadata = data.data?.metadata || data.metadata || {};
 
-    // Extract title from metadata or HTML
-    let title = metadata.title || '';
-    const titleMatch = /<h1[^>]*>([^<]+)<\/h1>/i.exec(html);
-    if (!title && titleMatch) {
-      title = titleMatch[1].trim();
+    // Extract title from metadata or HTML - try multiple patterns
+    let title = metadata.title || metadata.ogTitle || '';
+    if (!title || title.includes('Marca')) {
+      const titleMatch = /<h1[^>]*class="[^"]*ue-c-article__headline[^"]*"[^>]*>([^<]+)<\/h1>/i.exec(html) ||
+                        /<h1[^>]*>([^<]+)<\/h1>/i.exec(html);
+      if (titleMatch) {
+        title = titleMatch[1].trim();
+      }
     }
+    // Clean up title - remove site name suffix
+    title = title.replace(/\s*[-|]\s*MARCA.*$/i, '').trim();
 
-    // Extract main image
+    // Extract main image from multiple sources
     let mainImage = metadata.ogImage || metadata.image || '';
     if (!mainImage) {
-      const imgMatch = /<img[^>]+src=["']([^"']+)["'][^>]*>/i.exec(html);
-      if (imgMatch && !imgMatch[1].includes('logo') && !imgMatch[1].includes('icon')) {
-        mainImage = imgMatch[1];
+      // Try to find article featured image
+      const imgPatterns = [
+        /<figure[^>]*class="[^"]*ue-c-article__image[^"]*"[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i,
+        /<img[^>]+class="[^"]*ue-c-article[^"]*"[^>]+src=["']([^"']+)["']/i,
+        /<picture[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i,
+        /<img[^>]+src=["']([^"']+)["'][^>]*>/i
+      ];
+      for (const pattern of imgPatterns) {
+        const match = pattern.exec(html);
+        if (match && !match[1].includes('logo') && !match[1].includes('icon') && !match[1].includes('avatar')) {
+          mainImage = match[1];
+          break;
+        }
       }
     }
 
-    // Extract author if available
-    let author = '';
-    const authorMatch = /<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']/i.exec(html);
-    if (authorMatch) {
-      author = authorMatch[1];
+    // Extract author if available - try multiple patterns
+    let author = metadata.author || '';
+    if (!author) {
+      const authorPatterns = [
+        /<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']/i,
+        /<a[^>]+class="[^"]*ue-c-article__author[^"]*"[^>]*>([^<]+)<\/a>/i,
+        /<span[^>]+class="[^"]*author[^"]*"[^>]*>([^<]+)<\/span>/i
+      ];
+      for (const pattern of authorPatterns) {
+        const match = pattern.exec(html);
+        if (match) {
+          author = match[1].trim();
+          break;
+        }
+      }
     }
 
     // Extract publish date
-    let publishDate = metadata.publishedTime || '';
+    let publishDate = metadata.publishedTime || metadata.datePublished || '';
     if (!publishDate) {
-      const dateMatch = /<time[^>]+datetime=["']([^"']+)["']/i.exec(html);
-      if (dateMatch) {
-        publishDate = dateMatch[1];
+      const datePatterns = [
+        /<time[^>]+datetime=["']([^"']+)["']/i,
+        /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["']/i
+      ];
+      for (const pattern of datePatterns) {
+        const match = pattern.exec(html);
+        if (match) {
+          publishDate = match[1];
+          break;
+        }
       }
     }
 
-    // Clean markdown content - remove navigation, ads, etc.
+    // Clean markdown content - remove navigation, ads, footer, etc.
     let cleanContent = markdown
       .replace(/\[.*?\]\(javascript:.*?\)/g, '') // Remove JS links
       .replace(/\[Cookie Settings\].*$/gm, '') // Remove cookie notices
@@ -100,10 +132,23 @@ serve(async (req) => {
       .replace(/^#{1,6}\s*Menu.*$/gm, '') // Remove menu headers
       .replace(/^#{1,6}\s*Navigation.*$/gm, '') // Remove navigation headers
       .replace(/^\s*[-*]\s*\[.*?\]\(.*?\)\s*$/gm, '') // Remove nav links
+      .replace(/^Related articles?:?.*$/gmi, '') // Remove related articles section
+      .replace(/^More:?\s*\[.*$/gm, '') // Remove "More" links
+      .replace(/^Share this article.*$/gmi, '') // Remove share prompts
+      .replace(/^Follow us on.*$/gmi, '') // Remove social links
+      .replace(/^Advertisement.*$/gmi, '') // Remove ad markers
+      .replace(/^\[AD\].*$/gm, '') // Remove ad blocks
+      .replace(/La Liga\s*\|.*$/gm, '') // Remove Marca navigation breadcrumbs
+      .replace(/Premier League\s*\|.*$/gm, '')
       .replace(/\n{3,}/g, '\n\n') // Clean up extra newlines
       .trim();
 
-    console.log('Successfully scraped article:', title);
+    // If content is too short, it might be a category page - log warning
+    if (cleanContent.length < 200) {
+      console.warn('Article content seems too short, may be a category page:', articleUrl);
+    }
+
+    console.log('Successfully scraped article:', title, '- Content length:', cleanContent.length);
 
     return new Response(
       JSON.stringify({ 
