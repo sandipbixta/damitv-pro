@@ -1,5 +1,6 @@
 // CDN Channels API Service
 // Fetches live TV channels via Supabase Edge Function to avoid CORS
+// Now also fetches 24/7 channels from SportSRC (time === 0)
 
 import { supabase } from '@/integrations/supabase/client';
 
@@ -10,9 +11,11 @@ export interface CDNChannel {
   embedUrl: string;
   logo?: string;
   viewers?: number;
+  isLive247?: boolean;
+  source?: 'cdn' | 'sportsrc';
 }
 
-// Actual API response format
+// Actual API response format for CDN
 interface CDNApiChannel {
   name: string;
   code: string;
@@ -21,9 +24,30 @@ interface CDNApiChannel {
   viewers: number;
 }
 
+// SportSRC channel format
+interface SportSRCChannel {
+  id: string;
+  name: string;
+  title: string;
+  code: string;
+  country: string;
+  category: string;
+  image: string | null;
+  logo: string | null;
+  embedUrl: string;
+  isLive247: boolean;
+  active: boolean;
+  viewers: number;
+}
+
 interface CDNApiResponse {
   total_channels: number;
   channels: CDNApiChannel[];
+}
+
+interface SportSRCApiResponse {
+  total_channels: number;
+  channels: SportSRCChannel[];
 }
 
 // Map country codes to full names
@@ -97,7 +121,21 @@ class CDNChannelsApiService {
       country: this.getCountryName(apiChannel.code),
       embedUrl: apiChannel.url,
       logo: apiChannel.image || undefined,
-      viewers: apiChannel.viewers
+      viewers: apiChannel.viewers,
+      source: 'cdn'
+    };
+  }
+
+  private transformSportSRCChannel(channel: SportSRCChannel): CDNChannel {
+    return {
+      id: channel.id,
+      title: channel.title || channel.name,
+      country: channel.country || channel.category,
+      embedUrl: channel.embedUrl,
+      logo: channel.logo || channel.image || undefined,
+      viewers: channel.viewers || 0,
+      isLive247: true,
+      source: 'sportsrc'
     };
   }
 
@@ -127,38 +165,52 @@ class CDNChannelsApiService {
 
   private async doFetch(): Promise<CDNChannel[]> {
     try {
-      console.log('📺 Fetching channels via Supabase Edge Function');
+      console.log('📺 Fetching channels from both CDN and SportSRC...');
       
-      const { data, error } = await supabase.functions.invoke('cdn-channels');
+      // Fetch from both sources in parallel
+      const [cdnResult, sportsrcResult] = await Promise.allSettled([
+        supabase.functions.invoke('cdn-channels'),
+        supabase.functions.invoke('sportsrc-channels')
+      ]);
 
-      if (error) {
-        throw new Error(`Edge function error: ${error.message}`);
+      let allChannels: CDNChannel[] = [];
+
+      // Process CDN channels
+      if (cdnResult.status === 'fulfilled' && !cdnResult.value.error) {
+        const apiData: CDNApiResponse = cdnResult.value.data;
+        if (apiData?.channels && Array.isArray(apiData.channels)) {
+          const cdnChannels = apiData.channels.map(ch => this.transformChannel(ch));
+          const validCdnChannels = cdnChannels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
+          allChannels.push(...validCdnChannels);
+          console.log(`📺 CDN API returned ${validCdnChannels.length} channels`);
+        }
+      } else {
+        console.warn('📺 CDN API failed or returned error');
       }
 
-      const apiData: CDNApiResponse = data;
-      
-      if (!apiData.channels || !Array.isArray(apiData.channels)) {
-        console.warn('📺 Invalid API response format');
-        return this.cache.data || [];
+      // Process SportSRC 24/7 channels
+      if (sportsrcResult.status === 'fulfilled' && !sportsrcResult.value.error) {
+        const sportsrcData: SportSRCApiResponse = sportsrcResult.value.data;
+        if (sportsrcData?.channels && Array.isArray(sportsrcData.channels)) {
+          const sportsrcChannels = sportsrcData.channels.map(ch => this.transformSportSRCChannel(ch));
+          const validSportsrcChannels = sportsrcChannels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
+          allChannels.push(...validSportsrcChannels);
+          console.log(`📺 SportSRC API returned ${validSportsrcChannels.length} 24/7 channels`);
+        }
+      } else {
+        console.warn('📺 SportSRC API failed or returned error');
       }
-
-      console.log(`📺 API returned ${apiData.total_channels} total channels`);
-
-      const channels = apiData.channels.map(ch => this.transformChannel(ch));
-      
-      // Filter out channels without embed URLs
-      const validChannels = channels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
 
       // Update cache
       this.cache = {
-        data: validChannels,
+        data: allChannels,
         timestamp: Date.now()
       };
 
-      console.log(`📺 Loaded ${validChannels.length} valid channels from CDN API`);
-      return validChannels;
+      console.log(`📺 Total channels loaded: ${allChannels.length}`);
+      return allChannels;
     } catch (error) {
-      console.error('📺 Error fetching CDN channels:', error);
+      console.error('📺 Error fetching channels:', error);
       // Return cached data if available, otherwise empty array
       return this.cache.data || [];
     }

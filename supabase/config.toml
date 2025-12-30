@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.sitemap]
 verify_jwt = false
+
+[functions.sportsrc-channels]
+verify_jwt = false
