@@ -25,6 +25,7 @@ import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
+import MarcaBlog from '../components/MarcaBlog';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -319,6 +320,9 @@ const Index = () => {
             
             {/* Latest Highlights Section */}
             <LatestHighlights />
+            
+            {/* Marca Football News Section */}
+            <MarcaBlog />
             
             {/* Call to Action Section */}
             <section className="mb-10 mt-10">
