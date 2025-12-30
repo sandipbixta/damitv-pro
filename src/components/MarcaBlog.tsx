@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Loader2, Newspaper } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface MarcaArticle {
+interface NewsArticle {
   title: string;
   description: string;
   link: string;
@@ -11,20 +11,26 @@ interface MarcaArticle {
   source: string;
 }
 
-const MarcaArticleCard: React.FC<{ article: MarcaArticle; index: number }> = ({ article, index }) => {
-  // Ensure unique URL encoding for each article
+const getSourceColor = (source: string) => {
+  switch (source.toLowerCase()) {
+    case 'marca':
+      return 'bg-red-600';
+    case 'goal':
+      return 'bg-blue-600';
+    default:
+      return 'bg-primary';
+  }
+};
+
+const NewsArticleCard: React.FC<{ article: NewsArticle; index: number }> = ({ article, index }) => {
   const encodedUrl = encodeURIComponent(article.link);
   const encodedTitle = encodeURIComponent(article.title);
   const articleLink = `/article?url=${encodedUrl}&title=${encodedTitle}`;
-  
-  // Debug logging
-  console.log(`Article ${index}: "${article.title.slice(0, 30)}..." -> ${article.link}`);
   
   return (
     <Link 
       to={articleLink} 
       className="group cursor-pointer h-full block"
-      onClick={() => console.log('Clicked article:', article.title, article.link)}
     >
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
         {/* Thumbnail Section */}
@@ -49,8 +55,8 @@ const MarcaArticleCard: React.FC<{ article: MarcaArticle; index: number }> = ({ 
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
 
           {/* Source badge */}
-          <div className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wide">
-            Marca
+          <div className={`absolute top-2 right-2 ${getSourceColor(article.source)} text-white text-[9px] font-bold uppercase px-1.5 py-0.5 rounded tracking-wide`}>
+            {article.source}
           </div>
 
           {/* Read indicator on hover */}
@@ -86,26 +92,27 @@ const MarcaArticleCard: React.FC<{ article: MarcaArticle; index: number }> = ({ 
 };
 
 const MarcaBlog: React.FC = () => {
-  const [articles, setArticles] = useState<MarcaArticle[]>([]);
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchArticles = useCallback(async () => {
     try {
-      console.log('Fetching Marca articles for homepage...');
+      console.log('Fetching news articles...');
       const { data, error: fetchError } = await supabase.functions.invoke('scrape-news');
       
       if (fetchError) {
-        console.error('Error fetching Marca articles:', fetchError);
+        console.error('Error fetching articles:', fetchError);
         setError('Failed to load articles');
         return;
       }
       
       if (data?.success && data?.articles) {
-        setArticles(data.articles.slice(0, 6)); // Show 6 articles to match grid
+        console.log('Received articles:', data.articles.length);
+        setArticles(data.articles.slice(0, 6));
       }
     } catch (err) {
-      console.error('Failed to fetch Marca articles:', err);
+      console.error('Failed to fetch articles:', err);
       setError('Failed to load articles');
     } finally {
       setLoading(false);
@@ -121,7 +128,7 @@ const MarcaBlog: React.FC = () => {
       <section className="mb-10">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
-            Marca
+            Football News
           </h2>
         </div>
         <div className="flex items-center justify-center py-12">
@@ -132,7 +139,7 @@ const MarcaBlog: React.FC = () => {
   }
 
   if (error || articles.length === 0) {
-    return null; // Don't show section if no articles
+    return null;
   }
 
   return (
@@ -140,11 +147,16 @@ const MarcaBlog: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
-            Marca
-          </h2>
-          <span className="text-xs text-muted-foreground font-medium bg-red-600/20 text-red-400 px-2 py-0.5 rounded">
             Football News
-          </span>
+          </h2>
+          <div className="flex gap-1">
+            <span className="text-xs text-white font-medium bg-red-600 px-2 py-0.5 rounded">
+              Marca
+            </span>
+            <span className="text-xs text-white font-medium bg-blue-600 px-2 py-0.5 rounded">
+              Goal
+            </span>
+          </div>
         </div>
         <Link 
           to="/news" 
@@ -156,11 +168,11 @@ const MarcaBlog: React.FC = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
         {articles.map((article, index) => (
-          <MarcaArticleCard key={`${article.link}-${index}`} article={article} index={index} />
+          <NewsArticleCard key={`${article.link}-${index}`} article={article} index={index} />
         ))}
       </div>
 
-      {/* Marca credit */}
+      {/* Credits */}
       <div className="mt-4 text-center">
         <span className="text-xs text-muted-foreground">
           News sourced from{' '}
@@ -171,6 +183,15 @@ const MarcaBlog: React.FC = () => {
             className="text-red-500 hover:text-red-400 font-medium"
           >
             MARCA.com
+          </a>
+          {' & '}
+          <a 
+            href="https://www.goal.com/en-au"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-400 font-medium"
+          >
+            Goal.com
           </a>
         </span>
       </div>
