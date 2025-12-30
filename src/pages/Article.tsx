@@ -76,6 +76,38 @@ const Article = () => {
     }
   };
 
+  // Generate NewsArticle structured data
+  const generateArticleSchema = () => {
+    if (!article) return null;
+    
+    return {
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "headline": article.title,
+      "image": article.image ? [article.image] : [],
+      "datePublished": article.publishDate || new Date().toISOString(),
+      "dateModified": article.publishDate || new Date().toISOString(),
+      "author": {
+        "@type": "Person",
+        "name": article.author || article.source
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "DamiTV",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://damitv.pro/favicon.png"
+        }
+      },
+      "description": article.content?.slice(0, 160) || '',
+      "isBasedOn": article.sourceUrl,
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `https://damitv.pro/article?url=${encodeURIComponent(articleUrl || '')}`
+      }
+    };
+  };
+
   // Convert markdown to simple HTML for display
   const renderContent = (content: string) => {
     if (!content) return null;
@@ -86,7 +118,7 @@ const Article = () => {
     return paragraphs.map((paragraph, index) => {
       // Check for headers
       if (paragraph.startsWith('# ')) {
-        return <h1 key={index} className="text-2xl font-bold text-white mt-6 mb-4">{paragraph.slice(2)}</h1>;
+        return <h2 key={index} className="text-2xl font-bold text-white mt-6 mb-4">{paragraph.slice(2)}</h2>;
       }
       if (paragraph.startsWith('## ')) {
         return <h2 key={index} className="text-xl font-bold text-white mt-5 mb-3">{paragraph.slice(3)}</h2>;
@@ -124,11 +156,11 @@ const Article = () => {
         );
       }
       
-      // Check for bold/italic text and links
+      // Check for bold/italic text and links - add nofollow to external links
       let text = paragraph
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#9b87f5] hover:underline" target="_blank" rel="noopener noreferrer">$1</a>');
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#9b87f5] hover:underline" target="_blank" rel="noopener noreferrer nofollow">$1</a>');
       
       return (
         <p 
@@ -145,7 +177,29 @@ const Article = () => {
       <Helmet>
         <title>{article?.title || articleTitle} | DamiTV Sports News</title>
         <meta name="description" content={article?.content?.slice(0, 160) || `Read ${articleTitle} on DamiTV`} />
+        <meta name="robots" content="noindex, follow" />
+        
+        {/* Canonical tag pointing to original source */}
+        {articleUrl && <link rel="canonical" href={articleUrl} />}
+        
+        {/* Open Graph */}
         {article?.image && <meta property="og:image" content={article.image} />}
+        <meta property="og:title" content={article?.title || articleTitle} />
+        <meta property="og:description" content={article?.content?.slice(0, 160) || `Read ${articleTitle} on DamiTV`} />
+        <meta property="og:type" content="article" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={article?.title || articleTitle} />
+        <meta name="twitter:description" content={article?.content?.slice(0, 160) || `Read ${articleTitle} on DamiTV`} />
+        {article?.image && <meta name="twitter:image" content={article.image} />}
+        
+        {/* Article structured data */}
+        {article && (
+          <script type="application/ld+json">
+            {JSON.stringify(generateArticleSchema())}
+          </script>
+        )}
       </Helmet>
 
       <div className="max-w-4xl mx-auto py-6 px-4">
@@ -194,7 +248,7 @@ const Article = () => {
                 {article.source}
               </Badge>
 
-              {/* Title */}
+              {/* Title - H1 for SEO */}
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-4 leading-tight">
                 {article.title}
               </h1>
@@ -210,7 +264,7 @@ const Article = () => {
                 {article.publishDate && (
                   <span className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {formatDate(article.publishDate)}
+                    <time dateTime={article.publishDate}>{formatDate(article.publishDate)}</time>
                   </span>
                 )}
               </div>
@@ -220,7 +274,7 @@ const Article = () => {
                 {renderContent(article.content)}
               </div>
 
-              {/* Source credit and link */}
+              {/* Source credit and link - nofollow external links */}
               <div className="mt-8 pt-6 border-t border-[#343a4d]">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="text-sm text-gray-400">
@@ -228,7 +282,7 @@ const Article = () => {
                     <a 
                       href={article.sourceUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="noopener noreferrer nofollow"
                       className="text-red-500 hover:text-red-400 font-medium"
                     >
                       {article.source}
@@ -238,7 +292,7 @@ const Article = () => {
                   <a
                     href={article.sourceUrl}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="noopener noreferrer nofollow"
                     className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
                   >
                     Read on {article.source}
@@ -246,19 +300,28 @@ const Article = () => {
                   </a>
                 </div>
                 
-                {/* Marca footer credit */}
+                {/* Footer credit with nofollow */}
                 <div className="mt-6 pt-4 border-t border-[#343a4d] text-center">
                   <span className="text-xs text-gray-500">
                     Content sourced from{' '}
                     <a 
                       href="https://www.marca.com/en/football.html"
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="noopener noreferrer nofollow"
                       className="text-red-500 hover:text-red-400 font-medium"
                     >
                       MARCA.com
                     </a>
-                    {' '}— All rights belong to the original publisher
+                    {' '}and{' '}
+                    <a 
+                      href="https://www.goal.com/en-au"
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="text-red-500 hover:text-red-400 font-medium"
+                    >
+                      Goal.com
+                    </a>
+                    {' '}— All rights belong to the original publishers
                   </span>
                 </div>
               </div>
