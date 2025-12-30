@@ -47,80 +47,128 @@ serve(async (req) => {
       );
     }
 
-    // Parse the scraped content to extract news articles
     const content = data.data?.markdown || data.markdown || '';
     const html = data.data?.html || data.html || '';
     
-    // Extract images from HTML
-    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*alt=["']([^"']*)["']/gi;
+    // Extract all images with their context
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*(?:alt=["']([^"']*)["'])?[^>]*>/gi;
     const images: { src: string; alt: string }[] = [];
     let match;
     while ((match = imgRegex.exec(html)) !== null) {
-      if (match[1] && !match[1].includes('data:image') && !match[1].includes('pixel')) {
-        images.push({ src: match[1], alt: match[2] || '' });
+      const src = match[1];
+      if (src && !src.includes('data:image') && !src.includes('pixel') && !src.includes('logo') && !src.includes('icon')) {
+        images.push({ src, alt: match[2] || '' });
       }
     }
 
-    // Parse markdown to extract article-like sections
-    const articles: { title: string; description: string; link: string; image?: string }[] = [];
+    // Extract articles from anchor tags with their associated images
+    const articles: { title: string; description: string; link: string; image: string; source: string }[] = [];
     
-    // Extract links that look like article links
-    const links = data.data?.links || data.links || [];
-    const articleLinks = links.filter((link: string) => 
-      link.includes('/football/') && 
-      !link.includes('.html?') &&
-      link.match(/\/\d{4}\/\d{2}\/\d{2}\//)
-    ).slice(0, 20);
+    // Parse article blocks - look for article/div structures with images and links
+    const articleBlockRegex = /<article[^>]*>[\s\S]*?<\/article>|<div[^>]*class="[^"]*ue-c-cover-content[^"]*"[^>]*>[\s\S]*?<\/div>/gi;
+    let articleMatch;
+    
+    while ((articleMatch = articleBlockRegex.exec(html)) !== null) {
+      const block = articleMatch[0];
+      
+      // Extract image from block
+      const blockImgMatch = /<img[^>]+src=["']([^"']+)["']/i.exec(block);
+      const imgSrc = blockImgMatch ? blockImgMatch[1] : '';
+      
+      // Extract link and title from block
+      const linkMatch = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/i.exec(block);
+      if (linkMatch && linkMatch[2].length > 15) {
+        const link = linkMatch[1].startsWith('http') ? linkMatch[1] : `https://www.marca.com${linkMatch[1]}`;
+        
+        // Only include football/soccer related articles
+        if (link.includes('/football/') || link.includes('/soccer/') || link.includes('/en/football')) {
+          articles.push({
+            title: linkMatch[2].trim(),
+            description: '',
+            link,
+            image: imgSrc,
+            source: 'Marca'
+          });
+        }
+      }
+    }
 
-    // Parse markdown sections (headlines)
+    // Also extract from headline patterns in markdown
     const headlineRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     let headlineMatch;
     while ((headlineMatch = headlineRegex.exec(content)) !== null) {
       const title = headlineMatch[1].trim();
       const link = headlineMatch[2];
       
-      if (title.length > 20 && link.includes('marca.com')) {
-        // Find a relevant image
-        const relevantImage = images.find(img => 
-          img.alt.toLowerCase().includes(title.split(' ')[0].toLowerCase()) ||
-          title.toLowerCase().includes(img.alt.split(' ')[0].toLowerCase())
-        );
+      // Only include football/soccer articles
+      if (title.length > 20 && link.includes('marca.com') && 
+          (link.includes('/football/') || link.includes('/soccer/') || link.includes('/en/football'))) {
         
-        articles.push({
-          title,
-          description: '',
-          link,
-          image: relevantImage?.src || images[articles.length % images.length]?.src,
-        });
-      }
-    }
-
-    // If we didn't get articles from markdown, try parsing headlines from HTML
-    if (articles.length === 0) {
-      const headlineHtmlRegex = /<h[23][^>]*>[\s\S]*?<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
-      while ((headlineMatch = headlineHtmlRegex.exec(html)) !== null) {
-        const link = headlineMatch[1];
-        const title = headlineMatch[2].trim();
-        
-        if (title.length > 15) {
+        // Check if we already have this article
+        const exists = articles.some(a => a.link === link || a.title === title);
+        if (!exists) {
+          // Find relevant image
+          const relevantImage = images.find(img => 
+            img.alt.toLowerCase().includes(title.split(' ')[0].toLowerCase())
+          );
+          
           articles.push({
             title,
             description: '',
-            link: link.startsWith('http') ? link : `https://www.marca.com${link}`,
-            image: images[articles.length % images.length]?.src,
+            link,
+            image: relevantImage?.src || images[articles.length % Math.max(1, images.length)]?.src || '',
+            source: 'Marca'
           });
         }
       }
     }
 
-    console.log(`Scraped ${articles.length} articles and ${images.length} images from Marca`);
+    // Extract h2/h3 headlines with links specifically for football
+    const headlineHtmlRegex = /<h[23][^>]*>[\s\S]*?<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>[\s\S]*?<\/h[23]>/gi;
+    while ((headlineMatch = headlineHtmlRegex.exec(html)) !== null) {
+      const link = headlineMatch[1].startsWith('http') ? headlineMatch[1] : `https://www.marca.com${headlineMatch[1]}`;
+      const title = headlineMatch[2].trim();
+      
+      if (title.length > 15 && (link.includes('/football/') || link.includes('/soccer/'))) {
+        const exists = articles.some(a => a.link === link || a.title === title);
+        if (!exists) {
+          articles.push({
+            title,
+            description: '',
+            link,
+            image: images[articles.length % Math.max(1, images.length)]?.src || '',
+            source: 'Marca'
+          });
+        }
+      }
+    }
+
+    // Deduplicate and clean articles
+    const uniqueArticles = articles.reduce((acc: typeof articles, article) => {
+      const exists = acc.some(a => 
+        a.title.toLowerCase() === article.title.toLowerCase() || 
+        a.link === article.link
+      );
+      if (!exists && article.title && article.link) {
+        acc.push(article);
+      }
+      return acc;
+    }, []);
+
+    // Assign images to articles without images
+    uniqueArticles.forEach((article, index) => {
+      if (!article.image && images.length > 0) {
+        article.image = images[index % images.length]?.src || '';
+      }
+    });
+
+    console.log(`Scraped ${uniqueArticles.length} football articles and ${images.length} images from Marca`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        articles: articles.slice(0, 15),
-        images: images.slice(0, 20),
-        rawMarkdown: content.substring(0, 5000),
+        articles: uniqueArticles.slice(0, 20),
+        images: images.slice(0, 30),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

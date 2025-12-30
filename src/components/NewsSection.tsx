@@ -15,6 +15,7 @@ interface NewsItem {
   pubDate: string;
   category?: string;
   imageUrl?: string;
+  source?: string;
 }
 
 const NewsSection = () => {
@@ -51,7 +52,8 @@ const NewsSection = () => {
           link: article.link,
           pubDate: new Date().toISOString(),
           category: 'football',
-          imageUrl: article.image || 'https://loremflickr.com/480/240/soccer'
+          imageUrl: article.image || '',
+          source: 'Marca'
         }));
       }
       
@@ -62,7 +64,6 @@ const NewsSection = () => {
     }
   }, []);
   
-  // Move fetchNews to useCallback to prevent unnecessary re-creation
   const fetchNews = useCallback(async () => {
     console.log('Fetching news data at:', new Date().toLocaleTimeString());
     setLoading(true);
@@ -75,13 +76,12 @@ const NewsSection = () => {
         fetchRSSNews()
       ]);
       
-      // Combine and deduplicate
+      // Prioritize Marca news, then add RSS
       const allItems = [...marcaNews, ...rssNews];
       
       if (allItems.length === 0) {
         setError('No news items found. Please try again later.');
       } else {
-        // Ensure we have a diverse set of categories when possible
         const diverseItems = getDiverseNewsSet(allItems);
         setNewsItems(diverseItems);
         setLastUpdated(new Date());
@@ -98,7 +98,6 @@ const NewsSection = () => {
   const fetchRSSNews = async (): Promise<NewsItem[]> => {
     const feedUrls = [
       'https://api.allorigins.win/raw?url=https://www.espn.com/espn/rss/soccer/news',
-      'https://api.allorigins.win/raw?url=https://www.espn.com/espn/rss/news',
       'https://api.allorigins.win/raw?url=https://www.goal.com/feeds/news?fmt=rss',
     ];
     
@@ -116,10 +115,7 @@ const NewsSection = () => {
         
         clearTimeout(timeoutId);
         
-        if (!response.ok) {
-          console.warn(`Failed to fetch from ${url}: ${response.status}`);
-          continue;
-        }
+        if (!response.ok) continue;
         
         const data = await response.text();
         const parser = new DOMParser();
@@ -133,16 +129,10 @@ const NewsSection = () => {
           const pubDate = item.querySelector('pubDate')?.textContent || '';
           
           // Skip NFL news
-          if (
-            title.toLowerCase().includes('nfl') || 
-            description.toLowerCase().includes('nfl') ||
-            title.toLowerCase().includes('american football') ||
-            description.toLowerCase().includes('american football')
-          ) {
+          if (title.toLowerCase().includes('nfl') || description.toLowerCase().includes('nfl')) {
             return;
           }
           
-          // Find image in media:content or enclosure tags or within description
           let imageUrl = '';
           const mediaContent = item.querySelector('media\\:content, content');
           const enclosure = item.querySelector('enclosure');
@@ -151,46 +141,26 @@ const NewsSection = () => {
             imageUrl = mediaContent.getAttribute('url') || '';
           } else if (enclosure && enclosure.getAttribute('url') && enclosure.getAttribute('type')?.startsWith('image/')) {
             imageUrl = enclosure.getAttribute('url') || '';
-          } else {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = description;
-            const img = tempDiv.querySelector('img');
-            if (img && img.src) {
-              imageUrl = img.src;
-            }
           }
           
-          if (!imageUrl) {
-            imageUrl = 'https://loremflickr.com/480/240/' + 
-              (title.toLowerCase().includes('soccer') || title.toLowerCase().includes('football') ? 'soccer' : 'sports');
-          }
-          
-          // Categorize the news item
           let category = "other";
           const lowerTitle = title.toLowerCase();
-          const lowerDesc = description.toLowerCase();
           
-          if ((lowerTitle.includes('football') && !lowerTitle.includes('nfl')) || 
-              lowerTitle.includes('soccer') || 
-              lowerTitle.includes('premier league') || 
-              lowerTitle.includes('uefa') || 
-              lowerTitle.includes('la liga') || 
-              (lowerDesc.includes('football') && !lowerDesc.includes('nfl')) || 
-              lowerDesc.includes('soccer')) {
+          if (lowerTitle.includes('football') || lowerTitle.includes('soccer') || 
+              lowerTitle.includes('premier league') || lowerTitle.includes('la liga')) {
             category = "football";
-          } else if (lowerTitle.includes('basketball') || 
-                     lowerTitle.includes('nba') || 
-                     lowerTitle.includes('ncaa') || 
-                     lowerDesc.includes('basketball')) {
+          } else if (lowerTitle.includes('basketball') || lowerTitle.includes('nba')) {
             category = "basketball";
-          } else if (lowerTitle.includes('baseball') || 
-                     lowerTitle.includes('mlb') || 
-                     lowerDesc.includes('baseball')) {
+          } else if (lowerTitle.includes('baseball') || lowerTitle.includes('mlb')) {
             category = "baseball";
-          } else if (lowerTitle.includes('tennis') || 
-                     lowerDesc.includes('tennis')) {
+          } else if (lowerTitle.includes('tennis')) {
             category = "tennis";
           }
+          
+          // Determine source from URL
+          let source = 'Sports News';
+          if (url.includes('espn')) source = 'ESPN';
+          else if (url.includes('goal')) source = 'Goal.com';
           
           allItems.push({
             title,
@@ -198,7 +168,8 @@ const NewsSection = () => {
             link,
             pubDate,
             category,
-            imageUrl
+            imageUrl,
+            source
           });
         });
       } catch (err) {
@@ -210,20 +181,14 @@ const NewsSection = () => {
   };
 
   useEffect(() => {
-    // Initial fetch
     fetchNews();
     
-    // Set up auto-refresh every 30 minutes
     const refreshIntervalId = setInterval(() => {
       console.log('Auto-refreshing news');
       fetchNews();
     }, 30 * 60 * 1000);
     
-    // Cleanup function to clear interval when component unmounts
-    return () => {
-      console.log('Cleaning up news refresh interval');
-      clearInterval(refreshIntervalId);
-    };
+    return () => clearInterval(refreshIntervalId);
   }, [fetchNews]);
 
   const handleManualRefresh = () => {
@@ -234,67 +199,42 @@ const NewsSection = () => {
     fetchNews();
   };
 
-  // Function to get a diverse set of news items across categories
   const getDiverseNewsSet = (items: NewsItem[]): NewsItem[] => {
-    // Prioritize football/soccer news
-    const footballNews = items.filter(item => item.category === 'football');
+    // Prioritize Marca football news first
+    const marcaNews = items.filter(item => item.source === 'Marca');
+    const otherFootball = items.filter(item => item.category === 'football' && item.source !== 'Marca');
     const otherNews = items.filter(item => item.category !== 'football');
     
-    // Create a map of category -> news items for other categories
-    const categoryMap: Record<string, NewsItem[]> = {};
-    otherNews.forEach(item => {
-      if (!categoryMap[item.category || 'other']) {
-        categoryMap[item.category || 'other'] = [];
-      }
-      categoryMap[item.category || 'other'].push(item);
-    });
-    
-    // Result array will start with football news (at least 3 if available)
     const result: NewsItem[] = [];
     
-    // Add football news (at least 3 if available)
-    for (let i = 0; i < Math.min(3, footballNews.length); i++) {
-      result.push(footballNews[i]);
+    // Add Marca news first (up to 8)
+    for (let i = 0; i < Math.min(8, marcaNews.length); i++) {
+      result.push(marcaNews[i]);
     }
     
-    // Then add one from each other main category if available
-    const otherCategories = ['basketball', 'baseball', 'tennis', 'other'];
-    otherCategories.forEach(category => {
-      if (categoryMap[category] && categoryMap[category].length > 0) {
-        result.push(categoryMap[category].shift()!);
-      }
-    });
-    
-    // If we still need more items to reach at least 5, add more football news
-    if (result.length < 5 && footballNews.length > 3) {
-      const additionalFootballCount = Math.min(5 - result.length, footballNews.length - 3);
-      for (let i = 3; i < 3 + additionalFootballCount; i++) {
-        result.push(footballNews[i]);
-      }
+    // Add other football news
+    for (let i = 0; i < Math.min(4, otherFootball.length); i++) {
+      result.push(otherFootball[i]);
     }
     
-    // If we still don't have enough, add from other categories
-    const remainingItems = Object.values(categoryMap).flat();
-    while (result.length < 10 && remainingItems.length > 0) {
-      result.push(remainingItems.shift()!);
+    // Add some other sports
+    for (let i = 0; i < Math.min(3, otherNews.length); i++) {
+      result.push(otherNews[i]);
     }
     
     return result;
   };
 
-  // Filter news by active category
   const filteredNews = activeCategory 
     ? newsItems.filter(item => item.category === activeCategory) 
     : newsItems;
 
-  // Strip HTML tags from description
   const stripHtml = (html: string) => {
     const tmp = document.createElement('DIV');
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || '';
   };
 
-  // Get category badge color
   const getCategoryColor = (category?: string) => {
     switch(category) {
       case 'football': return 'bg-green-600';
@@ -305,11 +245,20 @@ const NewsSection = () => {
     }
   };
 
+  const getSourceColor = (source?: string) => {
+    switch(source) {
+      case 'Marca': return 'bg-red-600';
+      case 'ESPN': return 'bg-red-500';
+      case 'Goal.com': return 'bg-blue-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
   return (
     <div className="bg-[#242836] rounded-xl p-6 border border-[#343a4d]">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          Sports News
+          Football News
           <Link to="/news" className="text-sm text-[#9b87f5] font-normal ml-2 hover:underline">
             View All →
           </Link>
@@ -358,26 +307,49 @@ const NewsSection = () => {
         <div className="text-red-500 text-center py-4">{error}</div>
       )}
       
-      <div className="space-y-4">
+      {/* Blog-style grid layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredNews.length === 0 && !loading && (
-          <div className="text-center py-4 text-gray-400">
+          <div className="col-span-full text-center py-4 text-gray-400">
             No news available for this category. Try another category or check back later.
           </div>
         )}
         
         {filteredNews.map((item, index) => (
-          <Card key={index} className="bg-[#1A1F2C] border-[#343a4d]">
+          <Card key={index} className="bg-[#1A1F2C] border-[#343a4d] overflow-hidden hover:border-[#9b87f5] transition-colors group">
+            {/* Article Image */}
+            {item.imageUrl && (
+              <div className="relative h-40 overflow-hidden">
+                <img 
+                  src={item.imageUrl} 
+                  alt={item.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                {/* Source badge on image */}
+                {item.source && (
+                  <Badge className={`absolute top-2 left-2 ${getSourceColor(item.source)} text-white text-xs`}>
+                    {item.source}
+                  </Badge>
+                )}
+              </div>
+            )}
+            
             <div className="p-4">
               <CardHeader className="pb-2 px-0 pt-0">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg font-semibold text-white">{item.title}</CardTitle>
-                  {item.category && (
-                    <Badge variant="source" className={`${getCategoryColor(item.category)} ml-2 whitespace-nowrap`}>
+                <div className="flex justify-between items-start gap-2">
+                  <CardTitle className="text-base font-semibold text-white line-clamp-2 leading-tight">
+                    {item.title}
+                  </CardTitle>
+                  {item.category && !item.imageUrl && (
+                    <Badge variant="source" className={`${getCategoryColor(item.category)} shrink-0`}>
                       {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                     </Badge>
                   )}
                 </div>
-                <CardDescription className="text-xs text-gray-400">
+                <CardDescription className="text-xs text-gray-400 mt-1">
                   {new Date(item.pubDate).toLocaleDateString(undefined, { 
                     year: 'numeric', 
                     month: 'short', 
@@ -385,20 +357,52 @@ const NewsSection = () => {
                   })}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-sm text-gray-300 pb-2 px-0">
-                {stripHtml(item.description).slice(0, 150)}
-                {stripHtml(item.description).length > 150 ? '...' : ''}
-              </CardContent>
-              <CardFooter className="px-0">
-                <a href={item.link} target="_blank" rel="noopener noreferrer">
-                  <Button variant="link" className="px-0 text-[#9b87f5]" size="sm">
-                    Read More <ExternalLink className="ml-1 h-3 w-3" />
-                  </Button>
+              
+              {item.description && (
+                <CardContent className="text-sm text-gray-300 pb-2 px-0">
+                  {stripHtml(item.description).slice(0, 100)}
+                  {stripHtml(item.description).length > 100 ? '...' : ''}
+                </CardContent>
+              )}
+              
+              <CardFooter className="px-0 pt-2 flex items-center justify-between">
+                <a 
+                  href={item.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[#9b87f5] hover:text-[#b8a5ff] text-sm font-medium transition-colors"
+                >
+                  Read on {item.source || 'Source'} <ExternalLink className="h-3 w-3" />
                 </a>
+                
+                {/* Marca credit link */}
+                {item.source === 'Marca' && (
+                  <a 
+                    href="https://www.marca.com/en/football.html" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    via Marca
+                  </a>
+                )}
               </CardFooter>
             </div>
           </Card>
         ))}
+      </div>
+      
+      {/* Marca credit footer */}
+      <div className="mt-6 pt-4 border-t border-[#343a4d] flex items-center justify-center gap-2">
+        <span className="text-xs text-gray-500">Football news powered by</span>
+        <a 
+          href="https://www.marca.com/en/football.html" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-xs text-red-500 hover:text-red-400 font-medium transition-colors"
+        >
+          MARCA.com
+        </a>
       </div>
     </div>
   );
