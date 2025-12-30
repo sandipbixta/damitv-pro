@@ -315,81 +315,141 @@ const NewsSection = () => {
           </div>
         )}
         
-        {filteredNews.map((item, index) => (
-          <Card key={index} className="bg-[#1A1F2C] border-[#343a4d] overflow-hidden hover:border-[#9b87f5] transition-colors group">
-            {/* Article Image */}
-            {item.imageUrl && (
-              <div className="relative h-40 overflow-hidden">
-                <img 
-                  src={item.imageUrl} 
-                  alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                {/* Source badge on image */}
-                {item.source && (
-                  <Badge className={`absolute top-2 left-2 ${getSourceColor(item.source)} text-white text-xs`}>
-                    {item.source}
-                  </Badge>
-                )}
-              </div>
-            )}
-            
-            <div className="p-4">
-              <CardHeader className="pb-2 px-0 pt-0">
-                <div className="flex justify-between items-start gap-2">
-                  <CardTitle className="text-base font-semibold text-white line-clamp-2 leading-tight">
-                    {item.title}
-                  </CardTitle>
-                  {item.category && !item.imageUrl && (
-                    <Badge variant="source" className={`${getCategoryColor(item.category)} shrink-0`}>
-                      {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
-                    </Badge>
+        {filteredNews.map((item, index) => {
+          // Create internal article link for Marca articles
+          const isMarc = item.source === 'Marca';
+          const articleLink = isMarc 
+            ? `/article?url=${encodeURIComponent(item.link)}&title=${encodeURIComponent(item.title)}`
+            : item.link;
+          
+          return (
+            <Card key={index} className="bg-[#1A1F2C] border-[#343a4d] overflow-hidden hover:border-[#9b87f5] transition-colors group">
+              {/* Clickable card wrapper for Marca articles */}
+              {isMarc ? (
+                <Link to={articleLink} className="block">
+                  {/* Article Image */}
+                  {item.imageUrl && (
+                    <div className="relative h-40 overflow-hidden">
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      {/* Source badge on image */}
+                      {item.source && (
+                        <Badge className={`absolute top-2 left-2 ${getSourceColor(item.source)} text-white text-xs`}>
+                          {item.source}
+                        </Badge>
+                      )}
+                    </div>
                   )}
-                </div>
-                <CardDescription className="text-xs text-gray-400 mt-1">
-                  {new Date(item.pubDate).toLocaleDateString(undefined, { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
-                </CardDescription>
-              </CardHeader>
-              
-              {item.description && (
-                <CardContent className="text-sm text-gray-300 pb-2 px-0">
-                  {stripHtml(item.description).slice(0, 100)}
-                  {stripHtml(item.description).length > 100 ? '...' : ''}
-                </CardContent>
+                  
+                  <div className="p-4">
+                    <CardHeader className="pb-2 px-0 pt-0">
+                      <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="text-base font-semibold text-white line-clamp-2 leading-tight group-hover:text-[#9b87f5] transition-colors">
+                          {item.title}
+                        </CardTitle>
+                        {item.category && !item.imageUrl && (
+                          <Badge variant="source" className={`${getCategoryColor(item.category)} shrink-0`}>
+                            {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="text-xs text-gray-400 mt-1">
+                        {new Date(item.pubDate).toLocaleDateString(undefined, { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </CardDescription>
+                    </CardHeader>
+                    
+                    {item.description && (
+                      <CardContent className="text-sm text-gray-300 pb-2 px-0">
+                        {stripHtml(item.description).slice(0, 100)}
+                        {stripHtml(item.description).length > 100 ? '...' : ''}
+                      </CardContent>
+                    )}
+                    
+                    <CardFooter className="px-0 pt-2 flex items-center justify-between">
+                      <span className="text-[#9b87f5] text-sm font-medium">
+                        Read Full Article →
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        via {item.source}
+                      </span>
+                    </CardFooter>
+                  </div>
+                </Link>
+              ) : (
+                <>
+                  {/* External link for non-Marca articles */}
+                  {item.imageUrl && (
+                    <div className="relative h-40 overflow-hidden">
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      {item.source && (
+                        <Badge className={`absolute top-2 left-2 ${getSourceColor(item.source)} text-white text-xs`}>
+                          {item.source}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="p-4">
+                    <CardHeader className="pb-2 px-0 pt-0">
+                      <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="text-base font-semibold text-white line-clamp-2 leading-tight">
+                          {item.title}
+                        </CardTitle>
+                        {item.category && !item.imageUrl && (
+                          <Badge variant="source" className={`${getCategoryColor(item.category)} shrink-0`}>
+                            {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="text-xs text-gray-400 mt-1">
+                        {new Date(item.pubDate).toLocaleDateString(undefined, { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </CardDescription>
+                    </CardHeader>
+                    
+                    {item.description && (
+                      <CardContent className="text-sm text-gray-300 pb-2 px-0">
+                        {stripHtml(item.description).slice(0, 100)}
+                        {stripHtml(item.description).length > 100 ? '...' : ''}
+                      </CardContent>
+                    )}
+                    
+                    <CardFooter className="px-0 pt-2 flex items-center justify-between">
+                      <a 
+                        href={item.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[#9b87f5] hover:text-[#b8a5ff] text-sm font-medium transition-colors"
+                      >
+                        Read on {item.source || 'Source'} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </CardFooter>
+                  </div>
+                </>
               )}
-              
-              <CardFooter className="px-0 pt-2 flex items-center justify-between">
-                <a 
-                  href={item.link} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[#9b87f5] hover:text-[#b8a5ff] text-sm font-medium transition-colors"
-                >
-                  Read on {item.source || 'Source'} <ExternalLink className="h-3 w-3" />
-                </a>
-                
-                {/* Marca credit link */}
-                {item.source === 'Marca' && (
-                  <a 
-                    href="https://www.marca.com/en/football.html" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                  >
-                    via Marca
-                  </a>
-                )}
-              </CardFooter>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
       
       {/* Marca credit footer */}
