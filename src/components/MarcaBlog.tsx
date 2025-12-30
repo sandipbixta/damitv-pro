@@ -11,11 +11,21 @@ interface MarcaArticle {
   source: string;
 }
 
-const MarcaArticleCard: React.FC<{ article: MarcaArticle }> = ({ article }) => {
-  const articleLink = `/article?url=${encodeURIComponent(article.link)}&title=${encodeURIComponent(article.title)}`;
+const MarcaArticleCard: React.FC<{ article: MarcaArticle; index: number }> = ({ article, index }) => {
+  // Ensure unique URL encoding for each article
+  const encodedUrl = encodeURIComponent(article.link);
+  const encodedTitle = encodeURIComponent(article.title);
+  const articleLink = `/article?url=${encodedUrl}&title=${encodedTitle}`;
+  
+  // Debug logging
+  console.log(`Article ${index}: "${article.title.slice(0, 30)}..." -> ${article.link}`);
   
   return (
-    <Link to={articleLink} className="group cursor-pointer h-full block">
+    <Link 
+      to={articleLink} 
+      className="group cursor-pointer h-full block"
+      onClick={() => console.log('Clicked article:', article.title, article.link)}
+    >
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
         {/* Thumbnail Section */}
         <div className="relative aspect-video overflow-hidden flex-shrink-0">
@@ -146,7 +156,7 @@ const MarcaBlog: React.FC = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
         {articles.map((article, index) => (
-          <MarcaArticleCard key={index} article={article} />
+          <MarcaArticleCard key={`${article.link}-${index}`} article={article} index={index} />
         ))}
       </div>
 
