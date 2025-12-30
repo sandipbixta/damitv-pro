@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '../hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NewsItem {
   title: string;
@@ -31,6 +32,35 @@ const NewsSection = () => {
     { name: "Baseball", value: "baseball" },
     { name: "Tennis", value: "tennis" }
   ];
+
+  // Fetch news from Marca via Firecrawl
+  const fetchMarcaNews = useCallback(async (): Promise<NewsItem[]> => {
+    try {
+      console.log('Fetching Marca news via Firecrawl...');
+      const { data, error } = await supabase.functions.invoke('scrape-news');
+      
+      if (error) {
+        console.error('Error fetching Marca news:', error);
+        return [];
+      }
+      
+      if (data?.success && data?.articles) {
+        return data.articles.map((article: any) => ({
+          title: article.title,
+          description: article.description || '',
+          link: article.link,
+          pubDate: new Date().toISOString(),
+          category: 'football',
+          imageUrl: article.image || 'https://loremflickr.com/480/240/soccer'
+        }));
+      }
+      
+      return [];
+    } catch (err) {
+      console.error('Failed to fetch Marca news:', err);
+      return [];
+    }
+  }, []);
   
   // Move fetchNews to useCallback to prevent unnecessary re-creation
   const fetchNews = useCallback(async () => {
@@ -39,119 +69,14 @@ const NewsSection = () => {
     setError(null);
     
     try {
-      // Use a CORS proxy to fetch multiple RSS feeds for better coverage
-      const feedUrls = [
-        'https://api.allorigins.win/raw?url=https://www.espn.com/espn/rss/soccer/news', // Soccer/football specific
-        'https://api.allorigins.win/raw?url=https://www.espn.com/espn/rss/news', // General sports
-        'https://api.allorigins.win/raw?url=https://www.goal.com/feeds/news?fmt=rss', // Soccer/football specific
-      ];
+      // Fetch from Marca and RSS feeds in parallel
+      const [marcaNews, rssNews] = await Promise.all([
+        fetchMarcaNews(),
+        fetchRSSNews()
+      ]);
       
-      const allItems: NewsItem[] = [];
-      
-      for (const url of feedUrls) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-          
-          const response = await fetch(url, { 
-            signal: controller.signal,
-            cache: 'no-store' // Force fresh data
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!response.ok) {
-            console.warn(`Failed to fetch from ${url}: ${response.status}`);
-            continue;
-          }
-          
-          const data = await response.text();
-          const parser = new DOMParser();
-          const xml = parser.parseFromString(data, 'application/xml');
-          const items = xml.querySelectorAll('item');
-          
-          // Process all items and categorize them
-          items.forEach((item) => {
-            const title = item.querySelector('title')?.textContent || '';
-            const description = item.querySelector('description')?.textContent || '';
-            const link = item.querySelector('link')?.textContent || '';
-            const pubDate = item.querySelector('pubDate')?.textContent || '';
-            
-            // Skip NFL news
-            if (
-              title.toLowerCase().includes('nfl') || 
-              description.toLowerCase().includes('nfl') ||
-              title.toLowerCase().includes('american football') ||
-              description.toLowerCase().includes('american football')
-            ) {
-              return;
-            }
-            
-            // Find image in media:content or enclosure tags or within description
-            let imageUrl = '';
-            const mediaContent = item.querySelector('media\\:content, content');
-            const enclosure = item.querySelector('enclosure');
-            
-            if (mediaContent && mediaContent.getAttribute('url')) {
-              imageUrl = mediaContent.getAttribute('url') || '';
-            } else if (enclosure && enclosure.getAttribute('url') && enclosure.getAttribute('type')?.startsWith('image/')) {
-              imageUrl = enclosure.getAttribute('url') || '';
-            } else {
-              // Try to extract image from description
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = description;
-              const img = tempDiv.querySelector('img');
-              if (img && img.src) {
-                imageUrl = img.src;
-              }
-            }
-            
-            // Set default placeholder image if none found
-            if (!imageUrl) {
-              imageUrl = 'https://loremflickr.com/480/240/' + 
-                (title.toLowerCase().includes('soccer') || title.toLowerCase().includes('football') ? 'soccer' : 'sports');
-            }
-            
-            // Categorize the news item
-            let category = "other";
-            const lowerTitle = title.toLowerCase();
-            const lowerDesc = description.toLowerCase();
-            
-            if ((lowerTitle.includes('football') && !lowerTitle.includes('nfl')) || 
-                lowerTitle.includes('soccer') || 
-                lowerTitle.includes('premier league') || 
-                lowerTitle.includes('uefa') || 
-                lowerTitle.includes('la liga') || 
-                (lowerDesc.includes('football') && !lowerDesc.includes('nfl')) || 
-                lowerDesc.includes('soccer')) {
-              category = "football";
-            } else if (lowerTitle.includes('basketball') || 
-                       lowerTitle.includes('nba') || 
-                       lowerTitle.includes('ncaa') || 
-                       lowerDesc.includes('basketball')) {
-              category = "basketball";
-            } else if (lowerTitle.includes('baseball') || 
-                       lowerTitle.includes('mlb') || 
-                       lowerDesc.includes('baseball')) {
-              category = "baseball";
-            } else if (lowerTitle.includes('tennis') || 
-                       lowerDesc.includes('tennis')) {
-              category = "tennis";
-            }
-            
-            allItems.push({
-              title,
-              description,
-              link,
-              pubDate,
-              category,
-              imageUrl
-            });
-          });
-        } catch (err) {
-          console.error(`Error processing feed ${url}:`, err);
-        }
-      }
+      // Combine and deduplicate
+      const allItems = [...marcaNews, ...rssNews];
       
       if (allItems.length === 0) {
         setError('No news items found. Please try again later.');
@@ -167,7 +92,122 @@ const NewsSection = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchMarcaNews]);
+
+  // Fetch RSS feeds
+  const fetchRSSNews = async (): Promise<NewsItem[]> => {
+    const feedUrls = [
+      'https://api.allorigins.win/raw?url=https://www.espn.com/espn/rss/soccer/news',
+      'https://api.allorigins.win/raw?url=https://www.espn.com/espn/rss/news',
+      'https://api.allorigins.win/raw?url=https://www.goal.com/feeds/news?fmt=rss',
+    ];
+    
+    const allItems: NewsItem[] = [];
+    
+    for (const url of feedUrls) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch(url, { 
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.warn(`Failed to fetch from ${url}: ${response.status}`);
+          continue;
+        }
+        
+        const data = await response.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(data, 'application/xml');
+        const items = xml.querySelectorAll('item');
+        
+        items.forEach((item) => {
+          const title = item.querySelector('title')?.textContent || '';
+          const description = item.querySelector('description')?.textContent || '';
+          const link = item.querySelector('link')?.textContent || '';
+          const pubDate = item.querySelector('pubDate')?.textContent || '';
+          
+          // Skip NFL news
+          if (
+            title.toLowerCase().includes('nfl') || 
+            description.toLowerCase().includes('nfl') ||
+            title.toLowerCase().includes('american football') ||
+            description.toLowerCase().includes('american football')
+          ) {
+            return;
+          }
+          
+          // Find image in media:content or enclosure tags or within description
+          let imageUrl = '';
+          const mediaContent = item.querySelector('media\\:content, content');
+          const enclosure = item.querySelector('enclosure');
+          
+          if (mediaContent && mediaContent.getAttribute('url')) {
+            imageUrl = mediaContent.getAttribute('url') || '';
+          } else if (enclosure && enclosure.getAttribute('url') && enclosure.getAttribute('type')?.startsWith('image/')) {
+            imageUrl = enclosure.getAttribute('url') || '';
+          } else {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = description;
+            const img = tempDiv.querySelector('img');
+            if (img && img.src) {
+              imageUrl = img.src;
+            }
+          }
+          
+          if (!imageUrl) {
+            imageUrl = 'https://loremflickr.com/480/240/' + 
+              (title.toLowerCase().includes('soccer') || title.toLowerCase().includes('football') ? 'soccer' : 'sports');
+          }
+          
+          // Categorize the news item
+          let category = "other";
+          const lowerTitle = title.toLowerCase();
+          const lowerDesc = description.toLowerCase();
+          
+          if ((lowerTitle.includes('football') && !lowerTitle.includes('nfl')) || 
+              lowerTitle.includes('soccer') || 
+              lowerTitle.includes('premier league') || 
+              lowerTitle.includes('uefa') || 
+              lowerTitle.includes('la liga') || 
+              (lowerDesc.includes('football') && !lowerDesc.includes('nfl')) || 
+              lowerDesc.includes('soccer')) {
+            category = "football";
+          } else if (lowerTitle.includes('basketball') || 
+                     lowerTitle.includes('nba') || 
+                     lowerTitle.includes('ncaa') || 
+                     lowerDesc.includes('basketball')) {
+            category = "basketball";
+          } else if (lowerTitle.includes('baseball') || 
+                     lowerTitle.includes('mlb') || 
+                     lowerDesc.includes('baseball')) {
+            category = "baseball";
+          } else if (lowerTitle.includes('tennis') || 
+                     lowerDesc.includes('tennis')) {
+            category = "tennis";
+          }
+          
+          allItems.push({
+            title,
+            description,
+            link,
+            pubDate,
+            category,
+            imageUrl
+          });
+        });
+      } catch (err) {
+        console.error(`Error processing feed ${url}:`, err);
+      }
+    }
+    
+    return allItems;
+  };
 
   useEffect(() => {
     // Initial fetch
