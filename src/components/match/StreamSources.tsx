@@ -6,7 +6,7 @@ import { fetchStream } from '@/api/sportsApi';
 import { Loader, Play, Users } from 'lucide-react';
 import { getConnectionInfo } from '@/utils/connectionOptimizer';
 import { fetchViewerCountFromSource, formatViewerCount } from '@/services/viewerCountService';
-import { triggerStreamChangeAd } from '@/utils/streamAdTrigger';
+
 
 interface StreamSourcesProps {
   sources: Source[];
@@ -320,7 +320,6 @@ const StreamSources = ({
                   : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
               }`}
               onClick={() => {
-                triggerStreamChangeAd(streamId);
                 onSourceChange(stream.source, stream.id, actualStreamNo);
               }}
             >
