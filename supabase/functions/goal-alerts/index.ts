@@ -451,6 +451,16 @@ function extractTeams(title: string): { home: string; away: string } | null {
   return null;
 }
 
+// ========== Extract numeric ID ==========
+function extractNumericId(matchId: string): string {
+  if (/^\d+$/.test(matchId)) return matchId;
+  const trailingMatch = matchId.match(/-(\d+)$/);
+  if (trailingMatch) return trailingMatch[1];
+  const numericMatch = matchId.match(/(\d+)/);
+  if (numericMatch) return numericMatch[1];
+  return matchId;
+}
+
 // ========== Build stream URL ==========
 function buildStreamUrl(sport: string, matchId: string, homeTeam: string, awayTeam: string): string {
   const slugify = (text: string) => text
@@ -460,8 +470,9 @@ function buildStreamUrl(sport: string, matchId: string, homeTeam: string, awayTe
     .replace(/-+/g, '-')
     .trim();
   
+  const numericId = extractNumericId(matchId);
   const slug = `${slugify(homeTeam)}-vs-${slugify(awayTeam)}-live-stream`;
-  return `https://damitv.pro/match/${sport}/${matchId}/${slug}`;
+  return `https://damitv.pro/match/${sport}/${numericId}/${slug}`;
 }
 
 // ========== Submit URL to Google Indexing ==========

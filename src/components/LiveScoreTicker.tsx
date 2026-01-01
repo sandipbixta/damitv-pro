@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchLiveMatches } from '@/api/sportsApi';
 import { Match } from '@/types/sports';
 import { isMatchLive } from '@/utils/matchUtils';
-import { generateMatchSlug } from '@/utils/matchSlug';
+import { generateMatchSlug, extractNumericId } from '@/utils/matchSlug';
 
 interface LiveScore {
   eventId: string;
@@ -88,7 +88,7 @@ const LiveScoreTicker: React.FC = () => {
                 homeBadge: score.homeBadge,
                 awayBadge: score.awayBadge,
                 isLive: true,
-                matchUrl: `/match/${sportSlug}/${score.eventId}/${matchSlug}`,
+                matchUrl: `/match/${sportSlug}/${extractNumericId(score.eventId)}/${matchSlug}`,
               };
             });
             
@@ -133,7 +133,7 @@ const LiveScoreTicker: React.FC = () => {
             homeBadge,
             awayBadge,
             isLive: isMatchLive(match),
-            matchUrl: `/match/${match.category}/${match.id}/${matchSlug}`,
+            matchUrl: `/match/${match.category}/${extractNumericId(match.id)}/${matchSlug}`,
           };
         });
         

@@ -16,6 +16,33 @@ export const slugify = (text: string): string => {
 };
 
 /**
+ * Extracts only the numeric ID from a matchId that may contain team names
+ * e.g., "hobart-hurricanes-vs-perth-scorchers-2290598" -> "2290598"
+ * If already numeric, returns as-is
+ */
+export const extractNumericId = (matchId: string): string => {
+  // If it's already purely numeric, return as-is
+  if (/^\d+$/.test(matchId)) {
+    return matchId;
+  }
+  
+  // Try to extract trailing numeric ID (most common pattern)
+  const trailingMatch = matchId.match(/-(\d+)$/);
+  if (trailingMatch) {
+    return trailingMatch[1];
+  }
+  
+  // Try to extract any numeric sequence
+  const numericMatch = matchId.match(/(\d+)/);
+  if (numericMatch) {
+    return numericMatch[1];
+  }
+  
+  // Fallback: return original
+  return matchId;
+};
+
+/**
  * Generates an SEO-friendly match slug with -live-stream suffix
  * Format: {home-team}-vs-{away-team}-live-stream
  * Falls back to match title if teams are not available
@@ -40,6 +67,7 @@ export const generateMatchSlug = (
 
 /**
  * Generates the full match URL path
+ * Uses only numeric ID for cleaner URLs
  */
 export const generateMatchUrl = (
   sportId: string,
@@ -48,8 +76,9 @@ export const generateMatchUrl = (
   awayTeam?: string,
   fallbackTitle?: string
 ): string => {
+  const numericId = extractNumericId(matchId);
   const slug = generateMatchSlug(homeTeam, awayTeam, fallbackTitle);
-  return `/match/${sportId}/${matchId}/${slug}`;
+  return `/match/${sportId}/${numericId}/${slug}`;
 };
 
 /**

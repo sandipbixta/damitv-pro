@@ -298,7 +298,18 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
 
   try {
     const allMatches = await fetchAllMatches();
-    const match = allMatches.find(m => m.id === matchId);
+    
+    // Match by exact ID or by numeric ID suffix
+    const match = allMatches.find(m => {
+      if (m.id === matchId) return true;
+      // Check if the matchId is just the numeric part
+      const numericMatch = m.id.match(/-(\d+)$/);
+      if (numericMatch && numericMatch[1] === matchId) return true;
+      // Also check for any numeric sequence match
+      const anyNumeric = m.id.match(/(\d+)/);
+      if (anyNumeric && anyNumeric[1] === matchId) return true;
+      return false;
+    });
 
     if (!match) {
       throw new Error(`Match ${matchId} not found`);

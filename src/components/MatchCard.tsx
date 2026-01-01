@@ -6,7 +6,7 @@ import { isMatchLive } from '../utils/matchUtils';
 import { useMatchTeamLogos } from '../hooks/useTeamLogo';
 import { getBohoImageUrl } from '../api/sportsApi';
 import { LiveViewerCount } from './LiveViewerCount';
-import { generateMatchSlug } from '../utils/matchSlug';
+import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
 
 interface MatchCardProps {
   match: Match;
@@ -244,7 +244,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   if (hasStream) {
     const matchSlug = generateMatchSlug(home, away, match.title);
-    const matchUrl = `/match/${sportId || match.sportId || match.category}/${match.id}/${matchSlug}`;
+    const numericId = extractNumericId(match.id);
+    const matchUrl = `/match/${sportId || match.sportId || match.category}/${numericId}/${matchSlug}`;
     return (
       <Link to={matchUrl} className={`block ${className}`}>
         {cardContent}

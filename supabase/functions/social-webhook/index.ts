@@ -335,10 +335,21 @@ function generateMatchSlug(homeTeam: string, awayTeam: string): string {
   return `${slugify(homeTeam)}-vs-${slugify(awayTeam)}-live-stream`;
 }
 
+// Extract numeric ID from matchId
+function extractNumericId(matchId: string): string {
+  if (/^\d+$/.test(matchId)) return matchId;
+  const trailingMatch = matchId.match(/-(\d+)$/);
+  if (trailingMatch) return trailingMatch[1];
+  const numericMatch = matchId.match(/(\d+)/);
+  if (numericMatch) return numericMatch[1];
+  return matchId;
+}
+
 // Build production URL with SEO slug
 function buildProductionUrl(sport: string, matchId: string, homeTeam: string, awayTeam: string): string {
+  const numericId = extractNumericId(matchId);
   const slug = generateMatchSlug(homeTeam, awayTeam);
-  return `https://damitv.pro/match/${sport}/${matchId}/${slug}`;
+  return `https://damitv.pro/match/${sport}/${numericId}/${slug}`;
 }
 
 // ========== Google Indexing API ==========
