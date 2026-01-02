@@ -19,7 +19,7 @@ import {
   trackFullscreen,
   createProgressTracker 
 } from '../../utils/videoAnalytics';
-
+import { triggerStreamChangeAd } from '../../utils/streamAdTrigger';
 
 
 interface SimpleVideoPlayerProps {
@@ -181,9 +181,13 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     }
   };
 
-  // Handle play button click - load stream directly (ads are in embed)
+  // Handle play button click - trigger ad and load stream
   const handlePlayClick = () => {
-    console.log(`▶️ Play button clicked - loading stream`);
+    console.log(`▶️ Play button clicked - triggering ad and loading stream`);
+    
+    // Trigger ad on play click (since ads removed from embed)
+    const matchId = match?.id || stream?.embedUrl || 'unknown';
+    triggerStreamChangeAd(matchId);
     
     // Show brief loading state
     setIsLoadingAfterClick(true);
