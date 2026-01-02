@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import { Button } from '../ui/button';
-import { ArrowLeft, Maximize, Minimize, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useIsMobile } from '../../hooks/use-mobile';
 
@@ -19,79 +20,6 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
   isPictureInPicture
 }) => {
   const isMobile = useIsMobile();
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  // Track fullscreen state more reliably
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const fullscreenState = !!(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
-      );
-      setIsFullscreen(fullscreenState);
-    };
-
-    const fullscreenEvents = [
-      'fullscreenchange',
-      'webkitfullscreenchange',
-      'mozfullscreenchange',
-      'msfullscreenchange'
-    ];
-    
-    fullscreenEvents.forEach(event => {
-      document.addEventListener(event, handleFullscreenChange);
-    });
-
-    // Set initial state
-    handleFullscreenChange();
-
-    return () => {
-      fullscreenEvents.forEach(event => {
-        document.removeEventListener(event, handleFullscreenChange);
-      });
-    };
-  }, []);
-
-  const handleFullscreen = async () => {
-    try {
-      const playerContainer = document.querySelector('[data-player-container]') as HTMLElement;
-      
-      if (!playerContainer) {
-        console.log('Player container not found');
-        return;
-      }
-
-      if (isFullscreen) {
-        // Exit fullscreen
-        console.log('Exiting fullscreen...');
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen();
-        } else if ((document as any).mozCancelFullScreen) {
-          await (document as any).mozCancelFullScreen();
-        } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen();
-        }
-      } else {
-        // Enter fullscreen
-        console.log('Entering fullscreen...');
-        if (playerContainer.requestFullscreen) {
-          await playerContainer.requestFullscreen();
-        } else if ((playerContainer as any).webkitRequestFullscreen) {
-          await (playerContainer as any).webkitRequestFullscreen();
-        } else if ((playerContainer as any).mozRequestFullScreen) {
-          await (playerContainer as any).mozRequestFullScreen();
-        } else if ((playerContainer as any).msRequestFullscreen) {
-          await (playerContainer as any).msRequestFullscreen();
-        }
-      }
-    } catch (error) {
-      console.error('Fullscreen error:', error);
-    }
-  };
 
   return (
     <>
@@ -107,23 +35,11 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
         </Button>
       </div>
       
-      {/* Controls overlay */}
+      {/* Controls overlay - only external link button */}
       <div className={cn(
         "absolute top-3 right-3 sm:top-4 sm:right-4 transition-all duration-200 flex gap-2.5",
         isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
       )}>
-        <button 
-          onClick={handleFullscreen}
-          className="bg-gradient-to-br from-background/90 to-background/70 backdrop-blur-md border border-border/50 hover:border-primary/50 text-white p-2 sm:p-2.5 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl touch-manipulation group/btn"
-          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          {isFullscreen ? 
-            <Minimize className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover/btn:rotate-90 duration-300" /> : 
-            <Maximize className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover/btn:scale-110 duration-300" />
-          }
-        </button>
-        
         <button 
           onClick={onOpenInNewTab}
           className="bg-gradient-to-br from-background/90 to-background/70 backdrop-blur-md border border-border/50 hover:border-primary/50 text-white p-2 sm:p-2.5 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl touch-manipulation group/btn"
