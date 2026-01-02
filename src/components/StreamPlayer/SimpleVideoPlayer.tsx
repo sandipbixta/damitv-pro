@@ -19,7 +19,6 @@ import {
   trackFullscreen,
   createProgressTracker 
 } from '../../utils/videoAnalytics';
-import { triggerStreamChangeAd } from '../../utils/streamAdTrigger';
 
 
 interface SimpleVideoPlayerProps {
@@ -181,13 +180,35 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     }
   };
 
-  // Handle play button click - trigger ad and load stream
+  // Handle play button click - trigger popunder ad and load stream
   const handlePlayClick = () => {
-    console.log(`▶️ Play button clicked - triggering ad and loading stream`);
+    console.log(`▶️ Play button clicked - triggering popunder ad and loading stream`);
     
-    // Trigger ad on play click (since ads removed from embed)
+    // Trigger popunder ad on play click (since ads removed from embed)
     const matchId = match?.id || stream?.embedUrl || 'unknown';
-    triggerStreamChangeAd(matchId);
+    const adSessionKey = `popunderAdTriggered:${matchId}`;
+    const lastTriggered = localStorage.getItem(adSessionKey);
+    const cooldownMs = 6 * 60 * 60 * 1000; // 6 hours
+    
+    const shouldShowAd = !lastTriggered || (Date.now() - parseInt(lastTriggered, 10)) >= cooldownMs;
+    
+    if (shouldShowAd) {
+      try {
+        // Load popunder script
+        const script = document.createElement('script');
+        script.src = 'https://foreseehawancestor.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js';
+        script.async = true;
+        document.body.appendChild(script);
+        
+        // Mark ad as triggered
+        localStorage.setItem(adSessionKey, Date.now().toString());
+        console.log('🎯 Popunder ad triggered for match:', matchId);
+      } catch (error) {
+        console.warn('Failed to load popunder ad:', error);
+      }
+    } else {
+      console.log('⏳ Popunder ad on cooldown for match:', matchId);
+    }
     
     // Show brief loading state
     setIsLoadingAfterClick(true);
