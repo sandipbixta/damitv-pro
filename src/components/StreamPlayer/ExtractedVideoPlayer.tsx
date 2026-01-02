@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Home, RotateCcw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Home, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 import { getStreamUrl, ExtractedStream } from '../../utils/streamExtractor';
@@ -346,16 +346,6 @@ const ExtractedVideoPlayer: React.FC<ExtractedVideoPlayerProps> = ({
             {/* Center spacer */}
             <div className="flex-1"></div>
 
-            {/* Right controls */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={toggleFullscreen}
-                className="p-2 hover:bg-muted/40 rounded-full transition-colors"
-                title="Fullscreen"
-              >
-                <Maximize size={24} />
-              </button>
-            </div>
           </div>
         </div>
       </div>

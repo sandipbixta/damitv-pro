@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Home } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CustomChannelPlayerProps {
@@ -151,16 +151,6 @@ const CustomChannelPlayer: React.FC<CustomChannelPlayerProps> = ({
             {/* Center spacer */}
             <div className="flex-1"></div>
 
-            {/* Right controls */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={toggleFullscreen}
-                className="p-2 hover:bg-muted/40 rounded-full transition-colors"
-                title="Fullscreen"
-              >
-                <Maximize size={24} />
-              </button>
-            </div>
           </div>
         </div>
       </div>
