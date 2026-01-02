@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Hls from 'hls.js';
 import { useIsMobile } from '../../hooks/use-mobile';
-import { Play, Pause, Volume2, VolumeX, Maximize, Home, RefreshCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Home, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -333,26 +333,6 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
               )}
             </div>
             
-            {/* Spacer */}
-            <div className="flex-1" />
-            
-            {/* Fullscreen Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                if (actualVideoRef.current) {
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen();
-                  } else {
-                    actualVideoRef.current.requestFullscreen();
-                  }
-                }
-              }}
-              className="text-white hover:bg-white/20 h-8 w-8"
-            >
-              <Maximize className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </div>
