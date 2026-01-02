@@ -754,13 +754,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
             <Monitor className="w-4 h-4" />
           </Button>
         )}
-        <Button
-          onClick={toggleFullscreen}
-          className="bg-black/50 hover:bg-black/70 text-white border-0"
-          size="sm"
-        >
-          <Maximize className="w-4 h-4" />
-        </Button>
       </div>
 
       {/* Buffer Indicator - center overlay */}
