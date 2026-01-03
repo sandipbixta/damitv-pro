@@ -26,6 +26,7 @@ import HomepageContent from '../components/HomepageContent';
 import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
 import MarcaBlog from '../components/MarcaBlog';
+import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -317,6 +318,9 @@ const Index = () => {
             
             {/* Hidden SEO content for competitor targeting */}
             <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
+            
+            {/* AI Match Previews - Internal Links for SEO */}
+            <UpcomingMatchPreviews />
             
             {/* Latest Highlights Section */}
             <LatestHighlights />

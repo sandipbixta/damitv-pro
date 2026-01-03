@@ -21,6 +21,7 @@ import SportFilterPills from '../components/live/SportFilterPills';
 import MatchesTabContent from '../components/live/MatchesTabContent';
 import MatchSection from '../components/MatchSection';
 import MatchCard from '../components/MatchCard';
+import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 
 import PopularMatches from '../components/PopularMatches';
 
@@ -398,6 +399,9 @@ const Live = () => {
           />
         </div>
       )}
+      
+      {/* AI Match Previews - Internal Links for SEO */}
+      <UpcomingMatchPreviews />
       
       {/* SEO Content Section */}
       <section className="mt-12 mb-8">
