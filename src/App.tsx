@@ -185,6 +185,11 @@ const App: React.FC = () => {
                   <Article />
                 </SEOPageTracker>
               } />
+              <Route path="/match/:matchName" element={
+                <SEOPageTracker contentType="match">
+                  <MatchDetail />
+                </SEOPageTracker>
+              } />
               <Route path="/m/:matchName" element={
                 <SEOPageTracker contentType="match">
                   <MatchDetail />
