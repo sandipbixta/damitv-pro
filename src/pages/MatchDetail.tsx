@@ -4,8 +4,9 @@ import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
 import PageLayout from '@/components/PageLayout';
 import MatchIntelligence from '@/components/match/MatchIntelligence';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Play } from 'lucide-react';
 import { Match as MatchType } from '@/types/sports';
+import { adConfig } from '@/utils/adConfig';
 
 interface DBMatch {
   id: string;
@@ -247,6 +248,22 @@ const MatchDetail: React.FC = () => {
           </div>
         </section>
       )}
+
+      {/* Sticky Mobile CTA Button - Primary Revenue Source */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-background via-background to-transparent md:hidden">
+        <a
+          href={adConfig.directLink.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-navy-900 font-bold py-4 px-6 rounded-xl shadow-lg shadow-gold-500/30 transition-all duration-300 active:scale-[0.98]"
+        >
+          <Play className="w-5 h-5" fill="currentColor" />
+          <span>Access Premium Stream</span>
+        </a>
+      </div>
+
+      {/* Add bottom padding on mobile to account for sticky button */}
+      <div className="h-24 md:hidden" />
     </PageLayout>
   );
 };
