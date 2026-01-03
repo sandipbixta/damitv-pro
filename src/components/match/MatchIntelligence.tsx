@@ -18,6 +18,9 @@ interface MatchIntelligenceProps {
   lastUpdated?: Date;
   homeLineup?: string[];
   awayLineup?: string[];
+  homeScore?: number | null;
+  awayScore?: number | null;
+  venue?: string;
   onAccessStream?: () => void;
 }
 
@@ -31,6 +34,9 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
   lastUpdated = new Date(),
   homeLineup = [],
   awayLineup = [],
+  homeScore,
+  awayScore,
+  venue: propVenue,
   onAccessStream
 }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -40,7 +46,7 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
   const homeTeam = match.teams?.home?.name || 'Home Team';
   const awayTeam = match.teams?.away?.name || 'Away Team';
   const matchDate = match.date ? new Date(match.date) : new Date();
-  const venue = 'Stadium TBA'; // Match type doesn't have venue
+  const venue = propVenue || 'Stadium TBA';
   const category = match.category || 'Football';
 
   // Generate 40-word match summary for AI Overviews
@@ -259,13 +265,13 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-background/50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-foreground">
-                  -
+                  {homeScore !== null && homeScore !== undefined ? homeScore : '-'}
                 </p>
                 <p className="text-sm text-muted-foreground">{homeTeam}</p>
               </div>
               <div className="bg-background/50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-foreground">
-                  -
+                  {awayScore !== null && awayScore !== undefined ? awayScore : '-'}
                 </p>
                 <p className="text-sm text-muted-foreground">{awayTeam}</p>
               </div>
