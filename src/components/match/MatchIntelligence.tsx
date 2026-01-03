@@ -41,6 +41,9 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
 }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Detect user's timezone
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   // Extract match details
   const matchTitle = match.title || `${match.teams?.home?.name || 'Home'} vs ${match.teams?.away?.name || 'Away'}`;
   const homeTeam = match.teams?.home?.name || 'Home Team';
@@ -48,6 +51,42 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
   const matchDate = match.date ? new Date(match.date) : new Date();
   const venue = propVenue || 'Stadium TBA';
   const category = match.category || 'Football';
+
+  // Format date in user's local timezone
+  const formatLocalDate = (date: Date, formatStr: string) => {
+    const options: Intl.DateTimeFormatOptions = {};
+    
+    if (formatStr.includes('EEEE')) {
+      options.weekday = 'long';
+    }
+    if (formatStr.includes('MMM')) {
+      options.month = 'short';
+    }
+    if (formatStr.includes('MMMM')) {
+      options.month = 'long';
+    }
+    if (formatStr.includes('d')) {
+      options.day = 'numeric';
+    }
+    if (formatStr.includes('yyyy')) {
+      options.year = 'numeric';
+    }
+    if (formatStr.includes('h:mm')) {
+      options.hour = 'numeric';
+      options.minute = '2-digit';
+      options.hour12 = true;
+    }
+    
+    options.timeZone = userTimezone;
+    
+    return new Intl.DateTimeFormat('en-US', options).format(date);
+  };
+
+  // Get formatted date parts for display
+  const localDateDisplay = formatLocalDate(matchDate, 'EEEE, MMM d');
+  const localTimeDisplay = formatLocalDate(matchDate, 'h:mm a');
+  const fullLocalDateTime = `${localDateDisplay} • ${localTimeDisplay}`;
+  const fullLocalDateLong = formatLocalDate(matchDate, 'EEEE, MMMM d, yyyy');
 
   // Generate 40-word match summary for AI Overviews
   const matchSummary = `Watch ${homeTeam} take on ${awayTeam} in this exciting ${category} match. Stream live with HD quality, real-time updates, and expert analysis. Our verified stream links ensure uninterrupted viewing for fans worldwide seeking the best sports streaming experience.`;
@@ -68,7 +107,7 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
   const faqs = [
     {
       question: `What time does ${homeTeam} vs ${awayTeam} start?`,
-      answer: `The match is scheduled to kick off at ${format(matchDate, 'h:mm a')} on ${format(matchDate, 'EEEE, MMMM d, yyyy')}. We recommend joining 10 minutes early to ensure your stream is ready.`
+      answer: `The match is scheduled to kick off at ${localTimeDisplay} on ${fullLocalDateLong} (${userTimezone}). We recommend joining 10 minutes early to ensure your stream is ready.`
     },
     {
       question: 'How can I watch this match for free?',
@@ -141,9 +180,14 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
                 <div className="flex items-center gap-3">
                   <Clock className="h-5 w-5 text-gold-400 flex-shrink-0" />
-                  <span className="text-foreground" itemProp="startDate" content={matchDate.toISOString()}>
-                    {format(matchDate, 'EEEE, MMM d • h:mm a')}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-foreground" itemProp="startDate" content={matchDate.toISOString()}>
+                      {fullLocalDateTime}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {userTimezone.replace(/_/g, ' ')}
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-3">
