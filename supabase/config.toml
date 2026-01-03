@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.public-api]
 verify_jwt = false
+
+[functions.sync-matches]
+verify_jwt = false

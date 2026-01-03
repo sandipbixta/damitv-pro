@@ -245,6 +245,66 @@ export type Database = {
         }
         Relationships: []
       }
+      matches: {
+        Row: {
+          away_score: number | null
+          away_team: string
+          away_team_badge: string | null
+          created_at: string
+          faqs: Json | null
+          home_score: number | null
+          home_team: string
+          home_team_badge: string | null
+          id: string
+          league: string | null
+          match_id: string
+          match_time: string
+          seo_preview: string | null
+          sport: string | null
+          status: string | null
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          away_score?: number | null
+          away_team: string
+          away_team_badge?: string | null
+          created_at?: string
+          faqs?: Json | null
+          home_score?: number | null
+          home_team: string
+          home_team_badge?: string | null
+          id?: string
+          league?: string | null
+          match_id: string
+          match_time: string
+          seo_preview?: string | null
+          sport?: string | null
+          status?: string | null
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          away_score?: number | null
+          away_team?: string
+          away_team_badge?: string | null
+          created_at?: string
+          faqs?: Json | null
+          home_score?: number | null
+          home_team?: string
+          home_team_badge?: string | null
+          id?: string
+          league?: string | null
+          match_id?: string
+          match_time?: string
+          seo_preview?: string | null
+          sport?: string | null
+          status?: string | null
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
       notified_matches: {
         Row: {
           id: string
