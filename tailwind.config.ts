@@ -19,7 +19,18 @@ export default {
   		}
   	},
   	extend: {
-  		fontFamily: {
+      colors: {
+        navy: {
+          800: 'hsl(var(--navy-800))',
+          900: 'hsl(var(--navy-900))',
+        },
+        gold: {
+          400: 'hsl(var(--gold-400))',
+          500: 'hsl(var(--gold-500))',
+          600: 'hsl(var(--gold-600))',
+        },
+      },
+      fontFamily: {
   			sans: [
   				'Inter',
   				'ui-sans-serif',
