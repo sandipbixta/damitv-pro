@@ -53,6 +53,22 @@ const SPORT_KEYWORDS: Record<string, string[]> = {
   "Motorsport": ["pit stops", "pole position", "the grid", "lap times"]
 };
 
+// Popular league IDs for TheSportsDB eventsnextleague endpoint
+const POPULAR_LEAGUES = [
+  { id: "4328", name: "English Premier League", sport: "Soccer" },
+  { id: "4391", name: "NFL", sport: "American Football" },
+  { id: "4387", name: "NBA", sport: "Basketball" },
+  { id: "4424", name: "MLB", sport: "Baseball" },
+  { id: "4380", name: "NHL", sport: "Ice Hockey" },
+  { id: "4335", name: "La Liga", sport: "Soccer" },
+  { id: "4331", name: "Bundesliga", sport: "Soccer" },
+  { id: "4332", name: "Serie A", sport: "Soccer" },
+  { id: "4334", name: "Ligue 1", sport: "Soccer" },
+  { id: "4346", name: "MLS", sport: "Soccer" },
+  { id: "4359", name: "UEFA Champions League", sport: "Soccer" },
+];
+};
+
 // Generate AI content for a match
 async function generateMatchContent(
   homeTeam: string,
@@ -209,40 +225,63 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+    // Log API key status for debugging
+    console.log("🔑 API Key configured:", !!THESPORTSDB_API_KEY);
+    console.log("🔑 API Key length:", THESPORTSDB_API_KEY?.length || 0);
+
     if (!THESPORTSDB_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Missing required environment variables");
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get date from request or use today
-    const { date } = await req.json().catch(() => ({}));
-    const targetDate = date || new Date().toISOString().split("T")[0];
+    // Get specific league ID from request or fetch all popular leagues
+    const { leagueId } = await req.json().catch(() => ({}));
     
-    console.log(`🔄 Syncing matches for date: ${targetDate}`);
+    console.log("🔄 Starting match sync...");
 
-    // Fetch events from TheSportsDB (v1 API for events by day)
-    // Format: eventsday.php?d=YYYY-MM-DD
-    const sportsdbUrl = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_API_KEY}/eventsday.php?d=${targetDate}`;
-    console.log(`🔄 Fetching from: ${sportsdbUrl}`);
-    
-    const response = await fetch(sportsdbUrl);
+    let allEvents: SportsDBEvent[] = [];
+    const leaguesToFetch = leagueId 
+      ? [{ id: leagueId, name: "Custom League", sport: "Football" }] 
+      : POPULAR_LEAGUES;
 
-    if (!response.ok) {
-      console.error(`API response status: ${response.status}`);
-      throw new Error(`TheSportsDB API error: ${response.status}`);
+    // Fetch events from each league using eventsnextleague.php
+    for (const league of leaguesToFetch) {
+      const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_API_KEY}/eventsnextleague.php?id=${league.id}`;
+      
+      // Critical logging for debugging
+      console.log("Fetching URL:", url);
+      
+      try {
+        const response = await fetch(url);
+        console.log(`📡 League ${league.name} (${league.id}) - Status: ${response.status}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          const events: SportsDBEvent[] = (data.events || []).map((e: SportsDBEvent) => ({
+            ...e,
+            strSport: e.strSport || league.sport // Ensure sport is set
+          }));
+          console.log(`📥 ${league.name}: ${events.length} upcoming events`);
+          allEvents = [...allEvents, ...events];
+        } else {
+          console.warn(`⚠️ Failed to fetch ${league.name}: ${response.status}`);
+        }
+      } catch (fetchError) {
+        console.error(`❌ Error fetching ${league.name}:`, fetchError);
+      }
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    const data = await response.json();
-    const events: SportsDBEvent[] = data.events || [];
-    
-    console.log(`📥 Fetched ${events.length} events from TheSportsDB`);
+    console.log(`📊 Total events fetched: ${allEvents.length}`);
 
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
 
-    for (const event of events) {
+    for (const event of allEvents) {
       // Check if match already exists
       const { data: existing } = await supabase
         .from("matches")
