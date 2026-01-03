@@ -67,7 +67,6 @@ const POPULAR_LEAGUES = [
   { id: "4346", name: "MLS", sport: "Soccer" },
   { id: "4359", name: "UEFA Champions League", sport: "Soccer" },
 ];
-};
 
 // Generate AI content for a match
 async function generateMatchContent(
@@ -354,8 +353,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        date: targetDate,
-        total: events.length,
+        total: allEvents.length,
         inserted,
         updated,
         skipped,
