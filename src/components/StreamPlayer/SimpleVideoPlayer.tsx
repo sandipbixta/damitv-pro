@@ -191,11 +191,11 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     // Show brief loading state
     setIsLoadingAfterClick(true);
     
-    // Load the stream immediately
+    // Load the stream after a longer delay to allow ad script to complete
     setTimeout(() => {
       setRequiresPlayClick(false);
       setIsLoadingAfterClick(false);
-    }, 500);
+    }, 1000); // Increased from 500ms to 1000ms
   };
 
   const toggleFullscreen = () => {
