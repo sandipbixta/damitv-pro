@@ -319,7 +319,7 @@ const StreamSources = ({
                   : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
               }`}
               onClick={() => {
-                triggerPopunderAd(streamId, 'source_change');
+                // Don't trigger popunder here - it's already triggered on play button click
                 onSourceChange(stream.source, stream.id, actualStreamNo);
               }}
             >

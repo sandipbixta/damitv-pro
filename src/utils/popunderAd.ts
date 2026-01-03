@@ -23,19 +23,22 @@ export const triggerPopunderAd = (matchId: string, source: string = 'unknown'): 
   const shouldShowAd = !lastTriggered || (Date.now() - parseInt(lastTriggered, 10)) >= COOLDOWN_MS;
   
   if (shouldShowAd) {
-    try {
-      // Load popunder script
-      const script = document.createElement('script');
-      script.src = POPUNDER_SCRIPT_URL;
-      script.async = true;
-      document.body.appendChild(script);
-      
-      // Mark ad as triggered
-      localStorage.setItem(adSessionKey, Date.now().toString());
-      console.log(`🎯 Popunder ad triggered for match: ${matchId} (source: ${source})`);
-    } catch (error) {
-      console.warn('Failed to load popunder ad:', error);
-    }
+    // Mark as triggered FIRST to prevent race conditions
+    localStorage.setItem(adSessionKey, Date.now().toString());
+    console.log(`🎯 Popunder ad triggered for match: ${matchId} (source: ${source})`);
+    
+    // Load script after a microtask to not block main thread
+    queueMicrotask(() => {
+      try {
+        const script = document.createElement('script');
+        script.src = POPUNDER_SCRIPT_URL;
+        script.async = true;
+        script.defer = true; // Add defer to reduce blocking
+        document.body.appendChild(script);
+      } catch (error) {
+        console.warn('Failed to load popunder ad:', error);
+      }
+    });
   } else {
     const remainingMs = COOLDOWN_MS - (Date.now() - parseInt(lastTriggered!, 10));
     const remainingMinutes = Math.ceil(remainingMs / 60000);
