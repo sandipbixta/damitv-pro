@@ -28,13 +28,39 @@ interface FAQ {
   answer: string;
 }
 
+// Dynamic openers to prevent repetitive templates
+const DYNAMIC_OPENERS = [
+  "The stakes couldn't be higher for",
+  "Fans are heading to [VENUE] today for",
+  "A classic rivalry renewed as",
+  "All eyes are on",
+  "Anticipation reaches fever pitch as"
+];
+
+// Sport-specific keywords for authentic coverage
+const SPORT_KEYWORDS: Record<string, string[]> = {
+  "Baseball": ["the bullpen", "home runs", "RBIs", "the diamond"],
+  "Basketball": ["fast breaks", "three-pointers", "the paint", "slam dunks"],
+  "Soccer": ["clean sheets", "the pitch", "set pieces", "the final third"],
+  "Football": ["clean sheets", "the pitch", "set pieces", "the final third"],
+  "Ice Hockey": ["power plays", "the crease", "hat tricks", "face-offs"],
+  "American Football": ["the end zone", "fourth down", "red zone", "blitz packages"],
+  "Tennis": ["break points", "baseline rallies", "aces", "the net"],
+  "Cricket": ["the crease", "maiden overs", "boundaries", "the wicket"],
+  "Rugby": ["the try line", "scrums", "lineouts", "conversions"],
+  "MMA": ["the octagon", "ground game", "striking", "submissions"],
+  "Boxing": ["the ring", "power punches", "footwork", "combinations"],
+  "Motorsport": ["pit stops", "pole position", "the grid", "lap times"]
+};
+
 // Generate AI content for a match
 async function generateMatchContent(
   homeTeam: string,
   awayTeam: string,
   league: string,
   venue: string,
-  matchTime: string
+  matchTime: string,
+  sport: string = "Football"
 ): Promise<{ seoPreview: string; faqs: FAQ[] }> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
@@ -43,25 +69,56 @@ async function generateMatchContent(
     return generateFallbackContent(homeTeam, awayTeam, league);
   }
 
+  // Select random opener
+  const randomOpener = DYNAMIC_OPENERS[Math.floor(Math.random() * DYNAMIC_OPENERS.length)];
+  
+  // Get sport-specific keywords
+  const sportKey = Object.keys(SPORT_KEYWORDS).find(key => 
+    sport.toLowerCase().includes(key.toLowerCase())
+  ) || "Football";
+  const keywords = SPORT_KEYWORDS[sportKey] || SPORT_KEYWORDS["Football"];
+  const keywordInstructions = keywords.slice(0, 2).join("' or '");
+
   try {
-    const prompt = `Generate SEO content for a sports match:
-Match: ${homeTeam} vs ${awayTeam}
-League: ${league}
-Venue: ${venue}
-Time: ${matchTime}
+    const prompt = `Generate a UNIQUE SEO match preview following these STRICT rules:
 
-Generate:
-1. A 200-word "Expert Preview" analyzing the match, recent form, key players, and prediction
-2. 4 FAQs about watching this match live
+MATCH DETAILS:
+- Match: ${homeTeam} vs ${awayTeam}
+- League: ${league}
+- Venue: ${venue}
+- Time: ${matchTime}
+- Sport: ${sport}
 
-Respond in JSON format:
+WRITING RULES (MUST FOLLOW):
+
+1. DYNAMIC OPENER: Start your preview with this opening style: "${randomOpener.replace('[VENUE]', venue)}"
+   Do NOT use generic openings like "In this match..." or "Today's game..."
+
+2. SPORT-SPECIFIC LANGUAGE: You MUST naturally include at least one of these terms: '${keywordInstructions}'
+   Weave them naturally into your tactical analysis.
+
+3. LOCAL HERO RULE: In your SECOND paragraph, identify and highlight ONE star player from ${homeTeam} (the home team).
+   Mention their recent form, role, or what they bring to this match.
+
+4. JOURNALISTIC STYLE: Use varied sentence lengths:
+   - Mix short, punchy sentences (5-8 words) for impact
+   - With longer, detailed analytical sentences (15-25 words)
+   - Avoid robotic, uniform sentence structures
+   - Example rhythm: "The pressure is immense. Both managers understand that a slip here could define their entire campaign, with European qualification hanging in the balance."
+
+5. AUTHENTIC VOICE: Write like a seasoned sports journalist, not a template. Include:
+   - Specific tactical observations
+   - Recent form analysis (imagine you know their last 3 results)
+   - A bold prediction with reasoning
+
+REQUIRED OUTPUT - Respond ONLY with valid JSON:
 {
-  "seoPreview": "200-word expert preview text...",
+  "seoPreview": "Your 200-word expert preview following ALL rules above...",
   "faqs": [
-    {"question": "Q1?", "answer": "A1"},
-    {"question": "Q2?", "answer": "A2"},
-    {"question": "Q3?", "answer": "A3"},
-    {"question": "Q4?", "answer": "A4"}
+    {"question": "What time does ${homeTeam} vs ${awayTeam} kick off?", "answer": "Detailed answer about timing..."},
+    {"question": "How can I watch ${homeTeam} vs ${awayTeam} live stream?", "answer": "Answer about DamiTV streaming..."},
+    {"question": "What are the key players to watch in ${homeTeam} vs ${awayTeam}?", "answer": "Mention 2-3 players..."},
+    {"question": "What is the predicted outcome for ${homeTeam} vs ${awayTeam}?", "answer": "Your prediction with reasoning..."}
   ]
 }`;
 
@@ -74,7 +131,10 @@ Respond in JSON format:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are a sports analyst writing SEO-optimized match previews. Always respond with valid JSON." },
+          { 
+            role: "system", 
+            content: "You are an award-winning sports journalist with 20 years of experience covering live sports. Your writing is vivid, insightful, and never formulaic. Each preview you write feels fresh and uniquely tailored to the match. You ALWAYS respond with valid JSON only, no markdown formatting." 
+          },
           { role: "user", content: prompt }
         ],
       }),
@@ -88,10 +148,19 @@ Respond in JSON format:
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     
-    // Parse JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    // Parse JSON from response (handle potential markdown code blocks)
+    let jsonString = content;
+    // Remove markdown code blocks if present
+    if (content.includes("```json")) {
+      jsonString = content.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+    } else if (content.includes("```")) {
+      jsonString = content.replace(/```\n?/g, "");
+    }
+    
+    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      console.log(`✅ AI content generated for: ${homeTeam} vs ${awayTeam}`);
       return {
         seoPreview: parsed.seoPreview || generateFallbackContent(homeTeam, awayTeam, league).seoPreview,
         faqs: parsed.faqs || generateFallbackContent(homeTeam, awayTeam, league).faqs,
@@ -204,13 +273,14 @@ serve(async (req) => {
         }
       } else {
         // Generate AI content for new match
-        console.log(`🤖 Generating content for: ${event.strHomeTeam} vs ${event.strAwayTeam}`);
+        console.log(`🤖 Generating content for: ${event.strHomeTeam} vs ${event.strAwayTeam} (${event.strSport || "Football"})`);
         const { seoPreview, faqs } = await generateMatchContent(
           event.strHomeTeam,
           event.strAwayTeam,
           event.strLeague,
           event.strVenue || "TBA",
-          matchTime.toISOString()
+          matchTime.toISOString(),
+          event.strSport || "Football"
         );
 
         // Insert new match
