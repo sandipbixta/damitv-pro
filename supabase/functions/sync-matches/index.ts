@@ -152,13 +152,15 @@ serve(async (req) => {
     
     console.log(`🔄 Syncing matches for date: ${targetDate}`);
 
-    // Fetch events from TheSportsDB
-    const sportsdbUrl = `https://www.thesportsdb.com/api/v2/json/eventsday/${targetDate}`;
-    const response = await fetch(sportsdbUrl, {
-      headers: { "X-API-KEY": THESPORTSDB_API_KEY },
-    });
+    // Fetch events from TheSportsDB (v1 API for events by day)
+    // Format: eventsday.php?d=YYYY-MM-DD
+    const sportsdbUrl = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_API_KEY}/eventsday.php?d=${targetDate}`;
+    console.log(`🔄 Fetching from: ${sportsdbUrl}`);
+    
+    const response = await fetch(sportsdbUrl);
 
     if (!response.ok) {
+      console.error(`API response status: ${response.status}`);
       throw new Error(`TheSportsDB API error: ${response.status}`);
     }
 
