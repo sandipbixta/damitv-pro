@@ -5,6 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to generate URL slug from team names
+function generateMatchSlug(homeTeam: string, awayTeam: string): string {
+  const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  return `${slugify(homeTeam)}-vs-${slugify(awayTeam)}-live-stream`;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -12,9 +18,36 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Generate sitemap XML
     const today = new Date().toISOString().split('T')[0];
     
+    // Fetch matches from database for dynamic URLs
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data: matches, error } = await supabase
+      .from('matches')
+      .select('home_team, away_team, match_time, updated_at')
+      .order('match_time', { ascending: false })
+      .limit(100); // Latest 100 matches
+    
+    if (error) {
+      console.error('Error fetching matches:', error);
+    }
+    
+    // Generate match URLs
+    const matchUrls = (matches || []).map(match => {
+      const slug = generateMatchSlug(match.home_team, match.away_team);
+      const lastmod = match.updated_at?.split('T')[0] || today;
+      return `
+  <url>
+    <loc>https://damitv.pro/match/${slug}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+    }).join('');
+
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
@@ -175,6 +208,9 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
+
+  <!-- Dynamic Match Pages -->
+${matchUrls}
 
   <!-- Other Pages -->
   <url>
