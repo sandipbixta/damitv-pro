@@ -8,6 +8,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Navy/Gold Sports Theme Accent Colors */
+:root {
+  --navy-900: 222 47% 11%;
+  --navy-800: 217 33% 17%;
+  --gold-400: 43 96% 56%;
+  --gold-500: 38 92% 50%;
+  --gold-600: 32 95% 44%;
+}
+
+/* Subtle Pulse Animation for CTA */
+@keyframes pulse-subtle {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--gold-500) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--gold-500) / 0);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
 @layer base {
   :root {
     /* FanCode-inspired dark theme (default) - Red-Orange accent #F54927 */
