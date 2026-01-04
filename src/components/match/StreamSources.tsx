@@ -219,7 +219,10 @@ const StreamSources = ({
     });
   });
   
-  console.log(`📺 Total available streams to display: ${allAvailableStreams.length}`);
+  // Filter to only show streams with active viewers
+  const streamsWithViewers = allAvailableStreams.filter(({ stream }) => stream.viewers && stream.viewers > 0);
+  
+  console.log(`📺 Total streams: ${allAvailableStreams.length}, With viewers: ${streamsWithViewers.length}`);
 
   const isAnyLoading = Object.values(loadingStreams).some(Boolean);
 
@@ -234,10 +237,14 @@ const StreamSources = ({
   }
 
   // Show no streams message
-  if (allAvailableStreams.length === 0) {
+  if (allAvailableStreams.length === 0 || streamsWithViewers.length === 0) {
     return (
       <div className="mt-6 text-center py-8">
-        <p className="text-gray-400">No streams available for this match.</p>
+        <p className="text-gray-400">
+          {allAvailableStreams.length === 0 
+            ? "No streams available for this match." 
+            : "Streams loading... viewer data not yet available."}
+        </p>
       </div>
     );
   }
@@ -294,7 +301,7 @@ const StreamSources = ({
       </div>
       
       <div className="flex flex-wrap gap-3">
-        {allAvailableStreams.map(({ stream, sourceKey, index }) => {
+        {streamsWithViewers.map(({ stream, sourceKey, index }) => {
           // Use streamNo from API, fallback to index + 1
           const actualStreamNo = stream.streamNo !== undefined ? stream.streamNo : index + 1;
           const streamKey = `${stream.source}/${stream.id}/${actualStreamNo}`;
@@ -329,12 +336,10 @@ const StreamSources = ({
                 <span>{streamName}</span>
                 {stream.hd && <span className="text-xs bg-red-600 px-1 rounded">HD</span>}
               </div>
-              {viewerCount > 0 && (
-                <div className="flex items-center gap-1 text-xs font-semibold">
-                  <Users className="w-3 h-3 text-primary" />
-                  <span>{formatViewerCount(viewerCount, false)}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1 text-xs font-semibold">
+                <Users className="w-3 h-3 text-primary" />
+                <span>{formatViewerCount(viewerCount, false)}</span>
+              </div>
             </Button>
           );
         })}
