@@ -12,6 +12,8 @@ const COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
  * @param source - Optional source identifier for tracking (e.g., 'play_button', 'source_change')
  */
 export const triggerPopunderAd = (matchId: string, source: string = 'unknown'): void => {
+  console.log(`▶️ triggerPopunderAd called for match: ${matchId} (source: ${source})`);
+  
   if (!matchId) {
     console.warn('⚠️ No matchId provided for popunder ad');
     return;
@@ -27,18 +29,16 @@ export const triggerPopunderAd = (matchId: string, source: string = 'unknown'): 
     localStorage.setItem(adSessionKey, Date.now().toString());
     console.log(`🎯 Popunder ad triggered for match: ${matchId} (source: ${source})`);
     
-    // Load script after a microtask to not block main thread
-    queueMicrotask(() => {
-      try {
-        const script = document.createElement('script');
-        script.src = POPUNDER_SCRIPT_URL;
-        script.async = true;
-        script.defer = true; // Add defer to reduce blocking
-        document.body.appendChild(script);
-      } catch (error) {
-        console.warn('Failed to load popunder ad:', error);
-      }
-    });
+    // Load script immediately (not in microtask) to ensure it runs on user click
+    try {
+      const script = document.createElement('script');
+      script.src = POPUNDER_SCRIPT_URL;
+      script.async = true;
+      document.body.appendChild(script);
+      console.log(`✅ Popunder script appended to body`);
+    } catch (error) {
+      console.warn('Failed to load popunder ad:', error);
+    }
   } else {
     const remainingMs = COOLDOWN_MS - (Date.now() - parseInt(lastTriggered!, 10));
     const remainingMinutes = Math.ceil(remainingMs / 60000);
