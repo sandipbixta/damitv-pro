@@ -19,7 +19,7 @@ import {
   trackFullscreen,
   createProgressTracker 
 } from '../../utils/videoAnalytics';
-import { triggerPopunderAd } from '../../utils/popunderAd';
+
 
 interface SimpleVideoPlayerProps {
   stream: Stream | null;
@@ -62,9 +62,8 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   const progressTrackerRef = useRef<ReturnType<typeof createProgressTracker> | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Click-to-play state - require user click to load stream (triggers ad)
+  // Click-to-play state - require user click to load stream
   const [requiresPlayClick, setRequiresPlayClick] = useState(true);
-  const [isLoadingAfterClick, setIsLoadingAfterClick] = useState(false);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -180,22 +179,9 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     }
   };
 
-  // Handle play button click - trigger popunder ad and load stream
+  // Handle play button click - load stream immediately (ads injected in embed)
   const handlePlayClick = () => {
-    console.log(`▶️ Play button clicked - triggering popunder ad and loading stream`);
-    
-    // Trigger popunder ad on play click (since ads removed from embed)
-    const matchId = match?.id || stream?.embedUrl || 'unknown';
-    triggerPopunderAd(matchId, 'play_button');
-    
-    // Show brief loading state
-    setIsLoadingAfterClick(true);
-    
-    // Load the stream after a longer delay to allow ad script to complete
-    setTimeout(() => {
-      setRequiresPlayClick(false);
-      setIsLoadingAfterClick(false);
-    }, 1000); // Increased from 500ms to 1000ms
+    setRequiresPlayClick(false);
   };
 
   const toggleFullscreen = () => {
@@ -443,33 +429,24 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           className="absolute inset-0 flex flex-col items-center justify-center z-10 px-3 sm:px-4"
           onClick={handlePlayClick}
         >
-          {isLoadingAfterClick ? (
-            <div className="text-center text-white">
-              <div className="animate-spin rounded-full h-10 w-10 sm:h-16 sm:w-16 border-t-2 sm:border-t-3 border-b-2 sm:border-b-3 border-primary mx-auto mb-2 sm:mb-4"></div>
-              <p className="text-sm sm:text-lg font-medium">Loading stream...</p>
-            </div>
-          ) : (
-            <>
-              {/* Play Button - smaller on mobile */}
-              <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-primary/90 flex items-center justify-center shadow-2xl group-hover:bg-primary group-hover:scale-110 transition-all duration-300 mb-3 sm:mb-6">
-                <Play className="w-7 h-7 sm:w-12 sm:h-12 text-white ml-0.5 sm:ml-1" fill="white" />
+          {/* Play Button - smaller on mobile */}
+          <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-primary/90 flex items-center justify-center shadow-2xl group-hover:bg-primary group-hover:scale-110 transition-all duration-300 mb-3 sm:mb-6">
+            <Play className="w-7 h-7 sm:w-12 sm:h-12 text-white ml-0.5 sm:ml-1" fill="white" />
+          </div>
+          
+          {/* Match Info - responsive text */}
+          <div className="text-center px-2 sm:px-4 max-w-full">
+            {homeTeamName && awayTeamName ? (
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">
+                  {homeTeamName} <span className="text-white/60 font-normal">vs</span> {awayTeamName}
+                </h3>
               </div>
-              
-              {/* Match Info - responsive text */}
-              <div className="text-center px-2 sm:px-4 max-w-full">
-                {homeTeamName && awayTeamName ? (
-                  <div className="space-y-1 sm:space-y-2">
-                    <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">
-                      {homeTeamName} <span className="text-white/60 font-normal">vs</span> {awayTeamName}
-                    </h3>
-                  </div>
-                ) : (
-                  <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">{matchTitle}</h3>
-                )}
-                <p className="text-white/70 text-xs sm:text-lg mt-1.5 sm:mt-3">Tap to Watch Live</p>
-              </div>
-            </>
-          )}
+            ) : (
+              <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">{matchTitle}</h3>
+            )}
+            <p className="text-white/70 text-xs sm:text-lg mt-1.5 sm:mt-3">Tap to Watch Live</p>
+          </div>
         </div>
       </div>
     );
