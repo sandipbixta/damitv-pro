@@ -106,34 +106,42 @@ MATCH DETAILS:
 
 WRITING RULES (MUST FOLLOW):
 
-1. DYNAMIC OPENER: Start your preview with this opening style: "${randomOpener.replace('[VENUE]', venue)}"
+1. ANSWER-FIRST FORMAT (CRITICAL FOR AI OVERVIEW):
+   Your preview MUST start with a 50-word "TL;DR" summary that answers:
+   - WHO is playing (team names)
+   - WHEN (date/time reference)
+   - WHERE (venue)
+   - PREDICTION (score prediction with brief reasoning)
+   This first paragraph should be clippable by AI models as a standalone answer.
+
+2. DYNAMIC OPENER: After the summary, continue with this opening style: "${randomOpener.replace('[VENUE]', venue)}"
    Do NOT use generic openings like "In this match..." or "Today's game..."
 
-2. SPORT-SPECIFIC LANGUAGE: You MUST naturally include at least one of these terms: '${keywordInstructions}'
+3. SPORT-SPECIFIC LANGUAGE: You MUST naturally include at least one of these terms: '${keywordInstructions}'
    Weave them naturally into your tactical analysis.
 
-3. LOCAL HERO RULE: In your SECOND paragraph, identify and highlight ONE star player from ${homeTeam} (the home team).
+4. LOCAL HERO RULE: Identify and highlight ONE star player from ${homeTeam} (the home team).
    Mention their recent form, role, or what they bring to this match.
 
-4. JOURNALISTIC STYLE: Use varied sentence lengths:
+5. JOURNALISTIC STYLE: Use varied sentence lengths:
    - Mix short, punchy sentences (5-8 words) for impact
    - With longer, detailed analytical sentences (15-25 words)
    - Avoid robotic, uniform sentence structures
-   - Example rhythm: "The pressure is immense. Both managers understand that a slip here could define their entire campaign, with European qualification hanging in the balance."
 
-5. AUTHENTIC VOICE: Write like a seasoned sports journalist, not a template. Include:
+6. AUTHENTIC VOICE: Write like a seasoned sports journalist, not a template. Include:
    - Specific tactical observations
    - Recent form analysis (imagine you know their last 3 results)
    - A bold prediction with reasoning
 
 REQUIRED OUTPUT - Respond ONLY with valid JSON:
 {
-  "seoPreview": "Your 200-word expert preview following ALL rules above...",
+  "seoPreview": "FIRST 50 WORDS: Direct summary with who/when/where/prediction. THEN: Your 150-word expert analysis following ALL rules above...",
   "faqs": [
-    {"question": "What time does ${homeTeam} vs ${awayTeam} kick off?", "answer": "Detailed answer about timing..."},
-    {"question": "How can I watch ${homeTeam} vs ${awayTeam} live stream?", "answer": "Answer about DamiTV streaming..."},
-    {"question": "What are the key players to watch in ${homeTeam} vs ${awayTeam}?", "answer": "Mention 2-3 players..."},
-    {"question": "What is the predicted outcome for ${homeTeam} vs ${awayTeam}?", "answer": "Your prediction with reasoning..."}
+    {"question": "What time does ${homeTeam} vs ${awayTeam} kick off?", "answer": "Detailed answer about timing with timezone info..."},
+    {"question": "How can I watch ${homeTeam} vs ${awayTeam} live stream free?", "answer": "Answer about DamiTV streaming - mention HD quality and multiple sources..."},
+    {"question": "Who are the key players to watch in ${homeTeam} vs ${awayTeam}?", "answer": "Mention 2-3 star players with specific stats or form..."},
+    {"question": "What is the predicted score for ${homeTeam} vs ${awayTeam}?", "answer": "Your specific score prediction (e.g., 2-1) with tactical reasoning..."},
+    {"question": "Where is ${homeTeam} vs ${awayTeam} being played?", "answer": "Venue name and brief stadium info..."}
   ]
 }`;
 
@@ -189,26 +197,30 @@ REQUIRED OUTPUT - Respond ONLY with valid JSON:
   }
 }
 
-// Fallback content when AI is unavailable
+// Fallback content when AI is unavailable - follows answer-first format
 function generateFallbackContent(homeTeam: string, awayTeam: string, league: string): { seoPreview: string; faqs: FAQ[] } {
   return {
-    seoPreview: `Watch ${homeTeam} vs ${awayTeam} live in the ${league}. This highly anticipated match promises exciting action as both teams look to secure vital points. ${homeTeam} will be looking to capitalize on home advantage while ${awayTeam} aims to upset the odds on the road. Key players from both sides will be under pressure to deliver match-winning performances. With both teams in competitive form, expect an intense battle from start to finish. Fans worldwide can stream this match live on DamiTV with multiple HD stream options. Don't miss a single moment of what could be a season-defining encounter between these two rivals.`,
+    seoPreview: `${homeTeam} faces ${awayTeam} in a crucial ${league} clash. Expect a competitive match with both sides pushing for victory - prediction: ${homeTeam} 2-1 ${awayTeam}. This highly anticipated match promises exciting action as both teams look to secure vital points. ${homeTeam} will be looking to capitalize on home advantage while ${awayTeam} aims to upset the odds on the road. Key players from both sides will be under pressure to deliver match-winning performances. With both teams in competitive form, expect an intense battle from start to finish. Fans worldwide can stream this match live on DamiTV with multiple HD stream options.`,
     faqs: [
       {
-        question: `What time does ${homeTeam} vs ${awayTeam} start?`,
-        answer: `Check the match page for the exact kickoff time in your local timezone. We recommend joining 10 minutes early to ensure your stream is ready.`
+        question: `What time does ${homeTeam} vs ${awayTeam} kick off?`,
+        answer: `Check the match page for the exact kickoff time displayed in your local timezone. We recommend joining 10 minutes early to ensure your stream is ready and stable.`
       },
       {
-        question: `How can I watch ${homeTeam} vs ${awayTeam} live?`,
-        answer: `You can stream the match live on DamiTV. We provide multiple verified stream links with HD quality options for the best viewing experience.`
+        question: `How can I watch ${homeTeam} vs ${awayTeam} live stream free?`,
+        answer: `You can stream the match live on DamiTV completely free. We provide multiple verified stream links with HD quality options for the best viewing experience - no registration required.`
       },
       {
-        question: `Is ${homeTeam} vs ${awayTeam} free to watch?`,
-        answer: `Yes, DamiTV offers free access to live sports streams. Simply visit the match page and select from our verified stream sources.`
+        question: `Who are the key players to watch in ${homeTeam} vs ${awayTeam}?`,
+        answer: `Both teams feature talented squads. Watch for the home team's attacking threats and the away side's key playmakers. Check our match preview for specific player insights.`
       },
       {
-        question: `What channel is showing ${homeTeam} vs ${awayTeam}?`,
-        answer: `The match is available on various sports networks. DamiTV aggregates working stream links so you can watch regardless of your location.`
+        question: `What is the predicted score for ${homeTeam} vs ${awayTeam}?`,
+        answer: `Our prediction: ${homeTeam} 2-1 ${awayTeam}. The home advantage typically plays a significant role, and we expect a closely contested match with the hosts edging it.`
+      },
+      {
+        question: `Where is ${homeTeam} vs ${awayTeam} being played?`,
+        answer: `This ${league} match will be played at ${homeTeam}'s home stadium. Check the match page for venue details and capacity information.`
       }
     ]
   };

@@ -169,25 +169,60 @@ const MatchDetail: React.FC = () => {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`https://damitv.pro/match/${matchName}`} />
         
-        {/* Structured Data */}
+        {/* SportsEvent Schema with enhanced fields */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "SportsEvent",
             "name": matchTitle,
+            "description": match.seo_preview?.slice(0, 200) || `Watch ${matchTitle} live stream on DamiTV`,
             "startDate": match.match_time,
+            "eventStatus": isLive ? "https://schema.org/EventScheduled" : "https://schema.org/EventScheduled",
+            "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
             "location": {
               "@type": "Place",
-              "name": match.venue || "TBA"
+              "name": match.venue || "TBA",
+              "address": {
+                "@type": "PostalAddress",
+                "name": match.venue || "TBA"
+              }
+            },
+            "homeTeam": {
+              "@type": "SportsTeam",
+              "name": match.home_team,
+              "image": match.home_team_badge || undefined
+            },
+            "awayTeam": {
+              "@type": "SportsTeam",
+              "name": match.away_team,
+              "image": match.away_team_badge || undefined
             },
             "competitor": [
               { "@type": "SportsTeam", "name": match.home_team },
               { "@type": "SportsTeam", "name": match.away_team }
-            ]
+            ],
+            "organizer": {
+              "@type": "Organization",
+              "name": match.league || "Sports League",
+              "url": "https://damitv.pro"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock",
+              "url": `https://damitv.pro/match/${matchName}`,
+              "validFrom": new Date().toISOString()
+            },
+            "performer": [
+              { "@type": "SportsTeam", "name": match.home_team },
+              { "@type": "SportsTeam", "name": match.away_team }
+            ],
+            "sport": match.sport || "Football"
           })}
         </script>
         
-        {/* FAQ Schema */}
+        {/* FAQPage Schema for AI Overview optimization */}
         {match.faqs && match.faqs.length > 0 && (
           <script type="application/ld+json">
             {JSON.stringify({
@@ -204,6 +239,34 @@ const MatchDetail: React.FC = () => {
             })}
           </script>
         )}
+        
+        {/* BreadcrumbList Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://damitv.pro"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Live Matches",
+                "item": "https://damitv.pro/live"
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": matchTitle,
+                "item": `https://damitv.pro/match/${matchName}`
+              }
+            ]
+          })}
+        </script>
       </Helmet>
 
       {/* Expert Preview Section */}
