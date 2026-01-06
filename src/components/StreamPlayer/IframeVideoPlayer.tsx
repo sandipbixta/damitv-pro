@@ -8,11 +8,9 @@ import { Match } from '../../types/sports';
 import { ManualMatch } from '../../types/manualMatch';
 import { getBohoImageUrl } from '../../api/sportsApi';
 import { removeAdsFromIframe, setupDelayedAdBlocking, injectAdBlockStyles } from '../../utils/adBlocker';
-import { buildFallbackEmbedUrl } from '../../services/bohoSportApi';
 
 interface IframeVideoPlayerProps {
   src: string;
-  fallbackSrc?: string;
   onLoad: () => void;
   onError: () => void;
   title?: string;
@@ -20,7 +18,7 @@ interface IframeVideoPlayerProps {
   match?: Match | ManualMatch | null;
 }
 
-const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc, onLoad, onError, title, matchStartTime, match }) => {
+const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, title, matchStartTime, match }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -29,8 +27,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
   const [lastSrc, setLastSrc] = useState('');
   const [reloadCount, setReloadCount] = useState(0);
   const [countdown, setCountdown] = useState<string>('');
-  const [currentSrc, setCurrentSrc] = useState(src);
-  const [hasTriedFallback, setHasTriedFallback] = useState(false);
+
   // Calculate countdown for upcoming matches
   useEffect(() => {
     if (!matchStartTime) {
@@ -98,37 +95,19 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
     }
   };
 
-  // Handle iframe load error - try fallback first
+  // Handle iframe load error
   const handleIframeError = () => {
-    console.error('❌ Iframe failed to load:', currentSrc);
-    
-    // Try fallback URL if available and not already tried
-    if (fallbackSrc && !hasTriedFallback) {
-      console.log('🔄 Primary stream failed, switching to fallback:', fallbackSrc);
-      setHasTriedFallback(true);
-      setCurrentSrc(fallbackSrc);
-      setIsLoading(true);
-      return;
-    }
-    
+    console.error('❌ Iframe failed to load');
     setIsLoading(false);
     onError();
   };
 
-  // Reset fallback state when src changes
+  // Smart iframe reloading - only when src actually changes and with proper delay
   useEffect(() => {
-    if (src !== lastSrc) {
-      setHasTriedFallback(false);
-      setCurrentSrc(src);
-    }
-  }, [src, lastSrc]);
-
-  // Smart iframe reloading - only when currentSrc actually changes and with proper delay
-  useEffect(() => {
-    if (!currentSrc || currentSrc === lastSrc) return;
+    if (!src || src === lastSrc) return;
     
     console.log('🔄 Stream URL changed, reloading iframe...');
-    setLastSrc(currentSrc);
+    setLastSrc(src);
     setIsLoading(true);
     setReloadCount(prev => prev + 1);
     
@@ -138,13 +117,13 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
       
       // Wait longer before setting new src to ensure clean reload
       setTimeout(() => {
-        if (iframeRef.current && currentSrc) {
-          console.log('🎯 Setting new iframe src:', currentSrc.substring(0, 80) + '...');
-          iframeRef.current.src = currentSrc;
+        if (iframeRef.current && src) {
+          console.log('🎯 Setting new iframe src:', src.substring(0, 80) + '...');
+          iframeRef.current.src = src;
         }
       }, 300);
     }
-  }, [currentSrc, lastSrc]);
+  }, [src, lastSrc]);
 
   // Timeout handling with longer duration for streaming content
   useEffect(() => {
@@ -340,7 +319,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
 
       <iframe 
         ref={iframeRef}
-        src={currentSrc}
+        src={src}
         className="w-full h-full absolute inset-0"
         allowFullScreen
         title={title || "Live Stream"}
