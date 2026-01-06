@@ -695,6 +695,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       ) : (
         <IframeVideoPlayer
           src={stream.embedUrl.startsWith('http://') ? stream.embedUrl.replace(/^http:\/\//i, 'https://') : stream.embedUrl}
+          fallbackSrc={stream.fallbackUrl}
           onLoad={() => setError(false)}
           onError={handleError}
           title={match?.title}

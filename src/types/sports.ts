@@ -38,6 +38,7 @@ export interface Stream {
   language: string;
   hd: boolean;
   embedUrl: string;
+  fallbackUrl?: string;  // Fallback stream URL (e.g., streamed.pk)
   source: string;
   timestamp?: number;  // Optional timestamp for freshness tracking
 }

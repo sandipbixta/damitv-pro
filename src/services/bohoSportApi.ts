@@ -5,14 +5,20 @@ import { supabase } from '@/integrations/supabase/client';
 // Ad-free embed player (preferred)
 const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 
-// Legacy stream base URL (fallback only)
+// Fallback stream provider
+const STREAMED_PK_BASE = 'https://embedme.top';
 
-// Legacy stream base URL (fallback only)
+// Legacy stream base URL (for images)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build ad-free embed URL
+// Build ad-free embed URL (primary)
 const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
   return `${DAMITV_EMBED_BASE}/?id=${matchId}&source=${source}`;
+};
+
+// Build fallback embed URL (streamed.pk)
+export const buildFallbackEmbedUrl = (matchId: string, source: string): string => {
+  return `${STREAMED_PK_BASE}/embed/${source}/${matchId}`;
 };
 
 // Cache for API responses
@@ -333,8 +339,9 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   try {
     console.log(`🎬 Building ad-free embed URL for source: ${source}, id: ${id}`);
 
-    // Use ad-free embed URL
+    // Use ad-free embed URL (primary) with fallback
     const adFreeUrl = buildAdFreeEmbedUrl(id, source);
+    const fallbackUrl = buildFallbackEmbedUrl(id, source);
     
     const primaryStream: Stream = {
       id: id,
@@ -342,11 +349,13 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
       language: 'EN',
       hd: true,
       embedUrl: adFreeUrl,
+      fallbackUrl: fallbackUrl,
       source: source,
       timestamp: Date.now()
     };
 
     console.log(`✅ Ad-free embed URL: ${adFreeUrl}`);
+    console.log(`🔄 Fallback URL: ${fallbackUrl}`);
     setCachedData(cacheKey, [primaryStream]);
     return [primaryStream];
   } catch (error) {
@@ -375,6 +384,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
     for (const src of match.sources) {
       if (src.source && src.id) {
         const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source);
+        const fallbackUrl = buildFallbackEmbedUrl(src.id, src.source);
         
         allStreams.push({
           id: src.id,
@@ -382,13 +392,14 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
           language: 'EN',
           hd: true,
           embedUrl: adFreeUrl,
+          fallbackUrl: fallbackUrl,
           source: src.source,
           timestamp: Date.now(),
           name: `Stream ${streamNumber}`
         } as Stream);
         
         sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${adFreeUrl}`);
+        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${adFreeUrl} (fallback: ${fallbackUrl})`);
         streamNumber++;
       }
     }
