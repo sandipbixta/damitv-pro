@@ -31,6 +31,8 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
   const [countdown, setCountdown] = useState<string>('');
   const [currentSrc, setCurrentSrc] = useState(src);
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
+  const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Calculate countdown for upcoming matches
   useEffect(() => {
     if (!matchStartTime) {
@@ -82,6 +84,17 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
     navigate('/');
   };
 
+  // Switch to fallback stream
+  const switchToFallback = () => {
+    if (fallbackSrc && !hasTriedFallback) {
+      console.log('🔄 Switching to fallback stream:', fallbackSrc);
+      setHasTriedFallback(true);
+      setIsUsingFallback(true);
+      setCurrentSrc(fallbackSrc);
+      setIsLoading(true);
+    }
+  };
+
   // Handle iframe load success with ad blocking
   const handleIframeLoad = () => {
     console.log('✅ Iframe content loaded');
@@ -96,18 +109,37 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
         console.log('🎬 Stream ready with ad blocking applied');
       });
     }
+
+    // Start 20-second fallback timeout if primary stream and fallback is available
+    // This handles cases where iframe loads but video inside fails
+    if (fallbackSrc && !hasTriedFallback && !isUsingFallback) {
+      console.log('⏱️ Starting 20-second fallback timer...');
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+      }
+      fallbackTimeoutRef.current = setTimeout(() => {
+        // Only switch if user hasn't interacted and we haven't tried fallback yet
+        if (!hasTriedFallback) {
+          console.log('⏰ 20 seconds elapsed - auto-switching to fallback stream');
+          switchToFallback();
+        }
+      }, 20000);
+    }
   };
 
   // Handle iframe load error - try fallback first
   const handleIframeError = () => {
     console.error('❌ Iframe failed to load:', currentSrc);
     
+    // Clear fallback timeout since we're handling error
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+    }
+    
     // Try fallback URL if available and not already tried
     if (fallbackSrc && !hasTriedFallback) {
       console.log('🔄 Primary stream failed, switching to fallback:', fallbackSrc);
-      setHasTriedFallback(true);
-      setCurrentSrc(fallbackSrc);
-      setIsLoading(true);
+      switchToFallback();
       return;
     }
     
@@ -115,11 +147,25 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
     onError();
   };
 
+  // Cleanup fallback timeout on unmount or src change
+  useEffect(() => {
+    return () => {
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Reset fallback state when src changes
   useEffect(() => {
     if (src !== lastSrc) {
       setHasTriedFallback(false);
+      setIsUsingFallback(false);
       setCurrentSrc(src);
+      // Clear any existing timeout
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+      }
     }
   }, [src, lastSrc]);
 
@@ -330,11 +376,22 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, fallbackSrc,
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           </div>
-          <p className="mt-6 text-white/90 font-semibold text-sm tracking-wide">Connecting to stream...</p>
+          <p className="mt-6 text-white/90 font-semibold text-sm tracking-wide">
+            {isUsingFallback ? 'Connecting to backup stream...' : 'Connecting to stream...'}
+          </p>
           <div className="flex items-center gap-2 mt-2">
             <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-            <p className="text-white/40 text-xs font-medium uppercase tracking-widest">DAMITV</p>
+            <p className="text-white/40 text-xs font-medium uppercase tracking-widest">
+              {isUsingFallback ? 'BACKUP' : 'DAMITV'}
+            </p>
           </div>
+        </div>
+      )}
+
+      {/* Fallback indicator badge */}
+      {isUsingFallback && !isLoading && (
+        <div className="absolute top-2 right-2 z-20 bg-orange-500/90 text-white text-xs px-2 py-1 rounded-md font-medium">
+          Backup Stream
         </div>
       )}
 
