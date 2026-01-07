@@ -1,4 +1,4 @@
-// BOHOSport API Service - Direct API calls (no Supabase edge functions)
+// BOHOSport API Service - Direct API calls with CORS proxy
 import { Sport, Match, Stream, Source } from '../types/sports';
 
 // Ad-free embed player
@@ -7,7 +7,10 @@ const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 // Legacy stream base URL (for images)
 const STREAM_BASE = 'https://streamed.su';
 
-// API bases to try
+// CORS proxy to bypass browser restrictions
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+// API bases to try (will be proxied)
 const API_BASES = [
   'https://streamed.su/api',
   'https://embedme.top/api',
@@ -167,21 +170,19 @@ const parseMatchData = (item: any): Match | null => {
   }
 };
 
-// Try fetching from an API base directly
+// Try fetching from an API base using CORS proxy
 async function tryFetch(baseUrl: string, endpoint: string): Promise<{ success: boolean; data: any }> {
   const apiUrl = endpoint ? `${baseUrl}/${endpoint}` : `${baseUrl}/matches/all`;
-  console.log(`🔄 Trying: ${apiUrl}`);
+  const proxiedUrl = `${CORS_PROXY}${encodeURIComponent(apiUrl)}`;
+  console.log(`🔄 Trying: ${apiUrl} (via proxy)`);
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(proxiedUrl, {
       method: 'GET',
       signal: controller.signal,
-      headers: {
-        'Accept': 'application/json, text/html, */*',
-      },
     });
 
     clearTimeout(timeoutId);
@@ -190,18 +191,13 @@ async function tryFetch(baseUrl: string, endpoint: string): Promise<{ success: b
       return { success: false, data: null };
     }
 
-    const contentType = response.headers.get('content-type');
+    const text = await response.text();
     let data;
     
-    if (contentType?.includes('application/json')) {
-      data = await response.json();
-    } else {
-      const text = await response.text();
-      try {
-        data = JSON.parse(text);
-      } catch {
-        return { success: false, data: null };
-      }
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { success: false, data: null };
     }
 
     // Check if response has valid data
