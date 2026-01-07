@@ -5,6 +5,7 @@ import { useIsMobile } from '../hooks/use-mobile';
 import { isTrendingMatch } from '../utils/popularLeagues';
 import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
 import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
+import { fetchLiveScores, enrichMatchesWithLiveScores } from '../hooks/useLiveScores';
 interface PopularMatchesProps {
   popularMatches: Match[];
   selectedSport: string | null;
@@ -51,10 +52,19 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
       const matchesToCheck = prioritizedMatches.slice(0, 25);
       console.log(`🔥 Checking viewer counts for top ${matchesToCheck.length} prioritized matches`);
       try {
-        const matchesWithViewers = await enrichMatchesWithViewers(matchesToCheck);
+        // Fetch viewer counts and live scores in parallel
+        const [matchesWithViewers, liveScores] = await Promise.all([
+          enrichMatchesWithViewers(matchesToCheck),
+          fetchLiveScores()
+        ]);
+
+        // Enrich with live scores
+        const matchesWithScores = liveScores.length > 0 
+          ? enrichMatchesWithLiveScores(matchesWithViewers, liveScores)
+          : matchesWithViewers;
 
         // Only include matches with viewer counts
-        const liveMatchesWithViewers = matchesWithViewers.filter(m => (m.viewerCount || 0) > 0);
+        const liveMatchesWithViewers = matchesWithScores.filter(m => (m.viewerCount || 0) > 0);
 
         // Sort by viewer count descending (highest first)
         const sortedMatches = liveMatchesWithViewers.sort((a, b) => {
@@ -64,7 +74,8 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
         });
         console.log('🔥 Top 8 matches by viewers:', sortedMatches.slice(0, 8).map(m => ({
           title: m.title,
-          viewers: m.viewerCount
+          viewers: m.viewerCount,
+          score: m.home_score !== undefined ? `${m.home_score}-${m.away_score}` : 'no score'
         })));
         setEnrichedMatches(sortedMatches);
       } catch (error) {
