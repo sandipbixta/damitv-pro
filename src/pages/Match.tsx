@@ -11,7 +11,7 @@ import { generateMatchSlug } from '@/utils/matchSlug';
 
 import { teamLogoService } from '@/services/teamLogoService';
 import SEOMetaTags from '@/components/SEOMetaTags';
-import SocialShare from '@/components/SocialShare';
+
 import { useMatchTeamLogos } from '@/hooks/useTeamLogo';
 import TeamLogoDisplay from '@/components/TeamLogoDisplay';
 
@@ -212,16 +212,6 @@ const Match = () => {
       <MatchHeader 
         match={match} 
         streamAvailable={!!stream && stream.id !== "error"}
-        socialShare={
-          <div className="flex items-center gap-2">
-            <SocialShare
-              title={matchTitle}
-              description={seoDescription}
-              image={matchPosterUrl}
-              url={canonicalUrl}
-            />
-          </div>
-        }
       />
       
       <div className="container mx-auto px-4 py-4 sm:py-8">

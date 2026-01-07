@@ -6,7 +6,7 @@ import { fetchStream } from '@/api/sportsApi';
 import { Loader, Play, Users } from 'lucide-react';
 import { getConnectionInfo } from '@/utils/connectionOptimizer';
 import { fetchViewerCountFromSource, formatViewerCount } from '@/services/viewerCountService';
-import { triggerPopunderAd } from '@/utils/popunderAd';
+
 interface StreamSourcesProps {
   sources: Source[];
   activeSource: string | null;

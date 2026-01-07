@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/accordion';
 import { Match } from '@/types/sports';
 import { format } from 'date-fns';
-import { triggerPopunderAd } from '@/utils/popunderAd';
+
 
 interface MatchIntelligenceProps {
   match: Match;

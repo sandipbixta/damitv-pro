@@ -8,8 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Link, useSearchParams } from 'react-router-dom';
 import { Radio, Clock } from 'lucide-react';
 import PageLayout from '../components/PageLayout';
-import { generateCompetitorTitle, generateCompetitorDescription } from '../utils/competitorSEO';
-import CompetitorSEOContent from '../components/CompetitorSEOContent';
+import { Helmet } from 'react-helmet-async';
 import { Helmet } from 'react-helmet-async';
 import MatchDetails from '../components/MatchDetails';
 
@@ -21,7 +20,6 @@ import SportFilterPills from '../components/live/SportFilterPills';
 import MatchesTabContent from '../components/live/MatchesTabContent';
 import MatchSection from '../components/MatchSection';
 import MatchCard from '../components/MatchCard';
-import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 
 import PopularMatches from '../components/PopularMatches';
 
