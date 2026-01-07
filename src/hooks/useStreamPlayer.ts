@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Match, Stream, Source } from '../types/sports';
-import { fetchAllMatchStreams } from '../api/sportsApi';
+import { fetchAllMatchStreams } from '../services/bohoSportApi';
 
 export const useStreamPlayer = () => {
   const [featuredMatch, setFeaturedMatch] = useState<Match | null>(null);
@@ -19,16 +19,16 @@ export const useStreamPlayer = () => {
     try {
       console.log(`🎯 Building streams for: ${match.title}`);
       
-      const result = await fetchAllMatchStreams(match);
+      const streams = await fetchAllMatchStreams(match.id, match.sources || []);
       
       setStreamDiscovery({
-        sourcesChecked: result.sourcesChecked,
-        sourcesWithStreams: result.sourcesWithStreams,
-        sourceNames: result.sourceNames
+        sourcesChecked: match.sources?.length || 0,
+        sourcesWithStreams: streams.length,
+        sourceNames: streams.map(s => s.source)
       });
       
       const streamsData: Record<string, Stream[]> = {};
-      result.streams.forEach(stream => {
+      streams.forEach(stream => {
         const sourceKey = `${stream.source}/${stream.id}`;
         if (!streamsData[sourceKey]) {
           streamsData[sourceKey] = [];
@@ -38,8 +38,8 @@ export const useStreamPlayer = () => {
       
       setAllStreams(streamsData);
       
-      if (result.streams.length > 0) {
-        const firstStream = result.streams[0];
+      if (streams.length > 0) {
+        const firstStream = streams[0];
         setCurrentStream({
           ...firstStream,
           timestamp: Date.now()
@@ -48,7 +48,7 @@ export const useStreamPlayer = () => {
         console.log(`✅ Stream ready: ${firstStream.source}`);
       }
       
-      console.log(`🎬 ${result.streams.length} streams ready`);
+      console.log(`🎬 ${streams.length} streams ready`);
       
     } catch (error) {
       console.error('❌ Error building streams:', error);

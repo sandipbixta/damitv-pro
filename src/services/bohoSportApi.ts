@@ -1,12 +1,18 @@
-// BOHOSport API Service - fetches from sportsrc.org API
+// BOHOSport API Service - Direct API calls (no Supabase edge functions)
 import { Sport, Match, Stream, Source } from '../types/sports';
-import { supabase } from '@/integrations/supabase/client';
 
 // Ad-free embed player
 const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 
 // Legacy stream base URL (for images)
 const STREAM_BASE = 'https://streamed.su';
+
+// API bases to try
+const API_BASES = [
+  'https://streamed.su/api',
+  'https://embedme.top/api',
+  'https://rfrsh.me/api',
+];
 
 // Build embed URL using path-based format: /{source}/{id}
 const buildEmbedUrl = (matchId: string, source: string): string => {
@@ -154,81 +160,124 @@ const parseMatchData = (item: any): Match | null => {
         }
       },
       sources: sources,
-      viewerCount: item.viewers || item.viewerCount || 0
     };
-  } catch (error) {
-    console.error('Error parsing match data:', error, item);
+  } catch (e) {
+    console.warn('Failed to parse match data:', e);
     return null;
   }
 };
 
-// Fetch all sports categories
-export const fetchSports = async (): Promise<Sport[]> => {
-  const cacheKey = 'boho-sports';
-  const cached = getCachedData(cacheKey);
-  if (cached) return cached;
+// Try fetching from an API base directly
+async function tryFetch(baseUrl: string, endpoint: string): Promise<{ success: boolean; data: any }> {
+  const apiUrl = endpoint ? `${baseUrl}/${endpoint}` : `${baseUrl}/matches/all`;
+  console.log(`🔄 Trying: ${apiUrl}`);
 
   try {
-    // BOHOSport may not have a dedicated sports endpoint
-    // Return predefined sports list
-    const sports: Sport[] = [
-      { id: 'football', name: 'Football' },
-      { id: 'basketball', name: 'Basketball' },
-      { id: 'american-football', name: 'American Football' },
-      { id: 'cricket', name: 'Cricket' },
-      { id: 'tennis', name: 'Tennis' },
-      { id: 'fight', name: 'Fight' },
-      { id: 'hockey', name: 'Hockey' },
-      { id: 'baseball', name: 'Baseball' },
-      { id: 'rugby', name: 'Rugby' },
-      { id: 'motorsport', name: 'Motorsport' }
-    ];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json, text/html, */*',
+      },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return { success: false, data: null };
+    }
+
+    const contentType = response.headers.get('content-type');
+    let data;
     
-    setCachedData(cacheKey, sports);
-    console.log(`✅ Returned ${sports.length} sports categories`);
-    return sports;
+    if (contentType?.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        return { success: false, data: null };
+      }
+    }
+
+    // Check if response has valid data
+    const hasData = Array.isArray(data) || 
+                    (data && (data.matches || data.events || data.data || data.live));
+    
+    if (hasData) {
+      const count = Array.isArray(data) ? data.length : 'object';
+      console.log(`✅ Success from ${apiUrl}: ${count} items`);
+      return { success: true, data };
+    }
+
+    return { success: false, data: null };
   } catch (error) {
-    console.error('❌ Error fetching sports:', error);
-    throw error;
+    console.log(`❌ Failed ${apiUrl}`);
+    return { success: false, data: null };
   }
+}
+
+// Predefined sports list
+export const fetchSports = async (): Promise<Sport[]> => {
+  return [
+    { id: 'football', name: 'Football' },
+    { id: 'basketball', name: 'Basketball' },
+    { id: 'tennis', name: 'Tennis' },
+    { id: 'cricket', name: 'Cricket' },
+    { id: 'hockey', name: 'Hockey' },
+    { id: 'american-football', name: 'American Football' },
+    { id: 'baseball', name: 'Baseball' },
+    { id: 'fight', name: 'Fighting' },
+    { id: 'motorsport', name: 'Motorsport' },
+    { id: 'rugby', name: 'Rugby' },
+  ];
 };
 
-// Fetch all matches from API via proxy
+// Fetch all matches from API directly
 export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'boho-matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log('🔄 Fetching matches via proxy...');
+    console.log('🔄 Fetching matches directly from API...');
     
-    const { data, error } = await supabase.functions.invoke('boho-sport', {
-      body: { endpoint: '' },
-    });
-
-    if (error) {
-      console.error('❌ Proxy error:', error);
-      return [];
+    // Try each API base with different endpoints
+    const endpointsToTry = ['matches/all', 'matches/live', 'matches', 'events'];
+    
+    for (const baseUrl of API_BASES) {
+      for (const endpoint of endpointsToTry) {
+        const result = await tryFetch(baseUrl, endpoint);
+        
+        if (result.success && result.data) {
+          let matches: Match[] = [];
+          
+          // Handle different response formats
+          if (Array.isArray(result.data)) {
+            matches = result.data.map(parseMatchData).filter((m): m is Match => m !== null);
+          } else if (result.data.matches && Array.isArray(result.data.matches)) {
+            matches = result.data.matches.map(parseMatchData).filter((m): m is Match => m !== null);
+          } else if (result.data.data && Array.isArray(result.data.data)) {
+            matches = result.data.data.map(parseMatchData).filter((m): m is Match => m !== null);
+          } else if (result.data.events && Array.isArray(result.data.events)) {
+            matches = result.data.events.map(parseMatchData).filter((m): m is Match => m !== null);
+          }
+          
+          if (matches.length > 0) {
+            setCachedData(cacheKey, matches);
+            console.log(`✅ Fetched ${matches.length} matches from ${baseUrl}/${endpoint}`);
+            return matches;
+          }
+        }
+      }
     }
 
-    console.log('📦 Proxy response received');
-
-    let matches: Match[] = [];
-
-    // Handle different response formats
-    if (Array.isArray(data)) {
-      matches = data.map(parseMatchData).filter((m): m is Match => m !== null);
-    } else if (data.matches && Array.isArray(data.matches)) {
-      matches = data.matches.map(parseMatchData).filter((m): m is Match => m !== null);
-    } else if (data.data && Array.isArray(data.data)) {
-      matches = data.data.map(parseMatchData).filter((m): m is Match => m !== null);
-    } else if (data.events && Array.isArray(data.events)) {
-      matches = data.events.map(parseMatchData).filter((m): m is Match => m !== null);
-    }
-
-    setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} matches`);
-    return matches;
+    console.log('❌ All API endpoints failed');
+    return [];
   } catch (error) {
     console.error('❌ Error fetching matches:', error);
     return [];
@@ -250,177 +299,83 @@ export const fetchMatches = async (sportId: string): Promise<Match[]> => {
       mapCategoryToSportId(match.category) === sportId
     );
 
-    setCachedData(cacheKey, sportMatches);
-    console.log(`✅ Filtered ${sportMatches.length} ${sportId} matches`);
-    return sportMatches;
+    if (sportMatches.length > 0) {
+      setCachedData(cacheKey, sportMatches);
+      return sportMatches;
+    }
+
+    return allMatches;
   } catch (error) {
-    console.error(`❌ Error fetching ${sportId} matches:`, error);
-    throw error;
+    console.error(`Error fetching ${sportId} matches:`, error);
+    return [];
   }
 };
 
 // Fetch live matches
 export const fetchLiveMatches = async (): Promise<Match[]> => {
-  const cacheKey = 'boho-matches-live';
-  const cached = getCachedData(cacheKey);
-  if (cached) return cached;
+  const allMatches = await fetchAllMatches();
+  const now = Date.now();
+  
+  // Filter for live matches (started within last 3 hours or starting in next 30 mins)
+  return allMatches.filter(match => {
+    if (!match.date) return true; // Include matches without date
+    const matchTime = match.date;
+    const threeHoursAgo = now - (3 * 60 * 60 * 1000);
+    const thirtyMinsFromNow = now + (30 * 60 * 1000);
+    return matchTime >= threeHoursAgo && matchTime <= thirtyMinsFromNow;
+  });
+};
 
+// Fetch a single match by ID
+export const fetchMatch = async (matchId: string): Promise<Match | null> => {
   try {
     const allMatches = await fetchAllMatches();
-    const now = Date.now();
-    const sixHoursInMs = 6 * 60 * 60 * 1000;
-    const oneHourInMs = 60 * 60 * 1000;
-
-    const liveMatches = allMatches.filter(match => {
-      const matchTime = match.date;
-      return match.sources && 
-             match.sources.length > 0 && 
-             matchTime - now < oneHourInMs && 
-             now - matchTime < sixHoursInMs;
-    }).sort((a, b) => b.date - a.date);
-
-    setCachedData(cacheKey, liveMatches);
-    console.log(`✅ Found ${liveMatches.length} live matches`);
-    return liveMatches;
+    return allMatches.find(m => m.id === matchId) || null;
   } catch (error) {
-    console.error('❌ Error fetching live matches:', error);
-    throw error;
+    console.error('Error fetching match:', error);
+    return null;
   }
 };
 
-// Fetch a specific match by ID
-export const fetchMatch = async (sportId: string, matchId: string): Promise<Match> => {
-  const cacheKey = `boho-match-${matchId}`;
+// Build simple embed URL
+export const fetchSimpleStream = (source: string, id: string): string => {
+  return `${DAMITV_EMBED_BASE}/${source}/${id}`;
+};
+
+// Fetch all stream sources for a match
+export const fetchAllMatchStreams = async (matchId: string, sources: Source[]): Promise<Stream[]> => {
+  const cacheKey = `streams-${matchId}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
-  try {
-    const allMatches = await fetchAllMatches();
-    
-    // Match by exact ID or by numeric ID suffix
-    const match = allMatches.find(m => {
-      if (m.id === matchId) return true;
-      // Check if the matchId is just the numeric part
-      const numericMatch = m.id.match(/-(\d+)$/);
-      if (numericMatch && numericMatch[1] === matchId) return true;
-      // Also check for any numeric sequence match
-      const anyNumeric = m.id.match(/(\d+)/);
-      if (anyNumeric && anyNumeric[1] === matchId) return true;
-      return false;
-    });
-
-    if (!match) {
-      throw new Error(`Match ${matchId} not found`);
-    }
-
-    setCachedData(cacheKey, match);
-    console.log(`✅ Found match: ${match.title}`);
-    return match;
-  } catch (error) {
-    console.error(`❌ Error fetching match ${matchId}:`, error);
-    throw error;
-  }
-};
-
-// Fetch stream for a match - uses ad-free embed player
-export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
-  const cacheKey = `boho-stream-${source}-${id}`;
-  const cached = getCachedData(cacheKey);
-  if (cached) return cached;
-
-  try {
-    console.log(`🎬 Building embed URL for source: ${source}, id: ${id}`);
-
-    const embedUrl = buildEmbedUrl(id, source);
-    
-    const primaryStream: Stream = {
-      id: id,
-      streamNo: 1,
-      language: 'EN',
-      hd: true,
-      embedUrl: embedUrl,
-      source: source,
-      timestamp: Date.now()
-    };
-
-    console.log(`✅ Embed URL: ${embedUrl}`);
-    setCachedData(cacheKey, [primaryStream]);
-    return [primaryStream];
-  } catch (error) {
-    console.error(`❌ Error building URL for ${source}/${id}:`, error);
-    return [];
-  }
-};
-
-// Fetch all streams for a match - uses ONLY real source IDs from API (no fabricated IDs)
-export const fetchAllMatchStreams = async (match: Match): Promise<{
-  streams: Stream[];
-  sourcesChecked: number;
-  sourcesWithStreams: number;
-  sourceNames: string[];
-}> => {
-  const allStreams: Stream[] = [];
-  const sourcesWithStreams = new Set<string>();
+  const streams: Stream[] = [];
   
-  console.log(`🎬 Building streams for: ${match.title}`);
-  console.log(`📡 Match sources from API:`, match.sources);
-  
-  // ONLY use real source IDs from the API - don't fabricate any
-  if (match.sources && match.sources.length > 0) {
-    let streamNumber = 1;
-    
-    for (const src of match.sources) {
-      if (src.source && src.id) {
-        const embedUrl = buildEmbedUrl(src.id, src.source);
-        
-        allStreams.push({
-          id: src.id,
-          streamNo: streamNumber,
-          language: 'EN',
-          hd: true,
-          embedUrl: embedUrl,
-          source: src.source,
-          timestamp: Date.now(),
-          name: `Stream ${streamNumber}`
-        } as Stream);
-        
-        sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${embedUrl}`);
-        streamNumber++;
-      }
-    }
-  } else {
-    console.warn(`⚠️ No sources available for match: ${match.title}`);
+  if (!sources || sources.length === 0) {
+    return streams;
   }
 
-  const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`✅ Created ${allStreams.length} streams from real API sources`);
-
-  return {
-    streams: allStreams,
-    sourcesChecked: match.sources?.length || 0,
-    sourcesWithStreams: sourceNames.length,
-    sourceNames
-  };
-};
-
-// Fetch all streams (legacy compatibility)
-export const fetchAllStreams = async (match: Match): Promise<Record<string, Stream[]>> => {
-  const result = await fetchAllMatchStreams(match);
-  const streamsRecord: Record<string, Stream[]> = {};
-
-  result.streams.forEach(stream => {
-    const key = `${stream.source}/${stream.id}`;
-    if (!streamsRecord[key]) {
-      streamsRecord[key] = [];
+  sources.forEach((src, index) => {
+    if (src.source && src.id) {
+      streams.push({
+        source: src.source,
+        id: src.id,
+        streamNo: index + 1,
+        embedUrl: fetchSimpleStream(src.source, src.id),
+        language: 'EN',
+        hd: true,
+      });
     }
-    streamsRecord[key].push(stream);
   });
 
-  return streamsRecord;
+  if (streams.length > 0) {
+    setCachedData(cacheKey, streams);
+    console.log(`✅ Generated ${streams.length} stream URLs for match ${matchId}`);
+  }
+
+  return streams;
 };
 
-// Get image URL
+// Get BOHOSport image URL
 export const getBohoImageUrl = (path: string): string => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
@@ -431,8 +386,8 @@ export const getBohoImageUrl = (path: string): string => {
 export const getTeamBadgeUrl = (badge: string): string => {
   if (!badge) return '';
   if (badge.startsWith('http')) return badge;
-  return `${STREAM_BASE}/images/badge/${badge}`;
+  return getBohoImageUrl(badge);
 };
 
-// Export API base for reference
+// Export base URL for external use
 export const BOHO_API_BASE = STREAM_BASE;

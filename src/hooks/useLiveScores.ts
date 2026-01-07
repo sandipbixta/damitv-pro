@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Match } from '@/types/sports';
 
 interface LiveScore {
@@ -19,10 +18,11 @@ interface LiveScore {
 // Cache for live scores
 let scoreCache: LiveScore[] = [];
 let lastFetchTime = 0;
-const CACHE_TTL = 30000; // 30 seconds cache
+const CACHE_TTL = 60000; // 60 seconds cache (increased to reduce API calls)
 
 /**
- * Fetch live scores from TheSportsDB via edge function
+ * Fetch live scores - returns empty array since TheSportsDB API requires server-side key
+ * Live scores will be disabled until Supabase quota resets or user upgrades
  */
 export const fetchLiveScores = async (): Promise<LiveScore[]> => {
   // Return cached data if fresh
@@ -30,30 +30,10 @@ export const fetchLiveScores = async (): Promise<LiveScore[]> => {
     return scoreCache;
   }
 
-  try {
-    const { data, error } = await supabase.functions.invoke('fetch-live-scores', {
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    });
-
-    if (error) {
-      console.error('Error fetching live scores:', error);
-      return scoreCache; // Return stale cache on error
-    }
-
-    if (data?.success && data.liveScores?.length > 0) {
-      scoreCache = data.liveScores;
-      lastFetchTime = Date.now();
-      console.log(`✅ Live scores cached: ${scoreCache.length} matches`);
-      return scoreCache;
-    }
-
-    return [];
-  } catch (error) {
-    console.error('Error in fetchLiveScores:', error);
-    return scoreCache;
-  }
+  // Live scores require API key which can't be exposed in frontend
+  // Return empty array - live scores disabled
+  console.log('⚠️ Live scores disabled (requires server-side API key)');
+  return [];
 };
 
 /**
@@ -81,181 +61,139 @@ const getTeamWords = (name: string): string[] => {
 };
 
 /**
- * Calculate similarity score between two team names (0-100)
+ * Check if two team names match
  */
-const getTeamSimilarity = (name1: string, name2: string): number => {
-  if (!name1 || !name2) return 0;
+const teamsMatch = (streamTeam: string, apiTeam: string): boolean => {
+  const normalizedStream = normalizeTeamName(streamTeam);
+  const normalizedApi = normalizeTeamName(apiTeam);
   
-  const n1 = normalizeTeamName(name1);
-  const n2 = normalizeTeamName(name2);
-  
-  // Exact match
-  if (n1 === n2) return 100;
+  // Direct match after normalization
+  if (normalizedStream === normalizedApi) return true;
   
   // One contains the other
-  if (n1.includes(n2) || n2.includes(n1)) return 90;
+  if (normalizedStream.includes(normalizedApi) || normalizedApi.includes(normalizedStream)) return true;
   
-  // Word-based matching
-  const words1 = getTeamWords(name1);
-  const words2 = getTeamWords(name2);
+  // Check word overlap
+  const streamWords = getTeamWords(streamTeam);
+  const apiWords = getTeamWords(apiTeam);
   
-  let matchedWords = 0;
-  for (const w1 of words1) {
-    for (const w2 of words2) {
-      if (w1 === w2) {
-        matchedWords++;
-        break;
-      }
-      if (w1.length >= 4 && w2.length >= 4 && (w1.includes(w2) || w2.includes(w1))) {
-        matchedWords += 0.8;
-        break;
-      }
-    }
-  }
+  // At least one meaningful word must match
+  const matchingWords = streamWords.filter(word => apiWords.includes(word));
   
-  const maxWords = Math.max(words1.length, words2.length);
-  if (maxWords === 0) return 0;
-  
-  return Math.round((matchedWords / maxWords) * 80);
+  return matchingWords.length >= 1;
 };
 
 /**
- * Check if two team names match (fuzzy matching)
+ * Find live score for a match
  */
-const teamsMatch = (name1: string, name2: string): boolean => {
-  return getTeamSimilarity(name1, name2) >= 50;
-};
-
-/**
- * Find the best matching live score for a match
- */
-const findBestMatch = (
-  homeTeam: string, 
-  awayTeam: string, 
-  matchTitle: string,
-  liveScores: LiveScore[]
-): { score: LiveScore; swapped: boolean } | null => {
-  let bestMatch: { score: LiveScore; swapped: boolean; similarity: number } | null = null;
+export const findLiveScoreForMatch = (match: Match, liveScores: LiveScore[]): LiveScore | null => {
+  if (!match.teams?.home?.name || !match.teams?.away?.name) return null;
   
+  const homeTeam = match.teams.home.name;
+  const awayTeam = match.teams.away.name;
+  
+  // Try exact match first
   for (const score of liveScores) {
-    // Try normal order
-    const homeSim = getTeamSimilarity(score.homeTeam, homeTeam);
-    const awaySim = getTeamSimilarity(score.awayTeam, awayTeam);
-    const normalScore = (homeSim + awaySim) / 2;
-    
-    if (normalScore >= 50 && (!bestMatch || normalScore > bestMatch.similarity)) {
-      bestMatch = { score, swapped: false, similarity: normalScore };
-    }
-    
-    // Try swapped order
-    const homeSwappedSim = getTeamSimilarity(score.homeTeam, awayTeam);
-    const awaySwappedSim = getTeamSimilarity(score.awayTeam, homeTeam);
-    const swappedScore = (homeSwappedSim + awaySwappedSim) / 2;
-    
-    if (swappedScore >= 50 && (!bestMatch || swappedScore > bestMatch.similarity)) {
-      bestMatch = { score, swapped: true, similarity: swappedScore };
-    }
-    
-    // Also try matching against the match title
-    if (matchTitle) {
-      const titleLower = matchTitle.toLowerCase();
-      const scoreTeams = `${score.homeTeam} ${score.awayTeam}`.toLowerCase();
-      
-      // Check if both teams from the score appear in the title
-      const homeInTitle = titleLower.includes(normalizeTeamName(score.homeTeam).split(' ')[0]);
-      const awayInTitle = titleLower.includes(normalizeTeamName(score.awayTeam).split(' ')[0]);
-      
-      if (homeInTitle && awayInTitle) {
-        const titleSimilarity = 75;
-        if (!bestMatch || titleSimilarity > bestMatch.similarity) {
-          bestMatch = { score, swapped: false, similarity: titleSimilarity };
-        }
-      }
+    if (teamsMatch(homeTeam, score.homeTeam) && teamsMatch(awayTeam, score.awayTeam)) {
+      return score;
     }
   }
   
-  return bestMatch ? { score: bestMatch.score, swapped: bestMatch.swapped } : null;
-};
-
-/**
- * Enrich matches with live score data
- */
-export const enrichMatchesWithLiveScores = (matches: Match[], liveScores: LiveScore[]): Match[] => {
-  if (!liveScores.length) {
-    console.log('📊 No live scores available for enrichment');
-    return matches;
-  }
-
-  console.log(`📊 Attempting to enrich ${matches.length} matches with ${liveScores.length} live scores`);
-  let matchedCount = 0;
-  
-  const enriched = matches.map(match => {
-    const homeTeam = match.teams?.home?.name || '';
-    const awayTeam = match.teams?.away?.name || '';
-
-    // Find best matching live score
-    const bestMatch = findBestMatch(homeTeam, awayTeam, match.title, liveScores);
-
-    if (bestMatch) {
-      matchedCount++;
-      const { score, swapped } = bestMatch;
-      
-      console.log(`✅ Matched: "${homeTeam}" vs "${awayTeam}" → "${score.homeTeam}" vs "${score.awayTeam}" (${score.homeScore}-${score.awayScore})`);
-      
+  // Try swapped teams (in case API has teams in different order)
+  for (const score of liveScores) {
+    if (teamsMatch(homeTeam, score.awayTeam) && teamsMatch(awayTeam, score.homeTeam)) {
       return {
-        ...match,
-        home_score: swapped ? score.awayScore : score.homeScore,
-        away_score: swapped ? score.homeScore : score.awayScore,
-        status: score.status,
-        progress: score.progress || undefined,
+        ...score,
+        // Swap the scores to match our team order
+        homeTeam: score.awayTeam,
+        awayTeam: score.homeTeam,
+        homeScore: score.awayScore,
+        awayScore: score.homeScore,
+        homeBadge: score.awayBadge,
+        awayBadge: score.homeBadge,
       };
     }
-
-    return match;
-  });
-
-  console.log(`📊 Enriched ${matchedCount}/${matches.length} matches with live scores`);
-  return enriched;
+  }
+  
+  return null;
 };
 
 /**
- * Hook to manage live scores with automatic refresh
+ * Enrich matches with live scores (synchronous version)
+ * Takes matches and live scores arrays and returns enriched matches
  */
-export const useLiveScores = (matches: Match[], refreshInterval = 60000) => {
-  const [enrichedMatches, setEnrichedMatches] = useState<Match[]>(matches);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const enrichMatches = useCallback(async () => {
-    if (matches.length === 0) {
-      setEnrichedMatches([]);
-      return;
+export const enrichMatchesWithLiveScores = (matches: Match[], liveScores: LiveScore[]): Match[] => {
+  if (liveScores.length === 0) {
+    return matches;
+  }
+  
+  return matches.map(match => {
+    const liveScore = findLiveScoreForMatch(match, liveScores);
+    
+    if (liveScore) {
+      return {
+        ...match,
+        home_score: liveScore.homeScore,
+        away_score: liveScore.awayScore,
+        status: liveScore.status,
+        progress: liveScore.progress,
+        teams: {
+          ...match.teams,
+          home: {
+            ...match.teams?.home,
+            name: match.teams?.home?.name || liveScore.homeTeam,
+            badge: match.teams?.home?.badge || liveScore.homeBadge || '',
+          },
+          away: {
+            ...match.teams?.away,
+            name: match.teams?.away?.name || liveScore.awayTeam,
+            badge: match.teams?.away?.badge || liveScore.awayBadge || '',
+          },
+        },
+      };
     }
+    
+    return match;
+  });
+};
 
+/**
+ * Hook to use live scores in components
+ */
+export const useLiveScores = () => {
+  const [liveScores, setLiveScores] = useState<LiveScore[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const liveScores = await fetchLiveScores();
-      const enriched = enrichMatchesWithLiveScores(matches, liveScores);
-      setEnrichedMatches(enriched);
-    } catch (error) {
-      console.error('Error enriching matches with live scores:', error);
-      setEnrichedMatches(matches);
+      const scores = await fetchLiveScores();
+      setLiveScores(scores);
+    } catch (err) {
+      setError('Failed to fetch live scores');
+      console.error('Error fetching live scores:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [matches]);
+  }, []);
 
-  // Initial fetch and refresh interval
   useEffect(() => {
-    enrichMatches();
-
-    const interval = setInterval(enrichMatches, refreshInterval);
+    refresh();
+    
+    // Refresh every 60 seconds
+    const interval = setInterval(refresh, 60000);
     return () => clearInterval(interval);
-  }, [enrichMatches, refreshInterval]);
+  }, [refresh]);
 
-  // Update when matches change
-  useEffect(() => {
-    setEnrichedMatches(matches);
-  }, [matches]);
-
-  return { enrichedMatches, isLoading, refresh: enrichMatches };
+  return {
+    liveScores,
+    isLoading,
+    error,
+    refresh,
+    findScoreForMatch: (match: Match) => findLiveScoreForMatch(match, liveScores),
+  };
 };
+
+export type { LiveScore };

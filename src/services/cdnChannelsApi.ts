@@ -1,8 +1,4 @@
-// CDN Channels API Service
-// Fetches live TV channels via Supabase Edge Function to avoid CORS
-// Now also fetches 24/7 channels from SportSRC (time === 0)
-
-import { supabase } from '@/integrations/supabase/client';
+// CDN Channels API Service - Direct API calls (no Supabase edge functions)
 
 export interface CDNChannel {
   id: string;
@@ -43,11 +39,6 @@ interface SportSRCChannel {
 interface CDNApiResponse {
   total_channels: number;
   channels: CDNApiChannel[];
-}
-
-interface SportSRCApiResponse {
-  total_channels: number;
-  channels: SportSRCChannel[];
 }
 
 // Map country codes to full names
@@ -121,39 +112,27 @@ class CDNChannelsApiService {
       country: this.getCountryName(apiChannel.code),
       embedUrl: apiChannel.url,
       logo: apiChannel.image || undefined,
-      viewers: apiChannel.viewers,
-      source: 'cdn'
-    };
-  }
-
-  private transformSportSRCChannel(channel: SportSRCChannel): CDNChannel {
-    return {
-      id: channel.id,
-      title: channel.title || channel.name,
-      country: channel.country || channel.category,
-      embedUrl: channel.embedUrl,
-      logo: channel.logo || channel.image || undefined,
-      viewers: channel.viewers || 0,
+      viewers: apiChannel.viewers || 0,
       isLive247: true,
-      source: 'sportsrc'
+      source: 'cdn',
     };
   }
 
   async fetchChannels(): Promise<CDNChannel[]> {
     // Return cached data if valid
-    if (this.cache.data && Date.now() - this.cache.timestamp < this.cacheExpiry) {
-      console.log('📺 Using cached CDN channels data');
+    if (this.cache.data && (Date.now() - this.cache.timestamp) < this.cacheExpiry) {
+      console.log(`📺 Returning ${this.cache.data.length} cached channels`);
       return this.cache.data;
     }
 
-    // If already fetching, return the existing promise
+    // Prevent duplicate fetches
     if (this.isFetching && this.fetchPromise) {
       return this.fetchPromise;
     }
 
     this.isFetching = true;
     this.fetchPromise = this.doFetch();
-
+    
     try {
       const result = await this.fetchPromise;
       return result;
@@ -165,113 +144,92 @@ class CDNChannelsApiService {
 
   private async doFetch(): Promise<CDNChannel[]> {
     try {
-      console.log('📺 Fetching channels from both CDN and SportSRC...');
+      console.log('📺 Fetching channels from CDN API directly...');
       
-      // Fetch from both sources in parallel
-      const [cdnResult, sportsrcResult] = await Promise.allSettled([
-        supabase.functions.invoke('cdn-channels'),
-        supabase.functions.invoke('sportsrc-channels')
-      ]);
+      const CDN_API_URL = 'https://api.cdn-live.tv/api/v1/channels/?user=damitv&plan=vip';
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
+      const response = await fetch(CDN_API_URL, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
 
-      let allChannels: CDNChannel[] = [];
-
-      // Process CDN channels
-      if (cdnResult.status === 'fulfilled' && !cdnResult.value.error) {
-        const apiData: CDNApiResponse = cdnResult.value.data;
-        if (apiData?.channels && Array.isArray(apiData.channels)) {
-          const cdnChannels = apiData.channels.map(ch => this.transformChannel(ch));
-          const validCdnChannels = cdnChannels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
-          allChannels.push(...validCdnChannels);
-          console.log(`📺 CDN API returned ${validCdnChannels.length} channels`);
-        }
-      } else {
-        console.warn('📺 CDN API failed or returned error');
+      if (!response.ok) {
+        throw new Error(`CDN API returned ${response.status}`);
       }
 
-      // Process SportSRC 24/7 channels
-      if (sportsrcResult.status === 'fulfilled' && !sportsrcResult.value.error) {
-        const sportsrcData: SportSRCApiResponse = sportsrcResult.value.data;
-        if (sportsrcData?.channels && Array.isArray(sportsrcData.channels)) {
-          const sportsrcChannels = sportsrcData.channels.map(ch => this.transformSportSRCChannel(ch));
-          const validSportsrcChannels = sportsrcChannels.filter(ch => ch.embedUrl && ch.embedUrl.length > 0);
-          allChannels.push(...validSportsrcChannels);
-          console.log(`📺 SportSRC API returned ${validSportsrcChannels.length} 24/7 channels`);
-        }
-      } else {
-        console.warn('📺 SportSRC API failed or returned error');
-      }
-
+      const data: CDNApiResponse = await response.json();
+      const channels = (data.channels || []).map(ch => this.transformChannel(ch));
+      
       // Update cache
-      this.cache = {
-        data: allChannels,
-        timestamp: Date.now()
-      };
-
-      console.log(`📺 Total channels loaded: ${allChannels.length}`);
-      return allChannels;
+      this.cache = { data: channels, timestamp: Date.now() };
+      console.log(`📺 Fetched ${channels.length} channels successfully`);
+      
+      return channels;
     } catch (error) {
-      console.error('📺 Error fetching channels:', error);
-      // Return cached data if available, otherwise empty array
-      return this.cache.data || [];
+      console.error('📺 Error fetching CDN channels:', error);
+      
+      // Return cached data on error if available
+      if (this.cache.data) {
+        return this.cache.data;
+      }
+      
+      return [];
     }
   }
 
   async getChannelsByCountry(): Promise<Record<string, CDNChannel[]>> {
     const channels = await this.fetchChannels();
+    const grouped: Record<string, CDNChannel[]> = {};
     
-    return channels.reduce((acc, channel) => {
-      const country = channel.country || 'International';
-      if (!acc[country]) {
-        acc[country] = [];
+    channels.forEach(channel => {
+      const country = channel.country;
+      if (!grouped[country]) {
+        grouped[country] = [];
       }
-      acc[country].push(channel);
-      return acc;
-    }, {} as Record<string, CDNChannel[]>);
+      grouped[country].push(channel);
+    });
+    
+    return grouped;
   }
 
   async getChannelById(country: string, channelId: string): Promise<CDNChannel | null> {
     const channels = await this.fetchChannels();
-    
-    // First try to find by country and id
-    const channelsByCountry = await this.getChannelsByCountry();
-    const countryChannels = channelsByCountry[country];
-    
-    if (countryChannels) {
-      const found = countryChannels.find(ch => ch.id === channelId);
-      if (found) return found;
-    }
-    
-    // Fallback: search all channels
-    return channels.find(ch => ch.id === channelId) || null;
+    return channels.find(ch => 
+      ch.id === channelId || 
+      ch.id === `${channelId}-${country.toLowerCase()}` ||
+      ch.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === channelId
+    ) || null;
   }
 
   async searchChannels(query: string): Promise<CDNChannel[]> {
     const channels = await this.fetchChannels();
     const lowerQuery = query.toLowerCase();
-    
     return channels.filter(ch => 
       ch.title.toLowerCase().includes(lowerQuery) ||
       ch.country.toLowerCase().includes(lowerQuery)
     );
   }
 
-  // Get all unique countries
   async getCountries(): Promise<string[]> {
-    const channels = await this.fetchChannels();
-    const countries = new Set(channels.map(ch => ch.country));
-    return Array.from(countries).sort();
+    const channelsByCountry = await this.getChannelsByCountry();
+    return Object.keys(channelsByCountry).sort();
   }
 
-  // Get featured channels (first few popular ones, sorted by viewers)
-  async getFeaturedChannels(limit: number = 12): Promise<CDNChannel[]> {
+  async getFeaturedChannels(limit: number = 10): Promise<CDNChannel[]> {
     const channels = await this.fetchChannels();
-    // Sort by viewers descending and take top channels
-    return [...channels]
+    return channels
       .sort((a, b) => (b.viewers || 0) - (a.viewers || 0))
       .slice(0, limit);
   }
 
-  // Clear cache (useful for force refresh)
   clearCache(): void {
     this.cache = { data: null, timestamp: 0 };
   }
@@ -281,9 +239,10 @@ class CDNChannelsApiService {
 export const cdnChannelsApi = new CDNChannelsApiService();
 
 // Hook-friendly function exports
-export const fetchCDNChannels = () => cdnChannelsApi.fetchChannels();
-export const getCDNChannelsByCountry = () => cdnChannelsApi.getChannelsByCountry();
-export const getCDNChannelById = (country: string, id: string) => cdnChannelsApi.getChannelById(country, id);
-export const searchCDNChannels = (query: string) => cdnChannelsApi.searchChannels(query);
-export const getCDNCountries = () => cdnChannelsApi.getCountries();
-export const getFeaturedCDNChannels = (limit?: number) => cdnChannelsApi.getFeaturedChannels(limit);
+export const fetchChannels = () => cdnChannelsApi.fetchChannels();
+export const getChannelsByCountry = () => cdnChannelsApi.getChannelsByCountry();
+export const getChannelById = (country: string, channelId: string) => 
+  cdnChannelsApi.getChannelById(country, channelId);
+export const searchChannels = (query: string) => cdnChannelsApi.searchChannels(query);
+export const getCountries = () => cdnChannelsApi.getCountries();
+export const getFeaturedChannels = (limit?: number) => cdnChannelsApi.getFeaturedChannels(limit);
