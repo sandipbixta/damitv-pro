@@ -30,6 +30,10 @@ export interface Match {
   related?: Match[];       // Related matches
   sportId?: string;        // Added for compatibility - maps to category
   viewerCount?: number;    // Number of current viewers
+  home_score?: number | null;  // Live score for home team
+  away_score?: number | null;  // Live score for away team
+  status?: string;             // Match status (e.g., "live", "finished", "upcoming")
+  progress?: string;           // Match progress (e.g., "45'", "HT", "FT")
 }
 
 export interface Stream {
