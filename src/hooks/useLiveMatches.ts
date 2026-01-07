@@ -4,6 +4,7 @@ import { useToast } from './use-toast';
 import { Match, Stream, Source, Sport } from '../types/sports';
 import { fetchMatches, fetchStream, fetchSports, fetchLiveMatches, fetchAllMatches } from '../api/sportsApi';
 import { consolidateMatches, filterCleanMatches, isMatchLive } from '../utils/matchUtils';
+import { fetchLiveScores, enrichMatchesWithLiveScores } from './useLiveScores';
 
 export const useLiveMatches = () => {
   const { toast } = useToast();
@@ -105,7 +106,23 @@ export const useLiveMatches = () => {
       
       console.log('All matches loaded - Live:', finalLive.length, 'Upcoming:', finalUpcoming.length);
       
-      // Update with complete data
+      // Fetch live scores and enrich live matches
+      try {
+        const liveScores = await fetchLiveScores();
+        if (liveScores.length > 0) {
+          const enrichedLive = enrichMatchesWithLiveScores(finalLive, liveScores);
+          const enrichedAll = enrichMatchesWithLiveScores(finalConsolidatedMatches, liveScores);
+          console.log(`🏆 Enriched ${enrichedLive.filter(m => m.home_score !== undefined).length} matches with live scores`);
+          setAllMatches(enrichedAll);
+          setLiveMatches(enrichedLive);
+          setUpcomingMatches(finalUpcoming);
+          return;
+        }
+      } catch (scoreError) {
+        console.error('Error fetching live scores:', scoreError);
+      }
+      
+      // Update with complete data (without scores if fetch failed)
       setAllMatches(finalConsolidatedMatches);
       setLiveMatches(finalLive);
       setUpcomingMatches(finalUpcoming);
@@ -121,9 +138,33 @@ export const useLiveMatches = () => {
     }
   }, [toast, retryCount]);
 
+  // Initial fetch
   useEffect(() => {
     fetchLiveContent();
   }, [fetchLiveContent]);
+
+  // Refresh live scores every 60 seconds
+  useEffect(() => {
+    const refreshScores = async () => {
+      if (liveMatches.length === 0) return;
+      
+      try {
+        const liveScores = await fetchLiveScores();
+        if (liveScores.length > 0) {
+          const enrichedLive = enrichMatchesWithLiveScores(liveMatches, liveScores);
+          const enrichedAll = enrichMatchesWithLiveScores(allMatches, liveScores);
+          setAllMatches(enrichedAll);
+          setLiveMatches(enrichedLive);
+          console.log('🔄 Live scores refreshed');
+        }
+      } catch (error) {
+        console.error('Error refreshing live scores:', error);
+      }
+    };
+
+    const interval = setInterval(refreshScores, 60000); // Refresh every 60 seconds
+    return () => clearInterval(interval);
+  }, [liveMatches, allMatches]);
 
   const handleRetryLoading = useCallback(() => {
     setLoading(true);

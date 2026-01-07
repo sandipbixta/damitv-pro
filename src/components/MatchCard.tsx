@@ -150,14 +150,25 @@ const MatchCard: React.FC<MatchCardProps> = ({
     );
   };
 
-  // Team row component - simplified without logos
-  const TeamRow = ({ name }: { name: string }) => (
-    <div className="flex items-center">
+  // Check if we have live scores
+  const hasLiveScores = isLive && (
+    (match.home_score !== undefined && match.home_score !== null) || 
+    (match.away_score !== undefined && match.away_score !== null)
+  );
+
+  // Team row component with optional score
+  const TeamRow = ({ name, score, showScore }: { name: string; score?: number | null; showScore?: boolean }) => (
+    <div className="flex items-center justify-between">
       <span
-        className={`text-foreground font-bold truncate ${isCompact ? 'text-xs sm:text-sm' : 'text-sm'}`}
+        className={`text-foreground font-bold truncate flex-1 ${isCompact ? 'text-xs sm:text-sm' : 'text-sm'}`}
       >
         {name}
       </span>
+      {showScore && score !== undefined && score !== null && (
+        <span className={`text-primary font-bold ml-2 ${isCompact ? 'text-sm sm:text-base' : 'text-base'}`}>
+          {score}
+        </span>
+      )}
     </div>
   );
 
@@ -197,11 +208,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
             {getSportName()} {match.title && !home && !away && `• ${match.title}`}
           </p>
 
-          {/* Teams */}
+          {/* Teams with Live Scores */}
           {home && away ? (
             <div className={`flex flex-col ${isCompact ? 'gap-1.5 sm:gap-2' : 'gap-2'}`}>
-              <TeamRow name={home} />
-              <TeamRow name={away} />
+              <TeamRow name={home} score={match.home_score} showScore={hasLiveScores} />
+              <TeamRow name={away} score={match.away_score} showScore={hasLiveScores} />
             </div>
           ) : (
             <h3 className="font-bold text-foreground text-sm line-clamp-2">
