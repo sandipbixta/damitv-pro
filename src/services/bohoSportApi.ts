@@ -11,9 +11,9 @@ const STREAMED_PK_BASE = 'https://embedme.top';
 // Legacy stream base URL (for images)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build ad-free embed URL (primary) - uses path-based routing
+// Build ad-free embed URL (primary)
 const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
-  return `${DAMITV_EMBED_BASE}/embed/${source}/${matchId}`;
+  return `${DAMITV_EMBED_BASE}/?id=${matchId}&source=${source}`;
 };
 
 // Build fallback embed URL (streamed.pk)

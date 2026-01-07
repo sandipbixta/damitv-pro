@@ -69,9 +69,9 @@ export const useStreamPlayer = () => {
   const fetchStreamData = useCallback(async (source: Source, streamNo?: number) => {
     console.log(`🎯 Selecting stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
     
-    // Build ad-free embed URL instantly - uses path-based routing
+    // Build ad-free embed URL instantly
     const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
-    const embedUrl = `${DAMITV_EMBED_BASE}/embed/${source.source}/${source.id}`;
+    const embedUrl = `${DAMITV_EMBED_BASE}/?id=${source.id}&source=${source.source}`;
     
     const stream: Stream = {
       id: source.id,
