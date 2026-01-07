@@ -63,7 +63,7 @@ const normalizeTeamName = (name: string): string => {
   return name
     .toLowerCase()
     // Remove common suffixes/prefixes
-    .replace(/\b(fc|sc|cf|afc|united|city|real|club|athletic|atletico|ac|as|ss|us|sporting|inter|fk|sk|bk|femenil)\b/gi, '')
+    .replace(/\b(fc|sc|cf|afc|united|city|real|club|athletic|atletico|ac|as|ss|us|sporting|inter|fk|sk|bk|femenil|women|mens|womens|u21|u23|u19|ii|b|reserves)\b/gi, '')
     // Remove special characters
     .replace(/[^a-z0-9\s]/g, '')
     // Collapse multiple spaces
@@ -81,41 +81,100 @@ const getTeamWords = (name: string): string[] => {
 };
 
 /**
- * Check if two team names match (fuzzy matching)
+ * Calculate similarity score between two team names (0-100)
  */
-const teamsMatch = (name1: string, name2: string): boolean => {
-  if (!name1 || !name2) return false;
+const getTeamSimilarity = (name1: string, name2: string): number => {
+  if (!name1 || !name2) return 0;
   
   const n1 = normalizeTeamName(name1);
   const n2 = normalizeTeamName(name2);
   
-  // Exact match after normalization
-  if (n1 === n2) return true;
+  // Exact match
+  if (n1 === n2) return 100;
   
-  // One contains the other (important for abbreviations)
-  if (n1.includes(n2) || n2.includes(n1)) return true;
+  // One contains the other
+  if (n1.includes(n2) || n2.includes(n1)) return 90;
   
-  // Word-based matching - if any significant word matches
+  // Word-based matching
   const words1 = getTeamWords(name1);
   const words2 = getTeamWords(name2);
   
+  let matchedWords = 0;
   for (const w1 of words1) {
     for (const w2 of words2) {
-      // Exact word match
-      if (w1 === w2) return true;
-      // One word contains the other
-      if (w1.length >= 4 && w2.length >= 4) {
-        if (w1.includes(w2) || w2.includes(w1)) return true;
+      if (w1 === w2) {
+        matchedWords++;
+        break;
+      }
+      if (w1.length >= 4 && w2.length >= 4 && (w1.includes(w2) || w2.includes(w1))) {
+        matchedWords += 0.8;
+        break;
       }
     }
   }
   
-  // Check if first significant word matches (city names often match)
-  if (words1.length > 0 && words2.length > 0) {
-    if (words1[0] === words2[0] && words1[0].length >= 4) return true;
+  const maxWords = Math.max(words1.length, words2.length);
+  if (maxWords === 0) return 0;
+  
+  return Math.round((matchedWords / maxWords) * 80);
+};
+
+/**
+ * Check if two team names match (fuzzy matching)
+ */
+const teamsMatch = (name1: string, name2: string): boolean => {
+  return getTeamSimilarity(name1, name2) >= 50;
+};
+
+/**
+ * Find the best matching live score for a match
+ */
+const findBestMatch = (
+  homeTeam: string, 
+  awayTeam: string, 
+  matchTitle: string,
+  liveScores: LiveScore[]
+): { score: LiveScore; swapped: boolean } | null => {
+  let bestMatch: { score: LiveScore; swapped: boolean; similarity: number } | null = null;
+  
+  for (const score of liveScores) {
+    // Try normal order
+    const homeSim = getTeamSimilarity(score.homeTeam, homeTeam);
+    const awaySim = getTeamSimilarity(score.awayTeam, awayTeam);
+    const normalScore = (homeSim + awaySim) / 2;
+    
+    if (normalScore >= 50 && (!bestMatch || normalScore > bestMatch.similarity)) {
+      bestMatch = { score, swapped: false, similarity: normalScore };
+    }
+    
+    // Try swapped order
+    const homeSwappedSim = getTeamSimilarity(score.homeTeam, awayTeam);
+    const awaySwappedSim = getTeamSimilarity(score.awayTeam, homeTeam);
+    const swappedScore = (homeSwappedSim + awaySwappedSim) / 2;
+    
+    if (swappedScore >= 50 && (!bestMatch || swappedScore > bestMatch.similarity)) {
+      bestMatch = { score, swapped: true, similarity: swappedScore };
+    }
+    
+    // Also try matching against the match title
+    if (matchTitle) {
+      const titleLower = matchTitle.toLowerCase();
+      const scoreTeams = `${score.homeTeam} ${score.awayTeam}`.toLowerCase();
+      
+      // Check if both teams from the score appear in the title
+      const homeInTitle = titleLower.includes(normalizeTeamName(score.homeTeam).split(' ')[0]);
+      const awayInTitle = titleLower.includes(normalizeTeamName(score.awayTeam).split(' ')[0]);
+      
+      if (homeInTitle && awayInTitle) {
+        const titleSimilarity = 75;
+        if (!bestMatch || titleSimilarity > bestMatch.similarity) {
+          bestMatch = { score, swapped: false, similarity: titleSimilarity };
+        }
+      }
+    }
   }
   
-  return false;
+  return bestMatch ? { score: bestMatch.score, swapped: bestMatch.swapped } : null;
 };
 
 /**
@@ -127,44 +186,28 @@ export const enrichMatchesWithLiveScores = (matches: Match[], liveScores: LiveSc
     return matches;
   }
 
+  console.log(`📊 Attempting to enrich ${matches.length} matches with ${liveScores.length} live scores`);
   let matchedCount = 0;
   
   const enriched = matches.map(match => {
     const homeTeam = match.teams?.home?.name || '';
     const awayTeam = match.teams?.away?.name || '';
 
-    if (!homeTeam || !awayTeam) return match;
+    // Find best matching live score
+    const bestMatch = findBestMatch(homeTeam, awayTeam, match.title, liveScores);
 
-    // Find matching live score - try both home/away combinations
-    let liveScore = liveScores.find(score => 
-      teamsMatch(score.homeTeam, homeTeam) && teamsMatch(score.awayTeam, awayTeam)
-    );
-
-    // Try reverse match (in case teams are swapped)
-    if (!liveScore) {
-      liveScore = liveScores.find(score => 
-        teamsMatch(score.homeTeam, awayTeam) && teamsMatch(score.awayTeam, homeTeam)
-      );
-      if (liveScore) {
-        // Swap scores if teams were reversed
-        return {
-          ...match,
-          home_score: liveScore.awayScore,
-          away_score: liveScore.homeScore,
-          status: liveScore.status,
-          progress: liveScore.progress || undefined,
-        };
-      }
-    }
-
-    if (liveScore) {
+    if (bestMatch) {
       matchedCount++;
+      const { score, swapped } = bestMatch;
+      
+      console.log(`✅ Matched: "${homeTeam}" vs "${awayTeam}" → "${score.homeTeam}" vs "${score.awayTeam}" (${score.homeScore}-${score.awayScore})`);
+      
       return {
         ...match,
-        home_score: liveScore.homeScore,
-        away_score: liveScore.awayScore,
-        status: liveScore.status,
-        progress: liveScore.progress || undefined,
+        home_score: swapped ? score.awayScore : score.homeScore,
+        away_score: swapped ? score.homeScore : score.awayScore,
+        status: score.status,
+        progress: score.progress || undefined,
       };
     }
 
