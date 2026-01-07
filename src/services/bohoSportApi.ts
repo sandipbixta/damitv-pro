@@ -2,23 +2,15 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { supabase } from '@/integrations/supabase/client';
 
-// Ad-free embed player (preferred)
+// Ad-free embed player
 const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
-
-// Fallback stream provider
-const STREAMED_PK_BASE = 'https://embedme.top';
 
 // Legacy stream base URL (for images)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build ad-free embed URL (primary)
-const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
+// Build embed URL
+const buildEmbedUrl = (matchId: string, source: string): string => {
   return `${DAMITV_EMBED_BASE}/?id=${matchId}&source=${source}`;
-};
-
-// Build fallback embed URL (streamed.pk)
-export const buildFallbackEmbedUrl = (matchId: string, source: string): string => {
-  return `${STREAMED_PK_BASE}/embed/${source}/${matchId}`;
 };
 
 // Cache for API responses
@@ -337,29 +329,25 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   if (cached) return cached;
 
   try {
-    console.log(`🎬 Building ad-free embed URL for source: ${source}, id: ${id}`);
+    console.log(`🎬 Building embed URL for source: ${source}, id: ${id}`);
 
-    // Use ad-free embed URL (primary) with fallback
-    const adFreeUrl = buildAdFreeEmbedUrl(id, source);
-    const fallbackUrl = buildFallbackEmbedUrl(id, source);
+    const embedUrl = buildEmbedUrl(id, source);
     
     const primaryStream: Stream = {
       id: id,
       streamNo: 1,
       language: 'EN',
       hd: true,
-      embedUrl: adFreeUrl,
-      fallbackUrl: fallbackUrl,
+      embedUrl: embedUrl,
       source: source,
       timestamp: Date.now()
     };
 
-    console.log(`✅ Ad-free embed URL: ${adFreeUrl}`);
-    console.log(`🔄 Fallback URL: ${fallbackUrl}`);
+    console.log(`✅ Embed URL: ${embedUrl}`);
     setCachedData(cacheKey, [primaryStream]);
     return [primaryStream];
   } catch (error) {
-    console.error(`❌ Error building ad-free URL for ${source}/${id}:`, error);
+    console.error(`❌ Error building URL for ${source}/${id}:`, error);
     return [];
   }
 };
@@ -374,7 +362,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
   
-  console.log(`🎬 Building ad-free streams for: ${match.title}`);
+  console.log(`🎬 Building streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
   // ONLY use real source IDs from the API - don't fabricate any
@@ -383,23 +371,21 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source);
-        const fallbackUrl = buildFallbackEmbedUrl(src.id, src.source);
+        const embedUrl = buildEmbedUrl(src.id, src.source);
         
         allStreams.push({
           id: src.id,
           streamNo: streamNumber,
           language: 'EN',
           hd: true,
-          embedUrl: adFreeUrl,
-          fallbackUrl: fallbackUrl,
+          embedUrl: embedUrl,
           source: src.source,
           timestamp: Date.now(),
           name: `Stream ${streamNumber}`
         } as Stream);
         
         sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${adFreeUrl} (fallback: ${fallbackUrl})`);
+        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${embedUrl}`);
         streamNumber++;
       }
     }
@@ -408,7 +394,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`✅ Created ${allStreams.length} ad-free streams from real API sources`);
+  console.log(`✅ Created ${allStreams.length} streams from real API sources`);
 
   return {
     streams: allStreams,
