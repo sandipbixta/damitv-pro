@@ -5,7 +5,7 @@ import { analytics } from '@/utils/analytics';
 interface SEOPageTrackerProps {
   children: React.ReactNode;
   pageTitle?: string;
-  contentType?: 'match' | 'live' | 'channels' | 'schedule' | 'news' | 'home' | 'blog';
+  contentType?: 'match' | 'live' | 'channels' | 'schedule' | 'home';
 }
 
 const SEOPageTracker: React.FC<SEOPageTrackerProps> = ({ 
