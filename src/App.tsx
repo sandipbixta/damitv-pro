@@ -66,7 +66,7 @@ const App: React.FC = () => {
                     <ManualMatchPlayer />
                   </SEOPageTracker>
                 } />
-                <Route path="/admin/blog/new" element={<AdminCustomMatch />} />
+                <Route path="/admin/custom-match" element={<AdminCustomMatch />} />
                 <Route path="/custom-match/:matchId" element={
                   <SEOPageTracker contentType="match">
                     <CustomMatchPlayer />
