@@ -62,9 +62,22 @@ export const fetchLiveScores = async (): Promise<LiveScore[]> => {
 const normalizeTeamName = (name: string): string => {
   return name
     .toLowerCase()
-    .replace(/fc|sc|cf|afc|united|city|real|club|athletic|atletico|ac|as|ss|us/gi, '')
-    .replace(/[^a-z0-9]/g, '')
+    // Remove common suffixes/prefixes
+    .replace(/\b(fc|sc|cf|afc|united|city|real|club|athletic|atletico|ac|as|ss|us|sporting|inter|fk|sk|bk|femenil)\b/gi, '')
+    // Remove special characters
+    .replace(/[^a-z0-9\s]/g, '')
+    // Collapse multiple spaces
+    .replace(/\s+/g, ' ')
     .trim();
+};
+
+/**
+ * Get all words from a team name for matching
+ */
+const getTeamWords = (name: string): string[] => {
+  return normalizeTeamName(name)
+    .split(' ')
+    .filter(word => word.length >= 3); // Only meaningful words
 };
 
 /**
@@ -79,12 +92,27 @@ const teamsMatch = (name1: string, name2: string): boolean => {
   // Exact match after normalization
   if (n1 === n2) return true;
   
-  // One contains the other
+  // One contains the other (important for abbreviations)
   if (n1.includes(n2) || n2.includes(n1)) return true;
   
-  // Check if significant part matches (first 5+ chars)
-  if (n1.length >= 5 && n2.length >= 5) {
-    if (n1.substring(0, 5) === n2.substring(0, 5)) return true;
+  // Word-based matching - if any significant word matches
+  const words1 = getTeamWords(name1);
+  const words2 = getTeamWords(name2);
+  
+  for (const w1 of words1) {
+    for (const w2 of words2) {
+      // Exact word match
+      if (w1 === w2) return true;
+      // One word contains the other
+      if (w1.length >= 4 && w2.length >= 4) {
+        if (w1.includes(w2) || w2.includes(w1)) return true;
+      }
+    }
+  }
+  
+  // Check if first significant word matches (city names often match)
+  if (words1.length > 0 && words2.length > 0) {
+    if (words1[0] === words2[0] && words1[0].length >= 4) return true;
   }
   
   return false;
@@ -94,18 +122,43 @@ const teamsMatch = (name1: string, name2: string): boolean => {
  * Enrich matches with live score data
  */
 export const enrichMatchesWithLiveScores = (matches: Match[], liveScores: LiveScore[]): Match[] => {
-  if (!liveScores.length) return matches;
+  if (!liveScores.length) {
+    console.log('📊 No live scores available for enrichment');
+    return matches;
+  }
 
-  return matches.map(match => {
+  let matchedCount = 0;
+  
+  const enriched = matches.map(match => {
     const homeTeam = match.teams?.home?.name || '';
     const awayTeam = match.teams?.away?.name || '';
 
-    // Find matching live score
-    const liveScore = liveScores.find(score => 
+    if (!homeTeam || !awayTeam) return match;
+
+    // Find matching live score - try both home/away combinations
+    let liveScore = liveScores.find(score => 
       teamsMatch(score.homeTeam, homeTeam) && teamsMatch(score.awayTeam, awayTeam)
     );
 
+    // Try reverse match (in case teams are swapped)
+    if (!liveScore) {
+      liveScore = liveScores.find(score => 
+        teamsMatch(score.homeTeam, awayTeam) && teamsMatch(score.awayTeam, homeTeam)
+      );
+      if (liveScore) {
+        // Swap scores if teams were reversed
+        return {
+          ...match,
+          home_score: liveScore.awayScore,
+          away_score: liveScore.homeScore,
+          status: liveScore.status,
+          progress: liveScore.progress || undefined,
+        };
+      }
+    }
+
     if (liveScore) {
+      matchedCount++;
       return {
         ...match,
         home_score: liveScore.homeScore,
@@ -117,6 +170,9 @@ export const enrichMatchesWithLiveScores = (matches: Match[], liveScores: LiveSc
 
     return match;
   });
+
+  console.log(`📊 Enriched ${matchedCount}/${matches.length} matches with live scores`);
+  return enriched;
 };
 
 /**
