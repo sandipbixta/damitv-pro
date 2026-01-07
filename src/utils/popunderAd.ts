@@ -4,7 +4,7 @@
  */
 
 const POPUNDER_SCRIPT_URL = 'https://foreseehawancestor.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js';
-const COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
+const COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 /**
  * Triggers a popunder ad with per-match cooldown
