@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
 import ChannelsGrid from '../components/ChannelsGrid';
-import ChannelsGrid from '../components/ChannelsGrid';
 import Advertisement from '../components/Advertisement';
 
 import { useIsMobile } from '../hooks/use-mobile';
@@ -221,8 +220,6 @@ const Channels = () => {
           </div>
         </section>
         
-        {/* Hidden SEO content for competitor targeting */}
-        <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
       </div>
     </PageLayout>
   );

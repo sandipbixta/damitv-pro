@@ -311,12 +311,6 @@ const Index = () => {
             </div>
             
             
-            {/* Hidden SEO content for competitor targeting */}
-            <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
-            
-            {/* AI Match Previews - Internal Links for SEO */}
-            <UpcomingMatchPreviews />
-            
             {/* Call to Action Section */}
             <section className="mb-10 mt-10">
               <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl p-8 md:p-10 border border-primary/30">

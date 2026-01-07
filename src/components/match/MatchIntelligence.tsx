@@ -91,9 +91,8 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
   // Generate 40-word match summary for AI Overviews
   const matchSummary = `Watch ${homeTeam} take on ${awayTeam} in this exciting ${category} match. Stream live with HD quality, real-time updates, and expert analysis. Our verified stream links ensure uninterrupted viewing for fans worldwide seeking the best sports streaming experience.`;
 
-  // Handle CTA click with monetization
+  // Handle CTA click
   const handleAccessStream = () => {
-    triggerPopunderAd(match.id || 'match', 'premium_cta');
     onAccessStream?.();
   };
 

@@ -319,8 +319,6 @@ const StreamSources = ({
                   : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
               }`}
               onClick={() => {
-                // Trigger popunder on source change for monetization
-                triggerPopunderAd(streamId, 'source_change');
                 onSourceChange(stream.source, stream.id, actualStreamNo);
               }}
             >
