@@ -8,9 +8,9 @@ const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 // Legacy stream base URL (for images)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build embed URL using path-based format
+// Build embed URL using path-based format: /{source}/{id}
 const buildEmbedUrl = (matchId: string, source: string): string => {
-  return `${DAMITV_EMBED_BASE}/embed/${source}/${matchId}`;
+  return `${DAMITV_EMBED_BASE}/${source}/${matchId}`;
 };
 
 // Cache for API responses
