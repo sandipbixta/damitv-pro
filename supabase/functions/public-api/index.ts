@@ -99,7 +99,7 @@ serve(async (req) => {
         const sources = (m.sources || []).map((s: any) => ({
           source: s.source,
           id: s.id,
-          embedUrl: `https://embed.damitv.pro/embed/${s.source}/${s.id}`,
+          embedUrl: `https://embed.damitv.pro/${s.source}/${s.id}`,
         }));
 
         return {
@@ -155,7 +155,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       timestamp: new Date().toISOString(),
-      embedBaseUrl: 'https://embed.damitv.pro/embed/{source}/{id}',
+      embedBaseUrl: 'https://embed.damitv.pro/{source}/{id}',
       data: {
         categories,
         liveMatches,
