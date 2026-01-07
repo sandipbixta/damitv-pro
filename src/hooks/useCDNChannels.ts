@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   CDNChannel, 
-  fetchCDNChannels, 
-  getCDNChannelsByCountry,
-  searchCDNChannels,
+  fetchChannels, 
+  getChannelsByCountry,
+  searchChannels,
   cdnChannelsApi,
-  getFeaturedCDNChannels
+  getFeaturedChannels
 } from '../services/cdnChannelsApi';
 
 export interface UseChannelsResult {
@@ -30,8 +30,8 @@ export const useCDNChannels = (): UseChannelsResult => {
 
     try {
       const [allChannels, grouped] = await Promise.all([
-        fetchCDNChannels(),
-        getCDNChannelsByCountry()
+        fetchChannels(),
+        getChannelsByCountry()
       ]);
 
       if (allChannels.length === 0) {
@@ -86,12 +86,12 @@ export const useCDNChannel = (country: string | undefined, channelId: string | u
       setError(null);
 
       try {
-        const channelsByCountry = await getCDNChannelsByCountry();
-        const countryChannels = channelsByCountry[country];
+        const channelsByCountryData = await getChannelsByCountry();
+        const countryChannels = channelsByCountryData[country];
 
         if (!countryChannels || countryChannels.length === 0) {
           // Try to find channel in all channels
-          const allChannels = await fetchCDNChannels();
+          const allChannels = await fetchChannels();
           const foundChannel = allChannels.find(ch => ch.id === channelId);
           
           if (foundChannel) {
@@ -140,7 +140,7 @@ export const useChannelSearch = (query: string) => {
     const search = async () => {
       setIsSearching(true);
       try {
-        const searchResults = await searchCDNChannels(query);
+        const searchResults = await searchChannels(query);
         setResults(searchResults);
       } catch (err) {
         console.error('📺 Search error:', err);
@@ -166,7 +166,7 @@ export const useFeaturedChannels = (limit: number = 12) => {
     const loadFeatured = async () => {
       setIsLoading(true);
       try {
-        const featured = await getFeaturedCDNChannels(limit);
+        const featured = await getFeaturedChannels(limit);
         setChannels(featured);
       } catch (err) {
         console.error('📺 Error loading featured channels:', err);

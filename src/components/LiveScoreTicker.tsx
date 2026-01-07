@@ -1,24 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { fetchLiveMatches } from '@/api/sportsApi';
 import { Match } from '@/types/sports';
 import { isMatchLive } from '@/utils/matchUtils';
 import { generateMatchSlug, extractNumericId } from '@/utils/matchSlug';
-
-interface LiveScore {
-  eventId: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: number | null;
-  awayScore: number | null;
-  status: string;
-  progress: string | null;
-  sport: string;
-  league: string;
-  homeBadge: string | null;
-  awayBadge: string | null;
-}
 
 interface TickerItem {
   id: string;
@@ -41,284 +26,171 @@ const LiveScoreTicker: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
 
   const trackRef = useRef<HTMLDivElement | null>(null);
-  // Keep scrolling speed readable regardless of how many items are in the ticker
   const [durationSec, setDurationSec] = useState<number>(600);
+
+  // Map sport category to URL slug
+  const getSportSlug = (sport: string): string => {
+    const sportMap: Record<string, string> = {
+      'soccer': 'football',
+      'football': 'football',
+      'basketball': 'basketball',
+      'tennis': 'tennis',
+      'cricket': 'cricket',
+      'hockey': 'hockey',
+      'ice hockey': 'hockey',
+      'american football': 'american-football',
+      'rugby': 'rugby',
+    };
+    return sportMap[sport.toLowerCase()] || sport.toLowerCase().replace(/\s+/g, '-');
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Add timestamp to bust cache
-        const timestamp = Date.now();
-        console.log('🎯 Fetching live scores at:', new Date(timestamp).toISOString());
+        console.log('🎯 Fetching matches for ticker...');
         
-        // First try to get live scores from TheSportsDB with a timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        // Fetch live matches from the API directly
+        const matches = await fetchLiveMatches();
         
-        try {
-          const { data: liveScoreData, error } = await supabase.functions.invoke('fetch-live-scores', {
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-            },
+        if (matches && matches.length > 0) {
+          console.log(`✅ Received ${matches.length} matches for ticker`);
+          
+          const items: TickerItem[] = matches.slice(0, 20).map((match: Match) => {
+            const sportSlug = getSportSlug(match.category || 'football');
+            const homeTeam = match.teams?.home?.name || 'Team A';
+            const awayTeam = match.teams?.away?.name || 'Team B';
+            const matchSlug = generateMatchSlug(homeTeam, awayTeam, match.title);
+            
+            return {
+              id: match.id,
+              homeTeam,
+              awayTeam,
+              homeScore: match.home_score ?? null,
+              awayScore: match.away_score ?? null,
+              status: match.progress || (isMatchLive(match) ? 'LIVE' : 'Upcoming'),
+              sport: match.category || 'Football',
+              league: '',
+              homeBadge: match.teams?.home?.badge || null,
+              awayBadge: match.teams?.away?.badge || null,
+              isLive: isMatchLive(match),
+              matchUrl: `/match/${sportSlug}/${extractNumericId(match.id)}/${matchSlug}`,
+            };
           });
           
-          clearTimeout(timeoutId);
-          
-          if (error) {
-            console.error('Error from fetch-live-scores:', error);
-          }
-          
-          let items: TickerItem[] = [];
-          
-          if (liveScoreData?.success && liveScoreData.liveScores?.length > 0) {
-            console.log(`✅ Received ${liveScoreData.liveScores.length} live scores`);
-            // Use live scores from TheSportsDB
-            items = liveScoreData.liveScores.map((score: LiveScore) => {
-              const sportSlug = getSportSlug(score.sport);
-              const matchSlug = generateMatchSlug(score.homeTeam, score.awayTeam, `${score.homeTeam} vs ${score.awayTeam}`);
-              return {
-                id: score.eventId,
-                homeTeam: score.homeTeam,
-                awayTeam: score.awayTeam,
-                homeScore: score.homeScore,
-                awayScore: score.awayScore,
-                status: formatProgress(score.progress, score.status),
-                sport: score.sport,
-                league: score.league,
-                homeBadge: score.homeBadge,
-                awayBadge: score.awayBadge,
-                isLive: true,
-                matchUrl: `/match/${sportSlug}/${extractNumericId(score.eventId)}/${matchSlug}`,
-              };
-            });
-            
-            setTickerItems(items);
-            setIsLoading(false);
-            return; // Success, exit early
-          }
-        } catch (fetchError) {
-          clearTimeout(timeoutId);
-          console.warn('Live scores fetch failed/timed out, falling back to match API:', fetchError);
+          setTickerItems(items);
         }
         
-        // Fallback: fetch from live matches API
-        console.log('📡 Falling back to live matches API...');
-        const matches = await fetchLiveMatches();
-        const now = Date.now();
-        
-        // Get live matches or matches starting soon
-        const relevantMatches = matches.filter(match => {
-          const live = isMatchLive(match);
-          const isStartingSoon = match.date && match.date - now < 2 * 60 * 60 * 1000;
-          return live || isStartingSoon;
-        }).slice(0, 20);
-        
-        const fallbackItems = relevantMatches.map(match => {
-          const home = match.teams?.home?.name || '';
-          const away = match.teams?.away?.name || '';
-          const matchSlug = generateMatchSlug(home, away, match.title);
-          // Only use badge if it's already a full URL (from TheSportsDB)
-          const homeBadge = match.teams?.home?.badge?.startsWith('http') ? match.teams.home.badge : null;
-          const awayBadge = match.teams?.away?.badge?.startsWith('http') ? match.teams.away.badge : null;
-          
-          return {
-            id: match.id,
-            homeTeam: home || match.title.split(' vs ')[0] || match.title,
-            awayTeam: away || match.title.split(' vs ')[1] || '',
-            homeScore: null,
-            awayScore: null,
-            status: isMatchLive(match) ? 'LIVE' : getTimeUntil(match.date),
-            sport: match.category?.replace(/-/g, ' ') || 'Sports',
-            league: match.category?.replace(/-/g, ' ') || '',
-            homeBadge,
-            awayBadge,
-            isLive: isMatchLive(match),
-            matchUrl: `/match/${match.category}/${extractNumericId(match.id)}/${matchSlug}`,
-          };
-        });
-        
-        setTickerItems(fallbackItems);
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching ticker data:', error);
-      } finally {
+        console.error('❌ Error fetching ticker data:', error);
         setIsLoading(false);
       }
     };
 
     fetchData();
     
-    // Refresh every 30 seconds for more up-to-date scores
-    const interval = setInterval(fetchData, 30 * 1000);
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, []);
 
+  // Calculate scroll duration based on content width
   useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-
-    const speedPxPerSec = 18; // lower = slower
-    const compute = () => {
-      const distancePx = el.scrollWidth / 2;
-      if (!distancePx || Number.isNaN(distancePx)) return;
-      const next = Math.max(240, Math.round(distancePx / speedPxPerSec));
-      setDurationSec(next);
-    };
-
-    let raf1 = 0;
-    let raf2 = 0;
-    raf1 = requestAnimationFrame(() => {
-      compute();
-      raf2 = requestAnimationFrame(compute);
-    });
-
-    window.addEventListener('resize', compute);
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-      window.removeEventListener('resize', compute);
-    };
-  }, [tickerItems.length]);
-
-  const getSportSlug = (sport: string): string => {
-    const sportMap: Record<string, string> = {
-      'Soccer': 'football',
-      'soccer': 'football',
-      'Basketball': 'basketball',
-      'basketball': 'basketball',
-      'Ice Hockey': 'hockey',
-      'icehockey': 'hockey',
-      'American Football': 'american-football',
-      'american_football': 'american-football',
-      'Tennis': 'tennis',
-      'tennis': 'tennis',
-      'Rugby': 'rugby',
-      'rugby': 'rugby',
-      'Cricket': 'cricket',
-      'cricket': 'cricket',
-    };
-    return sportMap[sport] || sport.toLowerCase().replace(/\s+/g, '-');
-  };
-
-  const formatProgress = (progress: string | null, status: string): string => {
-    if (progress) return progress;
-    if (status) {
-      if (status.includes('HT')) return 'HT';
-      if (status.includes('FT')) return 'FT';
-      if (status.includes('Q1')) return 'Q1';
-      if (status.includes('Q2')) return 'Q2';
-      if (status.includes('Q3')) return 'Q3';
-      if (status.includes('Q4')) return 'Q4';
-      return status;
+    if (trackRef.current && tickerItems.length > 0) {
+      const trackWidth = trackRef.current.scrollWidth / 2;
+      const viewportWidth = window.innerWidth;
+      const speed = 50; // pixels per second
+      const calculatedDuration = Math.max(30, trackWidth / speed);
+      setDurationSec(calculatedDuration);
     }
-    return 'LIVE';
-  };
+  }, [tickerItems]);
 
-  const getTimeUntil = (date: number | undefined): string => {
-    if (!date) return '';
-    const now = Date.now();
-    const diff = date - now;
-    if (diff <= 0) return 'LIVE';
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
-  };
+  // Handle pause on hover
+  const handleMouseEnter = () => setIsPaused(true);
+  const handleMouseLeave = () => setIsPaused(false);
 
   if (isLoading || tickerItems.length === 0) {
     return null;
   }
 
-  // Duplicate items for seamless looping
+  // Duplicate items for seamless loop
   const duplicatedItems = [...tickerItems, ...tickerItems];
 
   return (
     <div 
-      className="bg-card/80 backdrop-blur-sm border-b border-border overflow-hidden"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      className="relative bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700 overflow-hidden"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <div className="relative flex items-center h-10">
-        {/* Live indicator */}
-        <div className="absolute left-0 z-10 bg-gradient-to-r from-card via-card to-transparent pr-6 pl-3 h-full flex items-center">
-          <div className="flex items-center gap-1.5 bg-destructive/10 px-2.5 py-1 rounded">
-            <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
-            <span className="text-destructive font-bold text-xs uppercase tracking-wide">Live</span>
-          </div>
+      {/* Live indicator */}
+      <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center px-3 bg-gradient-to-r from-gray-900 via-gray-900 to-transparent">
+        <div className="flex items-center gap-1.5 bg-red-600 px-2 py-0.5 rounded text-xs font-bold text-white">
+          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+          LIVE
         </div>
-
-        {/* Scrolling content */}
-        <div
-          ref={trackRef}
-          className="flex pl-24 animate-scroll-left"
-          style={{
-            animationDuration: `${durationSec}s`,
-            animationPlayState: isPaused ? 'paused' : 'running',
-          }}
-        >
-          {duplicatedItems.map((item, index) => (
-            <Link
-              key={`${item.id}-${index}`}
-              to={item.matchUrl}
-              className="flex-shrink-0 px-4 py-1.5 hover:bg-muted/50 transition-colors text-sm whitespace-nowrap flex items-center gap-3 border-r border-border/30"
-            >
-              {/* Sport badge */}
-              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                {item.sport.length > 10 ? item.sport.substring(0, 8) + '..' : item.sport}
-              </span>
-              
-              {/* Teams and Score */}
-              <div className="flex items-center gap-2">
-                {/* Home Team */}
-                <div className="flex items-center gap-1.5">
-                  {item.homeBadge && (
-                    <img 
-                      src={item.homeBadge} 
-                      alt={item.homeTeam}
-                      className="w-4 h-4 object-contain"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                  <span className="text-foreground font-medium text-xs max-w-[80px] truncate">{item.homeTeam}</span>
-                </div>
-                
-                {/* Score */}
-                {item.homeScore !== null && item.awayScore !== null ? (
-                  <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded">
-                    <span className="text-foreground font-bold text-sm">{item.homeScore}</span>
-                    <span className="text-muted-foreground">-</span>
-                    <span className="text-foreground font-bold text-sm">{item.awayScore}</span>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground text-xs">vs</span>
-                )}
-                
-                {/* Away Team */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-foreground font-medium text-xs max-w-[80px] truncate">{item.awayTeam}</span>
-                  {item.awayBadge && (
-                    <img 
-                      src={item.awayBadge} 
-                      alt={item.awayTeam}
-                      className="w-4 h-4 object-contain"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                </div>
-              </div>
-              
-              {/* Status */}
-              <span className={`text-[10px] font-bold uppercase ${item.isLive ? 'text-destructive' : 'text-primary'}`}>
-                {item.status}
-              </span>
-            </Link>
-          ))}
-        </div>
-
-        {/* Fade overlay on right */}
-        <div className="absolute right-0 z-10 bg-gradient-to-l from-card via-card to-transparent w-16 h-full" />
       </div>
+
+      {/* Scrolling content */}
+      <div 
+        ref={trackRef}
+        className="flex py-2 pl-20"
+        style={{
+          animation: `scroll ${durationSec}s linear infinite`,
+          animationPlayState: isPaused ? 'paused' : 'running',
+        }}
+      >
+        {duplicatedItems.map((item, index) => (
+          <Link
+            key={`${item.id}-${index}`}
+            to={item.matchUrl}
+            className="flex items-center gap-3 px-4 py-1 whitespace-nowrap hover:bg-gray-700/50 transition-colors rounded mx-1"
+          >
+            {/* Sport badge */}
+            <span className="text-[10px] uppercase font-medium text-gray-400 bg-gray-700/50 px-1.5 py-0.5 rounded">
+              {item.sport}
+            </span>
+            
+            {/* Teams and score */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-200">{item.homeTeam}</span>
+              
+              {item.homeScore !== null && item.awayScore !== null ? (
+                <span className="text-sm font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">
+                  {item.homeScore} - {item.awayScore}
+                </span>
+              ) : (
+                <span className="text-xs text-gray-400 px-2">vs</span>
+              )}
+              
+              <span className="text-sm text-gray-200">{item.awayTeam}</span>
+            </div>
+            
+            {/* Status */}
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+              item.isLive 
+                ? 'bg-red-500/20 text-red-400' 
+                : 'bg-gray-700/50 text-gray-400'
+            }`}>
+              {item.status}
+            </span>
+          </Link>
+        ))}
+      </div>
+
+      {/* Right fade overlay */}
+      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-gray-900 to-transparent pointer-events-none" />
+
+      {/* Keyframe animation */}
+      <style>{`
+        @keyframes scroll {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+      `}</style>
     </div>
   );
 };

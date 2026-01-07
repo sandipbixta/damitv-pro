@@ -68,7 +68,7 @@ const Match = () => {
         console.log(`Loading match: ${sportId}/${matchId}`);
         
         // Fetch the specific match
-        const matchData = await fetchMatch(sportId, matchId);
+        const matchData = await fetchMatch(matchId);
         const enhancedMatch = teamLogoService.enhanceMatchWithLogos(matchData);
         setMatch(enhancedMatch);
 
