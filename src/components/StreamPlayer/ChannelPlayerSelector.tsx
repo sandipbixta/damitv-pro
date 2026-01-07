@@ -110,7 +110,6 @@ const ChannelPlayerSelector: React.FC<ChannelPlayerSelectorProps> = ({
             onLoad={handleLoad}
             onError={handleError}
             title={title}
-            matchStartTime={matchStartTime}
           />
         </div>
       );
