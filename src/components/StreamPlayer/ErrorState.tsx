@@ -1,11 +1,8 @@
-
 import React from 'react';
 import { AlertTriangle, RefreshCcw, Monitor, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { AspectRatio } from '../ui/aspect-ratio';
-import { useIsMobile } from '../../hooks/use-mobile';
 import PlayerContainer from './PlayerContainer';
-import PlayerControls from './PlayerControls';
 
 interface ErrorStateProps {
   hasError: boolean;
@@ -24,18 +21,10 @@ const ErrorState: React.FC<ErrorStateProps> = ({
   onGoBack,
   debugInfo
 }) => {
-  const isMobile = useIsMobile();
-
   if (!hasError) return null;
 
   return (
     <PlayerContainer>
-      <PlayerControls
-        onGoBack={onGoBack}
-        onTogglePictureInPicture={() => {}}
-        onOpenInNewTab={onOpenInNewTab}
-        isPictureInPicture={false}
-      />
       <AspectRatio ratio={16 / 9}>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-white text-center max-w-md mx-auto p-4">
@@ -47,19 +36,18 @@ const ErrorState: React.FC<ErrorStateProps> = ({
             
             <p className="text-xs sm:text-sm text-gray-400 mb-4">
               {isTimeout 
-                ? "The stream is taking longer than expected to load. We're trying different methods to play it within DAMITV."
-                : "Stream source may be blocking direct embedding. We're using bypass methods to play it here."
+                ? "The stream is taking longer than expected to load."
+                : "Stream source may be temporarily unavailable."
               }
             </p>
 
-            {/* Help message */}
             <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-3 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Info className="h-4 w-4 text-blue-400" />
-                <span className="text-sm font-medium text-blue-300">DAMITV Bypass Active</span>
+                <span className="text-sm font-medium text-blue-300">Try Again</span>
               </div>
               <p className="text-xs text-blue-200">
-                We're using advanced methods to bypass streaming restrictions and keep you on DAMITV.
+                Click retry to attempt loading the stream again.
               </p>
             </div>
             
@@ -68,31 +56,22 @@ const ErrorState: React.FC<ErrorStateProps> = ({
                 variant="outline" 
                 size="sm" 
                 onClick={onRetry}
-                className="border-[#ff5a36] bg-[#ff5a36] hover:bg-[#e54a2e] text-white"
+                className="border-primary bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <RefreshCcw className="h-4 w-4 mr-2" /> 
-                Try Advanced Bypass
+                Retry
               </Button>
               
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={onOpenInNewTab}
-                className="border-[#343a4d] bg-transparent hover:bg-[#343a4d] text-gray-300"
+                className="border-border bg-transparent hover:bg-muted text-muted-foreground"
               >
                 <Monitor className="h-4 w-4 mr-2" /> 
-                Force Play in DAMITV
+                Open in New Tab
               </Button>
             </div>
-            
-            {process.env.NODE_ENV === 'development' && debugInfo && (
-              <details className="mt-4 text-left">
-                <summary className="cursor-pointer text-xs text-gray-500">Debug Info</summary>
-                <pre className="text-xs text-gray-400 mt-2 whitespace-pre-wrap">
-                  {debugInfo}
-                </pre>
-              </details>
-            )}
           </div>
         </div>
       </AspectRatio>
