@@ -98,8 +98,41 @@ serve(async (req) => {
   }
 
   try {
+    // Check API key
+    const apiKey = req.headers.get('x-api-key');
+    if (!apiKey || apiKey !== VALID_API_KEY) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Unauthorized: Invalid or missing API key. Include X-API-Key header.' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check rate limit
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const rateCheck = checkRateLimit(ip);
+    
+    if (!rateCheck.allowed) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Rate limit exceeded. Max 100 requests per hour.' 
+      }), {
+        status: 429,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': '0',
+          'Retry-After': '3600'
+        },
+      });
+    }
+
     const url = new URL(req.url);
     const endpoint = url.searchParams.get('endpoint') || 'all';
+
+    console.log(`API request from ${ip}: endpoint=${endpoint}, remaining=${rateCheck.remaining}`);
 
     // Categories/Sports
     const categories = [
