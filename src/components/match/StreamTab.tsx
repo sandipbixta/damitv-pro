@@ -7,7 +7,7 @@ import StreamSources from './StreamSources';
 import MatchCard from '@/components/MatchCard';
 import MatchDetails from '@/components/MatchDetails';
 import { Match as MatchType, Stream } from '@/types/sports';
-import { LiveViewerCount } from '@/components/LiveViewerCount';
+
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -181,13 +181,6 @@ const StreamTab = ({
         showMatchDetails={false}
       />
       
-      {/* Viewer Count below player */}
-      {isMatchLive() && (
-        <div className="flex items-center justify-center mt-3">
-          <LiveViewerCount match={match} size="md" showTrend={true} />
-        </div>
-      )}
-      
       <StreamSources
         sources={match.sources}
         activeSource={activeSource}
@@ -198,6 +191,7 @@ const StreamTab = ({
         isLive={isMatchLive()}
         streamDiscovery={streamDiscovery}
         onRefresh={handleRefresh}
+        match={match}
       />
       
       {!loadingStream && (

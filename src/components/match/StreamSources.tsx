@@ -1,11 +1,11 @@
-
 import { Button } from '@/components/ui/button';
-import { Source, Stream } from '@/types/sports';
+import { Source, Stream, Match } from '@/types/sports';
 import { useState, useEffect } from 'react';
 import { fetchStream } from '@/api/sportsApi';
 import { Loader, Play, Users } from 'lucide-react';
 import { getConnectionInfo } from '@/utils/connectionOptimizer';
 import { formatViewerCount } from '@/services/viewerCountService';
+import { LiveViewerCount } from '@/components/LiveViewerCount';
 
 interface StreamSourcesProps {
   sources: Source[];
@@ -22,6 +22,7 @@ interface StreamSourcesProps {
     sourceNames: string[];
   };
   onRefresh?: () => Promise<void>;
+  match?: Match;
 }
 
 const StreamSources = ({ 
@@ -34,7 +35,8 @@ const StreamSources = ({
   currentStreamViewers = 0,
   isLive = false,
   streamDiscovery,
-  onRefresh
+  onRefresh,
+  match
 }: StreamSourcesProps) => {
   const [localStreams, setLocalStreams] = useState<Record<string, Stream[]>>({});
   const [loadingStreams, setLoadingStreams] = useState<Record<string, boolean>>({});
@@ -212,6 +214,7 @@ const StreamSources = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-white">Stream Links</h3>
+          {isLive && match && <LiveViewerCount match={match} size="md" showTrend={true} />}
           {onRefresh && (
             <Button
               variant="outline"
