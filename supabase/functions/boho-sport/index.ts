@@ -12,6 +12,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// In-memory cache with TTL
+const cache = new Map<string, { data: any; expires: number }>();
+const CACHE_TTL_MS = 60000; // 1 minute for match data
+const STREAM_CACHE_TTL_MS = 300000; // 5 minutes for stream data
+
+function getCached(key: string): any | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() < entry.expires) {
+    console.log(`📦 Cache HIT: ${key}`);
+    return entry.data;
+  }
+  if (entry) {
+    cache.delete(key); // Clean up expired
+  }
+  return null;
+}
+
+function setCache(key: string, data: any, ttlMs: number): void {
+  cache.set(key, { data, expires: Date.now() + ttlMs });
+  console.log(`💾 Cache SET: ${key} (TTL: ${ttlMs / 1000}s)`);
+}
+
 // Try fetching from an API base
 async function tryFetch(baseUrl: string, endpoint: string): Promise<{ success: boolean; data: any; status: number }> {
   const apiUrl = endpoint ? `${baseUrl}/${endpoint}` : baseUrl;
@@ -90,6 +112,16 @@ serve(async (req) => {
 
     console.log(`📡 BOHOSport proxy request - endpoint: "${endpoint}"`);
 
+    // Check cache first
+    const cacheKey = endpoint || 'matches/all';
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return new Response(JSON.stringify(cached), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Check if this is a stream request
     const isStreamRequest = endpoint.startsWith('stream/');
     
@@ -99,6 +131,7 @@ serve(async (req) => {
         const result = await tryFetch(baseUrl, endpoint);
         if (result.success) {
           console.log(`🎉 Found working stream endpoint: ${baseUrl}/${endpoint}`);
+          setCache(cacheKey, result.data, STREAM_CACHE_TTL_MS);
           return new Response(JSON.stringify(result.data), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -112,14 +145,16 @@ serve(async (req) => {
       const source = parts[1] || 'main';
       const id = parts[2] || 'unknown';
       
-      return new Response(JSON.stringify([{
+      const fallbackData = [{
         embedUrl: `https://streamed.su/watch/${id}`,
         source: source,
         id: id,
         streamNo: 1,
         language: 'EN',
         hd: true
-      }]), {
+      }];
+      
+      return new Response(JSON.stringify(fallbackData), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -142,6 +177,7 @@ serve(async (req) => {
         
         if (result.success) {
           console.log(`🎉 Found working endpoint: ${baseUrl}/${ep}`);
+          setCache(cacheKey, result.data, CACHE_TTL_MS);
           return new Response(JSON.stringify(result.data), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
