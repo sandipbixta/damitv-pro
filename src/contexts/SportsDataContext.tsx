@@ -17,12 +17,47 @@ const SportsDataContext = createContext<SportsDataContextType | undefined>(undef
 
 // Cache duration: 5 minutes for match data
 const REFRESH_INTERVAL = 5 * 60 * 1000;
+const CACHE_KEY = 'damitv_matches_cache';
+const SPORTS_CACHE_KEY = 'damitv_sports_cache';
+const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes localStorage cache
+
+// Load cached data from localStorage
+const loadFromCache = () => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    const sportsCached = localStorage.getItem(SPORTS_CACHE_KEY);
+    if (cached && sportsCached) {
+      const { data, timestamp } = JSON.parse(cached);
+      const { data: sportsData, timestamp: sportsTimestamp } = JSON.parse(sportsCached);
+      if (Date.now() - timestamp < CACHE_EXPIRY && Date.now() - sportsTimestamp < CACHE_EXPIRY) {
+        console.log('📦 Loading from localStorage cache');
+        return { matches: data, sports: sportsData };
+      }
+    }
+  } catch (e) {
+    console.log('Cache read error:', e);
+  }
+  return null;
+};
+
+// Save to localStorage cache
+const saveToCache = (matches: Match[], sports: Sport[]) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ data: matches, timestamp: Date.now() }));
+    localStorage.setItem(SPORTS_CACHE_KEY, JSON.stringify({ data: sports, timestamp: Date.now() }));
+  } catch (e) {
+    console.log('Cache write error:', e);
+  }
+};
 
 export const SportsDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [sports, setSports] = useState<Sport[]>([]);
-  const [allMatches, setAllMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastFetch, setLastFetch] = useState(0);
+  // Load cached data immediately
+  const cachedData = useMemo(() => loadFromCache(), []);
+  
+  const [sports, setSports] = useState<Sport[]>(cachedData?.sports || []);
+  const [allMatches, setAllMatches] = useState<Match[]>(cachedData?.matches || []);
+  const [loading, setLoading] = useState(!cachedData);
+  const [lastFetch, setLastFetch] = useState(cachedData ? Date.now() : 0);
 
   // Fetch all data once
   const fetchData = useCallback(async (force = false) => {
@@ -56,6 +91,9 @@ export const SportsDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       setAllMatches(consolidatedMatches);
       setLastFetch(Date.now());
+      
+      // Save to localStorage for instant load next time
+      saveToCache(consolidatedMatches, sortedSports);
       
       console.log(`✅ SportsDataContext: Loaded ${sortedSports.length} sports, ${consolidatedMatches.length} matches`);
     } catch (error) {
