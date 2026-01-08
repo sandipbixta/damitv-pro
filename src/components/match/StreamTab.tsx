@@ -181,6 +181,13 @@ const StreamTab = ({
         showMatchDetails={false}
       />
       
+      {/* Viewer Count below player */}
+      {isMatchLive() && (
+        <div className="flex items-center justify-center mt-3">
+          <LiveViewerCount match={match} size="md" showTrend={true} />
+        </div>
+      )}
+      
       <StreamSources
         sources={match.sources}
         activeSource={activeSource}
@@ -197,13 +204,10 @@ const StreamTab = ({
         <div className="flex items-center justify-center gap-4 mt-4">
           <div className="flex items-center gap-3">
             {isMatchLive() ? (
-              <>
-                <Badge variant="live" className="flex items-center gap-1.5 px-3 py-1">
-                  <span className="h-2 w-2 bg-white rounded-full animate-pulse"></span>
-                  LIVE NOW
-                </Badge>
-                <LiveViewerCount match={match} size="md" showTrend={true} />
-              </>
+              <Badge variant="live" className="flex items-center gap-1.5 px-3 py-1">
+                <span className="h-2 w-2 bg-white rounded-full animate-pulse"></span>
+                LIVE NOW
+              </Badge>
             ) : (
               <Badge variant="info" className="flex items-center gap-1.5 px-3 py-1 text-white">
                 <Clock size={14} />
