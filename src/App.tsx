@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import SEOPageTracker from "./components/SEOPageTracker";
 import MonetizationTracker from "./components/MonetizationTracker";
+import { SportsDataProvider } from "./contexts/SportsDataContext";
 
 // Import pages directly instead of lazy loading to avoid module import errors
 import Index from "./pages/Index";
@@ -67,7 +68,7 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <BrowserRouter>
-          
+          <SportsDataProvider>
           <MonetizationTracker>
             <TooltipProvider>
               <TelegramFAB />
@@ -199,6 +200,7 @@ const App: React.FC = () => {
             </Routes>
           </TooltipProvider>
         </MonetizationTracker>
+        </SportsDataProvider>
       </BrowserRouter>
     </HelmetProvider>
   </QueryClientProvider>

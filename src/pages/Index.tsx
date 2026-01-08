@@ -2,12 +2,13 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/use-toast';
 import { Sport, Match } from '../types/sports';
-import { fetchSports, fetchMatches, fetchLiveMatches } from '../api/sportsApi';
+import { fetchMatches } from '../api/sportsApi';
 import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
 import SportsList from '../components/SportsList';
 import MatchesList from '../components/MatchesList';
 import FeaturedMatches from '../components/FeaturedMatches';
 import AllSportsLiveMatches from '../components/AllSportsLiveMatches';
+import { useSportsData } from '../contexts/SportsDataContext';
 
 // Lazy load more components to reduce initial bundle
 const PopularMatches = React.lazy(() => import('../components/PopularMatches'));
@@ -33,14 +34,14 @@ const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels
 
 const Index = () => {
   const { toast } = useToast();
-  const [sports, setSports] = useState<Sport[]>([]);
+  
+  // Use shared sports data context - eliminates duplicate API calls!
+  const { sports, liveMatches, loading: loadingSports } = useSportsData();
+  
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [allMatches, setAllMatches] = useState<{[sportId: string]: Match[]}>({});
-  const [liveMatches, setLiveMatches] = useState<Match[]>([]);
+  const [allMatchesCache, setAllMatchesCache] = useState<{[sportId: string]: Match[]}>({});
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const [loadingSports, setLoadingSports] = useState(false); // Start false for instant render
   const [loadingMatches, setLoadingMatches] = useState(false);
 
   // Filter visible manual matches
@@ -76,53 +77,10 @@ const Index = () => {
     });
   }, [matches, searchTerm]);
 
-  // Load sports and live matches in parallel immediately on mount
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        // Load sports AND live matches in parallel for instant display
-        const [sportsData, liveMatchesData] = await Promise.all([
-          fetchSports(),
-          fetchLiveMatches()
-        ]);
-        
-        console.log('📊 Sports data loaded:', sportsData);
-        
-        // Sort with football first for better UX
-        const sortedSports = sportsData.sort((a, b) => {
-          if (a.name.toLowerCase() === 'football') return -1;
-          if (b.name.toLowerCase() === 'football') return 1;
-          if (a.name.toLowerCase() === 'basketball') return -1;
-          if (b.name.toLowerCase() === 'basketball') return 1;
-          return a.name.localeCompare(b.name);
-        });
-        
-        setSports(sortedSports);
-        
-        // Display all live matches from API
-        setLiveMatches(liveMatchesData);
-        
-        console.log(`✅ Loaded ${liveMatchesData.length} live matches instantly`);
-        
-      } catch (error) {
-        console.error('Sports loading error:', error);
-        toast({
-          title: "Connection Issue",
-          description: "Slow connection detected. Retrying...",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingSports(false);
-      }
-    };
-
-    loadInitialData();
-  }, []);
-
-  // Set default sport immediately on component mount - don't wait for data
+  // Set default sport immediately on component mount
   useEffect(() => {
     if (!selectedSport) {
-      console.log('🏈 Auto-selecting "All Sports" as default immediately');
+      console.log('🏈 Auto-selecting "All Sports" as default');
       setSelectedSport('all');
     }
   }, [selectedSport]);
@@ -150,9 +108,9 @@ const Index = () => {
     console.log('🔄 Loading matches for sport:', sportId);
     
     try {
-      if (allMatches[sportId]) {
-        console.log('📁 Using cached matches:', allMatches[sportId].length);
-        setMatches(allMatches[sportId]);
+      if (allMatchesCache[sportId]) {
+        console.log('📁 Using cached matches:', allMatchesCache[sportId].length);
+        setMatches(allMatchesCache[sportId]);
       } else {
         const rawMatchesData = await fetchMatches(sportId);
         console.log('📥 Raw matches data:', rawMatchesData.length);
@@ -165,7 +123,7 @@ const Index = () => {
         
         setMatches(consolidatedMatches);
         
-        setAllMatches(prev => ({
+        setAllMatchesCache(prev => ({
           ...prev,
           [sportId]: consolidatedMatches
         }));

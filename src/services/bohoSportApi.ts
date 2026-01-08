@@ -26,8 +26,12 @@ const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
 
 // In-memory cache with TTL
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 60 * 1000; // 1 minute for match data
-const STREAM_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for stream data
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for match data (increased from 1 min)
+const STREAM_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes for stream data
+
+// Track working endpoints for faster future requests
+let workingApiBase: string | null = null;
+let workingProxy: string | null = null;
 
 // Helper function to clear cache
 export const clearStreamCache = (matchId?: string) => {
@@ -72,23 +76,68 @@ const setCachedData = (key: string, data: any) => {
   console.log(`💾 Cache SET: ${key}`);
 };
 
-// Direct API fetch with CORS proxy fallback
+// Direct API fetch with CORS proxy fallback + request timeout + smart endpoint caching
 const fetchFromApi = async (endpoint: string): Promise<any> => {
-  // First try direct calls
+  const timeout = 5000; // 5 second timeout
+
+  const fetchWithTimeout = async (url: string, signal: AbortSignal) => {
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  };
+
+  // Try last working endpoint first
+  if (workingApiBase) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      const url = `${workingApiBase}/${endpoint}`;
+      
+      const data = await fetchWithTimeout(url, controller.signal);
+      clearTimeout(timeoutId);
+      console.log(`⚡ Fast path: ${workingApiBase}`);
+      return data;
+    } catch {
+      workingApiBase = null; // Reset if failed
+    }
+  }
+
+  // Try last working proxy first
+  if (workingProxy && workingApiBase === null) {
+    for (const baseUrl of API_BASES) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        const targetUrl = `${baseUrl}/${endpoint}`;
+        const proxyUrl = `${workingProxy}${encodeURIComponent(targetUrl)}`;
+        
+        const data = await fetchWithTimeout(proxyUrl, controller.signal);
+        clearTimeout(timeoutId);
+        workingApiBase = baseUrl;
+        console.log(`⚡ Fast proxy path: ${workingProxy.split('?')[0]}`);
+        return data;
+      } catch {
+        // Continue to next
+      }
+    }
+    workingProxy = null; // Reset if all failed
+  }
+
+  // Try direct calls
   for (const baseUrl of API_BASES) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
       const url = `${baseUrl}/${endpoint}`;
-      console.log(`🔄 Trying direct: ${url}`);
       
-      const response = await fetch(url, {
-        headers: { 'Accept': 'application/json' }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`✅ Direct success: ${baseUrl}`);
-        return data;
-      }
+      const data = await fetchWithTimeout(url, controller.signal);
+      clearTimeout(timeoutId);
+      workingApiBase = baseUrl; // Remember working endpoint
+      console.log(`✅ Direct success: ${baseUrl}`);
+      return data;
     } catch (error) {
       console.warn(`⚠️ Direct failed: ${baseUrl}/${endpoint}`);
     }
@@ -98,19 +147,17 @@ const fetchFromApi = async (endpoint: string): Promise<any> => {
   for (const proxy of CORS_PROXIES) {
     for (const baseUrl of API_BASES) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
         const targetUrl = `${baseUrl}/${endpoint}`;
         const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
-        console.log(`🔄 Trying CORS proxy: ${proxy.split('?')[0]}`);
         
-        const response = await fetch(proxyUrl, {
-          headers: { 'Accept': 'application/json' }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`✅ CORS proxy success`);
-          return data;
-        }
+        const data = await fetchWithTimeout(proxyUrl, controller.signal);
+        clearTimeout(timeoutId);
+        workingApiBase = baseUrl;
+        workingProxy = proxy; // Remember working proxy
+        console.log(`✅ CORS proxy success`);
+        return data;
       } catch (error) {
         console.warn(`⚠️ CORS proxy failed`);
       }
