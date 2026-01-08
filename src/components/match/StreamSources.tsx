@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { fetchStream } from '@/api/sportsApi';
 import { Loader, Play, Users } from 'lucide-react';
 import { getConnectionInfo } from '@/utils/connectionOptimizer';
-import { fetchViewerCountFromSource, formatViewerCount } from '@/services/viewerCountService';
-import { triggerPopunderAd } from '@/utils/popunderAd';
+import { formatViewerCount } from '@/services/viewerCountService';
+
 interface StreamSourcesProps {
   sources: Source[];
   activeSource: string | null;
@@ -39,8 +39,8 @@ const StreamSources = ({
   const [localStreams, setLocalStreams] = useState<Record<string, Stream[]>>({});
   const [loadingStreams, setLoadingStreams] = useState<Record<string, boolean>>({});
   const [connectionQuality, setConnectionQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
-  const [streamViewers, setStreamViewers] = useState<Record<string, number>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasFetchedStreams, setHasFetchedStreams] = useState(false);
 
   // Monitor connection quality
   useEffect(() => {
@@ -48,7 +48,6 @@ const StreamSources = ({
       const info = getConnectionInfo();
       const effectiveType = info.effectiveType || '4g';
       const downlink = info.downlink || 10;
-      const rtt = info.rtt || 50;
 
       if (effectiveType === 'slow-2g' || effectiveType === '2g' || downlink < 1) {
         setConnectionQuality('poor');
@@ -92,91 +91,77 @@ const StreamSources = ({
     isAdmin: isAdminSourceName(s.source),
   }));
 
-  // Use pre-loaded streams if available, otherwise fetch individually
+  // Use pre-loaded streams if available, otherwise use local streams
   const effectiveStreams = Object.keys(allStreams).length > 0 ? allStreams : localStreams;
 
-  // Fetch streams only if not already provided
-  useEffect(() => {
-    const fetchMissingStreams = async () => {
-      if (Object.keys(allStreams).length > 0) {
-        console.log('✅ Using pre-loaded streams from all sources');
-        return;
-      }
-
-      if (!visibleSources || visibleSources.length === 0) return;
-
-      console.log('🔄 Fetching individual streams (fallback mode)');
-      
-      for (const source of visibleSources) {
-        const sourceKey = `${source.source}/${source.id}`;
-        
-        if (localStreams[sourceKey]) continue;
-        
-        setLoadingStreams(prev => ({ ...prev, [sourceKey]: true }));
-        
-        try {
-          console.log(`Fetching streams for: ${source.source}/${source.id}`);
-          const streamData = await fetchStream(source.source, source.id);
-          
-          // Ensure streamData is always an array
-          const streamArray = Array.isArray(streamData) ? streamData : (streamData ? [streamData] : []);
-          
-          const streams = streamArray
-            .map((s: any) => {
-              const url = s?.embedUrl || '';
-              const normalized = url.startsWith('//') ? 'https:' + url : url.replace(/^http:\/\//i, 'https://');
-              return normalized &&
-                !normalized.includes('youtube.com') &&
-                !normalized.includes('demo')
-                ? { ...s, embedUrl: normalized }
-                : null;
-            })
-            .filter(Boolean) as Stream[];
-          
-          console.log(`Found ${streams.length} valid streams for ${sourceKey}:`, streams);
-          
-          setLocalStreams(prev => ({
-            ...prev,
-            [sourceKey]: streams
-          }));
-        } catch (error) {
-          console.error(`Failed to fetch streams for ${sourceKey}:`, error);
-          setLocalStreams(prev => ({
-            ...prev,
-            [sourceKey]: []
-          }));
-        } finally {
-          setLoadingStreams(prev => ({ ...prev, [sourceKey]: false }));
-        }
-      }
-    };
-
-    fetchMissingStreams();
-  }, [sources]);
-
-  // Fetch viewer counts for all streams
-  useEffect(() => {
-    const fetchViewerCounts = async () => {
-      const viewers: Record<string, number> = {};
-      
-      for (const source of visibleSources) {
-        const count = await fetchViewerCountFromSource(source.source, source.id);
-        if (count !== null) {
-          const sourceKey = `${source.source}/${source.id}`;
-          viewers[sourceKey] = count;
-        }
-      }
-      
-      setStreamViewers(viewers);
-    };
-
-    if (visibleSources.length > 0) {
-      fetchViewerCounts();
-      // Refresh every 30 seconds
-      const interval = setInterval(fetchViewerCounts, 30000);
-      return () => clearInterval(interval);
+  // LAZY LOAD: Only fetch streams when user clicks a source button (not on mount)
+  const fetchStreamForSource = async (source: Source) => {
+    const sourceKey = `${source.source}/${source.id}`;
+    
+    // Skip if already loaded
+    if (localStreams[sourceKey] && localStreams[sourceKey].length > 0) {
+      return localStreams[sourceKey];
     }
-  }, [sources]);
+    
+    setLoadingStreams(prev => ({ ...prev, [sourceKey]: true }));
+    
+    try {
+      console.log(`🔄 Lazy-loading streams for: ${source.source}/${source.id}`);
+      const streamData = await fetchStream(source.source, source.id);
+      
+      // Ensure streamData is always an array
+      const streamArray = Array.isArray(streamData) ? streamData : (streamData ? [streamData] : []);
+      
+      const streams = streamArray
+        .map((s: any) => {
+          const url = s?.embedUrl || '';
+          const normalized = url.startsWith('//') ? 'https:' + url : url.replace(/^http:\/\//i, 'https://');
+          return normalized &&
+            !normalized.includes('youtube.com') &&
+            !normalized.includes('demo')
+            ? { ...s, embedUrl: normalized }
+            : null;
+        })
+        .filter(Boolean) as Stream[];
+      
+      console.log(`✅ Loaded ${streams.length} streams for ${sourceKey}`);
+      
+      setLocalStreams(prev => ({
+        ...prev,
+        [sourceKey]: streams
+      }));
+      
+      return streams;
+    } catch (error) {
+      console.error(`Failed to fetch streams for ${sourceKey}:`, error);
+      setLocalStreams(prev => ({
+        ...prev,
+        [sourceKey]: []
+      }));
+      return [];
+    } finally {
+      setLoadingStreams(prev => ({ ...prev, [sourceKey]: false }));
+    }
+  };
+
+  // Handle source button click - lazy load streams
+  const handleSourceClick = async (source: Source, streamNo?: number) => {
+    const sourceKey = `${source.source}/${source.id}`;
+    const existingStreams = effectiveStreams[sourceKey];
+    
+    if (!existingStreams || existingStreams.length === 0) {
+      // Fetch streams first
+      const streams = await fetchStreamForSource(source);
+      if (streams && streams.length > 0) {
+        const firstStream = streams[0];
+        onSourceChange(firstStream.source || source.source, firstStream.id || source.id, streamNo || firstStream.streamNo || 1);
+      }
+    } else {
+      // Use existing streams
+      const stream = existingStreams[0];
+      onSourceChange(stream.source || source.source, stream.id || source.id, streamNo || stream.streamNo || 1);
+    }
+  };
 
   // Handle refresh button click
   const handleRefresh = async () => {
@@ -197,7 +182,7 @@ const StreamSources = ({
     return null;
   }
 
-  // Collect all available streams from all sources
+  // Collect all available streams from all sources (only from pre-loaded or already fetched)
   const allAvailableStreams: Array<{
     stream: any;
     sourceKey: string;
@@ -208,8 +193,6 @@ const StreamSources = ({
     const sourceKey = `${source.source}/${source.id}`;
     const streams = effectiveStreams[sourceKey] || [];
     
-    console.log(`📺 Source ${sourceKey} has ${streams.length} streams:`, streams);
-    
     streams.forEach((stream, index) => {
       allAvailableStreams.push({
         stream,
@@ -218,29 +201,11 @@ const StreamSources = ({
       });
     });
   });
-  
-  console.log(`📺 Total available streams to display: ${allAvailableStreams.length}`);
 
   const isAnyLoading = Object.values(loadingStreams).some(Boolean);
 
-  // Show loading state
-  if (isAnyLoading && allAvailableStreams.length === 0) {
-    return (
-      <div className="mt-6 flex items-center gap-2 text-gray-400 justify-center py-8">
-        <Loader className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading streams...</span>
-      </div>
-    );
-  }
-
-  // Show no streams message
-  if (allAvailableStreams.length === 0) {
-    return (
-      <div className="mt-6 text-center py-8">
-        <p className="text-gray-400">No streams available for this match.</p>
-      </div>
-    );
-  }
+  // If no streams are loaded yet, show source buttons to trigger lazy load
+  const showSourceButtons = allAvailableStreams.length === 0 && !isAnyLoading;
 
   return (
     <div className="mt-6">
@@ -293,55 +258,99 @@ const StreamSources = ({
         )}
       </div>
       
-      <div className="flex flex-wrap gap-3">
-        {allAvailableStreams.map(({ stream, sourceKey, index }) => {
-          // Use streamNo from API, fallback to index + 1
-          const actualStreamNo = stream.streamNo !== undefined ? stream.streamNo : index + 1;
-          const streamKey = `${stream.source}/${stream.id}/${actualStreamNo}`;
-          const isActive = activeSource === streamKey;
-          const viewerCount = stream.viewers || 0;
-          
-          // Use API-provided names with streamNo priority
-          let streamName = stream.name || 
-                          (stream.language && stream.language !== 'Original' ? `${stream.language} ${actualStreamNo}` : null) ||
-                          (stream.source && stream.source !== 'intel' ? `${stream.source.toUpperCase()} ${actualStreamNo}` : null) ||
-                          `Stream ${actualStreamNo}`;
-          
-          console.log(`🎯 Rendering stream button: ${streamName}`, { streamNo: actualStreamNo, hd: stream.hd });
-          
-          return (
-            <Button
-              key={streamKey}
-              variant={isActive ? "default" : "outline"}
-              className={`rounded-full px-5 py-2.5 min-w-[120px] flex-col h-auto gap-1 ${
-                isActive 
-                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary' 
-                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
-              }`}
-              onClick={() => {
-                // Don't trigger popunder here - it's already triggered on play button click
-                onSourceChange(stream.source, stream.id, actualStreamNo);
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
-                <Play className="w-4 h-4" />
-                <span>{streamName}</span>
-                {stream.hd && <span className="text-xs bg-red-600 px-1 rounded">HD</span>}
-              </div>
-              {viewerCount > 0 && (
-                <div className="flex items-center gap-1 text-xs font-semibold">
-                  <Users className="w-3 h-3 text-primary" />
-                  <span>{formatViewerCount(viewerCount, false)}</span>
+      {/* Loading state */}
+      {isAnyLoading && allAvailableStreams.length === 0 && (
+        <div className="flex items-center gap-2 text-gray-400 justify-center py-8">
+          <Loader className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Loading streams...</span>
+        </div>
+      )}
+
+      {/* Show source buttons to trigger lazy load */}
+      {showSourceButtons && (
+        <div className="flex flex-wrap gap-3">
+          {visibleSources.map((source, idx) => {
+            const sourceKey = `${source.source}/${source.id}`;
+            const isLoading = loadingStreams[sourceKey];
+            
+            return (
+              <Button
+                key={sourceKey}
+                variant="outline"
+                className="rounded-full px-5 py-2.5 min-w-[120px] bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50"
+                onClick={() => handleSourceClick(source)}
+                disabled={isLoading}
+              >
+                <div className="flex items-center gap-2">
+                  {isLoading ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
+                      <Play className="w-4 h-4" />
+                    </>
+                  )}
+                  <span>Stream {idx + 1}</span>
                 </div>
-              )}
-            </Button>
-          );
-        })}
-      </div>
-      
-      {/* Export viewer counts for parent component */}
-      <div className="hidden" data-stream-viewers={JSON.stringify(streamViewers)} />
+              </Button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Show loaded streams */}
+      {allAvailableStreams.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {allAvailableStreams.map(({ stream, sourceKey, index }) => {
+            // Use streamNo from API, fallback to index + 1
+            const actualStreamNo = stream.streamNo !== undefined ? stream.streamNo : index + 1;
+            const streamKey = `${stream.source}/${stream.id}/${actualStreamNo}`;
+            const isActive = activeSource === streamKey;
+            const viewerCount = stream.viewers || 0;
+            
+            // Use API-provided names with streamNo priority
+            let streamName = stream.name || 
+                            (stream.language && stream.language !== 'Original' ? `${stream.language} ${actualStreamNo}` : null) ||
+                            (stream.source && stream.source !== 'intel' ? `${stream.source.toUpperCase()} ${actualStreamNo}` : null) ||
+                            `Stream ${actualStreamNo}`;
+            
+            return (
+              <Button
+                key={streamKey}
+                variant={isActive ? "default" : "outline"}
+                className={`rounded-full px-5 py-2.5 min-w-[120px] flex-col h-auto gap-1 ${
+                  isActive 
+                    ? 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary' 
+                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
+                }`}
+                onClick={() => {
+                  onSourceChange(stream.source, stream.id, actualStreamNo);
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
+                  <Play className="w-4 h-4" />
+                  <span>{streamName}</span>
+                  {stream.hd && <span className="text-xs bg-red-600 px-1 rounded">HD</span>}
+                </div>
+                {viewerCount > 0 && (
+                  <div className="flex items-center gap-1 text-xs font-semibold">
+                    <Users className="w-3 h-3 text-primary" />
+                    <span>{formatViewerCount(viewerCount, false)}</span>
+                  </div>
+                )}
+              </Button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* No streams message */}
+      {!isAnyLoading && !showSourceButtons && allAvailableStreams.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-gray-400">No streams available for this match.</p>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Match, Stream } from '../../types/sports';
 import StreamPlayer from '../StreamPlayer';
 import StreamSources from '../match/StreamSources';
-import { Clock, Tv, Calendar, RefreshCcw, Users } from 'lucide-react';
+import { Clock, Tv, Calendar, RefreshCcw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Link } from 'react-router-dom';
 import { isMatchLive } from '../../utils/matchUtils';
-import { ViewerCount } from '../ViewerCount';
-import { supabase } from '@/integrations/supabase/client';
 
 interface FeaturedPlayerProps {
   loading: boolean;
@@ -40,38 +38,8 @@ const FeaturedPlayer: React.FC<FeaturedPlayerProps> = ({
   // Check if match is live
   const isLive = featuredMatch ? isMatchLive(featuredMatch) : false;
 
-  // Fetch viewer count for current active stream
-  useEffect(() => {
-    const fetchCurrentViewers = async () => {
-      if (!activeSource) return;
-      
-      const parts = activeSource.split('/');
-      const [source, id] = parts;
-      
-      if (source && id) {
-        try {
-          const { data, error } = await supabase.functions.invoke('boho-sport', {
-            body: { endpoint: `stream/${source}/${id}` },
-          });
-          
-          if (!error && data) {
-            // Sum up all viewers from this source
-            if (Array.isArray(data)) {
-              const total = data.reduce((sum: number, stream: any) => sum + (stream.viewers || 0), 0);
-              setCurrentStreamViewers(total);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to fetch viewer count:', error);
-        }
-      }
-    };
-
-    fetchCurrentViewers();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchCurrentViewers, 30000);
-    return () => clearInterval(interval);
-  }, [activeSource]);
+  // Viewer count is now lazy-loaded from stream data when user clicks play
+  // No automatic API calls to reduce boho-sport usage
 
   // Show loading only for initial load, not when we have matches
   if (loading && !featuredMatch) {
