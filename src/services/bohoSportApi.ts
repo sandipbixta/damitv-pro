@@ -1,7 +1,7 @@
 // BOHOSport API Service - Direct API calls with CORS proxy
 import { Sport, Match, Stream, Source } from '../types/sports';
 
-// Ad-free embed player
+// Embed player - strictly path-based: https://embed.damitv.pro/{source}/{id}
 const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 
 // Legacy stream base URL (for images)
