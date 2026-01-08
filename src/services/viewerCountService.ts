@@ -1,5 +1,10 @@
 import { Match } from '@/types/sports';
 
+// Track which endpoints work (smart selection)
+let workingEndpoint: string | null = null;
+let lastEndpointCheck = 0;
+const ENDPOINT_CHECK_INTERVAL = 60 * 1000; // Re-check every 60 seconds
+
 // API endpoints to try (direct calls - no edge function)
 const API_BASES = [
   'https://streamed.su/api',
@@ -21,42 +26,76 @@ interface ViewerCountCache {
 const viewerCountCache = new Map<string, ViewerCountCache>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Direct API fetch with CORS proxy fallback
+// Fast timeout for API calls (2 seconds instead of browser default ~30s)
+const FETCH_TIMEOUT = 2000;
+
+const fetchWithTimeout = async (url: string, timeout: number): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
+// Direct API fetch with smart endpoint selection and fast timeout
 const fetchFromApi = async (endpoint: string): Promise<any> => {
-  // First try direct calls
-  for (const baseUrl of API_BASES) {
+  const now = Date.now();
+  
+  // If we have a working endpoint and it's recent, use it directly
+  if (workingEndpoint && (now - lastEndpointCheck) < ENDPOINT_CHECK_INTERVAL) {
     try {
-      const url = `${baseUrl}/${endpoint}`;
-      
-      const response = await fetch(url, {
-        headers: { 'Accept': 'application/json' }
-      });
-      
+      const response = await fetchWithTimeout(workingEndpoint.replace('{endpoint}', endpoint), FETCH_TIMEOUT);
       if (response.ok) {
         return await response.json();
       }
-    } catch (error) {
+    } catch {
+      // Working endpoint failed, reset and try all
+      workingEndpoint = null;
+    }
+  }
+
+  // Try direct calls first (fast timeout)
+  for (const baseUrl of API_BASES) {
+    try {
+      const url = `${baseUrl}/${endpoint}`;
+      const response = await fetchWithTimeout(url, FETCH_TIMEOUT);
+      
+      if (response.ok) {
+        // Remember this endpoint works
+        workingEndpoint = `${baseUrl}/{endpoint}`;
+        lastEndpointCheck = now;
+        return await response.json();
+      }
+    } catch {
       // Silent fail, try next
     }
   }
 
-  // Fallback to CORS proxies
-  for (const proxy of CORS_PROXIES) {
-    for (const baseUrl of API_BASES) {
-      try {
-        const targetUrl = `${baseUrl}/${endpoint}`;
-        const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
-        
-        const response = await fetch(proxyUrl, {
-          headers: { 'Accept': 'application/json' }
-        });
-        
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (error) {
-        // Silent fail, try next
+  // Try ONE CORS proxy only (fastest one)
+  const proxy = CORS_PROXIES[0];
+  for (const baseUrl of API_BASES) {
+    try {
+      const targetUrl = `${baseUrl}/${endpoint}`;
+      const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
+      
+      const response = await fetchWithTimeout(proxyUrl, FETCH_TIMEOUT);
+      
+      if (response.ok) {
+        workingEndpoint = `${proxy}${encodeURIComponent(baseUrl + '/{endpoint}')}`.replace('{endpoint}', '');
+        lastEndpointCheck = now;
+        return await response.json();
       }
+    } catch {
+      // Silent fail
     }
   }
 
@@ -82,7 +121,7 @@ const validateViewerCount = (viewers: any): number | null => {
 };
 
 /**
- * Fetch viewer count from stream API for a specific source (direct - no edge function)
+ * Fetch viewer count from stream API for a specific source (fast, with timeout)
  */
 export const fetchViewerCountFromSource = async (
   source: string,
@@ -106,14 +145,13 @@ export const fetchViewerCountFromSource = async (
     }
 
     return null;
-  } catch (error) {
-    console.warn(`Failed to fetch viewer count for ${source}/${id}:`, error);
+  } catch {
     return null;
   }
 };
 
 /**
- * Fetch viewer count for a match (tries all sources)
+ * Fetch viewer count for a match (tries first source only for speed)
  */
 export const fetchMatchViewerCount = async (match: Match): Promise<number | null> => {
   // Only fetch for live matches
@@ -128,41 +166,33 @@ export const fetchMatchViewerCount = async (match: Match): Promise<number | null
     return cached.count;
   }
 
-  // Try all sources and sum up viewer counts
+  // Only try FIRST source for speed (not all sources)
   if (!match.sources || match.sources.length === 0) {
     return null;
   }
 
   try {
-    const viewerPromises = match.sources.map(source =>
-      fetchViewerCountFromSource(source.source, source.id)
-    );
-
-    const results = await Promise.all(viewerPromises);
-    const validCounts = results.filter((count): count is number => count !== null);
-
-    if (validCounts.length === 0) {
-      return null;
+    // Just fetch from the first source (fastest approach)
+    const firstSource = match.sources[0];
+    const viewerCount = await fetchViewerCountFromSource(firstSource.source, firstSource.id);
+    
+    if (viewerCount !== null && viewerCount > 0) {
+      // Cache the result
+      viewerCountCache.set(cacheKey, {
+        count: viewerCount,
+        timestamp: Date.now()
+      });
+      return viewerCount;
     }
 
-    // Sum up all valid viewer counts
-    const totalViewers = validCounts.reduce((sum, count) => sum + count, 0);
-
-    // Cache the result
-    viewerCountCache.set(cacheKey, {
-      count: totalViewers,
-      timestamp: Date.now()
-    });
-
-    return totalViewers;
-  } catch (error) {
-    console.error(`Error fetching viewer count for match ${match.id}:`, error);
+    return null;
+  } catch {
     return null;
   }
 };
 
 /**
- * Fetch viewer counts for multiple matches in batch
+ * Fetch viewer counts for multiple matches - FAST batch with limited concurrency
  */
 export const fetchBatchViewerCounts = async (
   matches: Match[]
@@ -172,12 +202,35 @@ export const fetchBatchViewerCounts = async (
   // Filter to only live matches
   const liveMatches = matches.filter(isMatchLive);
   
+  if (liveMatches.length === 0) {
+    return viewerCounts;
+  }
+  
   console.log(`🔄 Refreshing viewer counts for ${liveMatches.length} matches`);
   
-  // Fetch in batches of 10 to speed up (parallel requests)
-  const batchSize = 10;
-  for (let i = 0; i < liveMatches.length; i += batchSize) {
-    const batch = liveMatches.slice(i, i + batchSize);
+  // Check cache first and only fetch for uncached matches
+  const uncachedMatches: Match[] = [];
+  for (const match of liveMatches) {
+    const cached = viewerCountCache.get(match.id);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      viewerCounts.set(match.id, cached.count);
+    } else {
+      uncachedMatches.push(match);
+    }
+  }
+  
+  if (uncachedMatches.length === 0) {
+    console.log(`✅ All ${viewerCounts.size} matches served from cache`);
+    return viewerCounts;
+  }
+  
+  // Limit to 8 concurrent requests to avoid overwhelming APIs
+  const concurrentLimit = 8;
+  const limitedMatches = uncachedMatches.slice(0, Math.min(uncachedMatches.length, 12));
+  
+  // Process in small batches
+  for (let i = 0; i < limitedMatches.length; i += concurrentLimit) {
+    const batch = limitedMatches.slice(i, i + concurrentLimit);
     
     const promises = batch.map(async (match) => {
       const count = await fetchMatchViewerCount(match);
@@ -186,7 +239,8 @@ export const fetchBatchViewerCounts = async (
       }
     });
     
-    await Promise.all(promises);
+    // Use Promise.allSettled to not fail on individual errors
+    await Promise.allSettled(promises);
   }
   
   console.log(`✅ Found ${viewerCounts.size} matches with viewer data`);
