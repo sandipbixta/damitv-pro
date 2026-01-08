@@ -249,7 +249,7 @@ const StreamSources = ({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-3 mr-2">
+        <div className="flex items-center gap-3 mr-4">
           {isLive && match && <LiveViewerCount match={match} size="md" showTrend={true} />}
           {currentStreamViewers > 0 && (
             <div className="flex items-center gap-2 text-lg animate-fade-in">
