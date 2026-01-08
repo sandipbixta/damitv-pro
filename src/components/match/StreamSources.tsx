@@ -214,7 +214,6 @@ const StreamSources = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-white">Stream Links</h3>
-          {isLive && match && <LiveViewerCount match={match} size="md" showTrend={true} />}
           {onRefresh && (
             <Button
               variant="outline"
@@ -250,15 +249,18 @@ const StreamSources = ({
             </Button>
           )}
         </div>
-        {currentStreamViewers > 0 && (
-          <div className="flex items-center gap-2 text-lg animate-fade-in">
-            <Users className="w-5 h-5 text-red-500 animate-pulse" />
-            <span className="font-bold text-white animate-counter-up" title="Live viewers from stream source">
-              {currentStreamViewers.toLocaleString()}
-            </span>
-            <span className="text-muted-foreground text-sm ml-1">watching</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {isLive && match && <LiveViewerCount match={match} size="md" showTrend={true} />}
+          {currentStreamViewers > 0 && (
+            <div className="flex items-center gap-2 text-lg animate-fade-in">
+              <Users className="w-5 h-5 text-red-500 animate-pulse" />
+              <span className="font-bold text-white animate-counter-up" title="Live viewers from stream source">
+                {currentStreamViewers.toLocaleString()}
+              </span>
+              <span className="text-muted-foreground text-sm ml-1">watching</span>
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Loading state */}
