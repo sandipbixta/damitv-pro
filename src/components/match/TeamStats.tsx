@@ -63,20 +63,15 @@ export const TeamStats = ({
 
     try {
       // Fetch stats from API if not in DB, using team names
-      const [homeData, awayData, h2hResult] = await Promise.all([
+      const [homeData, awayData] = await Promise.all([
         statsService.getTeamStats(homeTeamName, sport),
-        statsService.getTeamStats(awayTeamName, sport),
-        supabase
-          .from('head_to_head_stats')
-          .select('*')
-          .or(`and(team_a_name.eq.${homeTeamName},team_b_name.eq.${awayTeamName}),and(team_a_name.eq.${awayTeamName},team_b_name.eq.${homeTeamName})`)
-          .eq('sport', sport.toLowerCase())
-          .maybeSingle()
+        statsService.getTeamStats(awayTeamName, sport)
       ]);
 
       setHomeStats(homeData);
       setAwayStats(awayData);
-      setH2hStats(h2hResult.data);
+      // Head-to-head stats table doesn't exist yet - set to null
+      setH2hStats(null);
     } catch (error) {
       console.error('Error loading stats:', error);
     } finally {

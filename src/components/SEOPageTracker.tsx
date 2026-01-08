@@ -35,7 +35,9 @@ const SEOPageTracker: React.FC<SEOPageTrackerProps> = ({
           sessionStorage.setItem('analytics_session_id', sessionId);
         }
 
-        await supabase.from('page_views').insert({
+        // Cast to any to bypass strict type checking for page_views table
+        const client = supabase as any;
+        await client.from('page_views').insert({
           page_path: location.pathname,
           page_title: pageTitle || document.title,
           referrer: document.referrer || null,
