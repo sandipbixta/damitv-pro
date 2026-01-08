@@ -10,6 +10,12 @@ const API_BASES = [
   'https://sportsrc.org/api'
 ];
 
+// CORS proxy fallbacks (used if direct calls fail)
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?'
+];
+
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
@@ -66,28 +72,51 @@ const setCachedData = (key: string, data: any) => {
   console.log(`💾 Cache SET: ${key}`);
 };
 
-// Direct API fetch with fallback
+// Direct API fetch with CORS proxy fallback
 const fetchFromApi = async (endpoint: string): Promise<any> => {
+  // First try direct calls
   for (const baseUrl of API_BASES) {
     try {
       const url = `${baseUrl}/${endpoint}`;
-      console.log(`🔄 Trying: ${url}`);
+      console.log(`🔄 Trying direct: ${url}`);
       
       const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-        }
+        headers: { 'Accept': 'application/json' }
       });
       
       if (response.ok) {
         const data = await response.json();
-        console.log(`✅ Success from: ${baseUrl}`);
+        console.log(`✅ Direct success: ${baseUrl}`);
         return data;
       }
     } catch (error) {
-      console.warn(`⚠️ Failed: ${baseUrl}/${endpoint}`);
+      console.warn(`⚠️ Direct failed: ${baseUrl}/${endpoint}`);
     }
   }
+
+  // Fallback to CORS proxies
+  for (const proxy of CORS_PROXIES) {
+    for (const baseUrl of API_BASES) {
+      try {
+        const targetUrl = `${baseUrl}/${endpoint}`;
+        const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
+        console.log(`🔄 Trying CORS proxy: ${proxy.split('?')[0]}`);
+        
+        const response = await fetch(proxyUrl, {
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ CORS proxy success`);
+          return data;
+        }
+      } catch (error) {
+        console.warn(`⚠️ CORS proxy failed`);
+      }
+    }
+  }
+
   throw new Error(`All API endpoints failed for: ${endpoint}`);
 };
 
