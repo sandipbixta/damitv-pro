@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/accordion';
 import { Match } from '@/types/sports';
 import { format } from 'date-fns';
-
+import { triggerPopunderAd } from '@/utils/popunderAd';
 
 interface MatchIntelligenceProps {
   match: Match;
@@ -91,8 +91,9 @@ const MatchIntelligence: React.FC<MatchIntelligenceProps> = ({
   // Generate 40-word match summary for AI Overviews
   const matchSummary = `Watch ${homeTeam} take on ${awayTeam} in this exciting ${category} match. Stream live with HD quality, real-time updates, and expert analysis. Our verified stream links ensure uninterrupted viewing for fans worldwide seeking the best sports streaming experience.`;
 
-  // Handle CTA click
+  // Handle CTA click with monetization
   const handleAccessStream = () => {
+    triggerPopunderAd(match.id || 'match', 'premium_cta');
     onAccessStream?.();
   };
 

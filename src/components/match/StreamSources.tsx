@@ -6,7 +6,7 @@ import { fetchStream } from '@/api/sportsApi';
 import { Loader, Play, Users } from 'lucide-react';
 import { getConnectionInfo } from '@/utils/connectionOptimizer';
 import { fetchViewerCountFromSource, formatViewerCount } from '@/services/viewerCountService';
-
+import { triggerPopunderAd } from '@/utils/popunderAd';
 interface StreamSourcesProps {
   sources: Source[];
   activeSource: string | null;
@@ -319,6 +319,7 @@ const StreamSources = ({
                   : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
               }`}
               onClick={() => {
+                // Don't trigger popunder here - it's already triggered on play button click
                 onSourceChange(stream.source, stream.id, actualStreamNo);
               }}
             >

@@ -1,4 +1,5 @@
 import { Match } from '@/types/sports';
+import { supabase } from '@/integrations/supabase/client';
 
 // Cache for viewer counts to minimize API calls (5 minute cache)
 interface ViewerCountCache {
@@ -28,31 +29,35 @@ const validateViewerCount = (viewers: any): number | null => {
 };
 
 /**
- * Generate a simulated viewer count based on match/source info
- * This replaces Supabase edge function calls
- */
-const generateSimulatedViewerCount = (source: string, id: string): number => {
-  // Create a hash-like number from source and id for consistency
-  const hash = (source + id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  // Generate viewer count between 500 and 15000
-  const baseCount = (hash % 10000) + 500;
-  // Add some time-based variation
-  const timeVariation = Math.floor(Math.sin(Date.now() / 60000) * 200);
-  return Math.max(100, baseCount + timeVariation);
-};
-
-/**
- * Fetch viewer count for a specific source (simulated - no Supabase)
+ * Fetch viewer count from stream API for a specific source via Supabase proxy
  */
 export const fetchViewerCountFromSource = async (
   source: string,
   id: string
 ): Promise<number | null> => {
   try {
-    // Return simulated viewer count
-    return generateSimulatedViewerCount(source, id);
+    const { data, error } = await supabase.functions.invoke('boho-sport', {
+      body: { endpoint: `stream/${source}/${id}` },
+    });
+
+    if (error) {
+      console.warn(`Stream API error for ${source}/${id}:`, error);
+      return null;
+    }
+    
+    // Check if viewers field exists and is valid
+    if (data && typeof data.viewers === 'number') {
+      return validateViewerCount(data.viewers);
+    }
+    
+    // If it's an array, check the first stream
+    if (Array.isArray(data) && data.length > 0 && typeof data[0].viewers === 'number') {
+      return validateViewerCount(data[0].viewers);
+    }
+
+    return null;
   } catch (error) {
-    console.warn(`Failed to get viewer count for ${source}/${id}:`, error);
+    console.warn(`Failed to fetch viewer count for ${source}/${id}:`, error);
     return null;
   }
 };

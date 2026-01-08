@@ -16,12 +16,17 @@ import { Calendar, Tv } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import PageLayout from '../components/PageLayout';
 import { isPopularLeague } from '../utils/popularLeagues';
+import { generateCompetitorTitle, generateCompetitorDescription } from '../utils/competitorSEO';
+import CompetitorSEOContent from '../components/CompetitorSEOContent';
 import { Helmet } from 'react-helmet-async';
 import { manualMatches } from '../data/manualMatches';
 import { HeroCarousel } from '../components/HeroCarousel';
 import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 import CustomMatchCards from '../components/CustomMatchCards';
+import LatestHighlights from '../components/LatestHighlights';
+import MarcaBlog from '../components/MarcaBlog';
+import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -310,6 +315,18 @@ const Index = () => {
               )}
             </div>
             
+            
+            {/* Hidden SEO content for competitor targeting */}
+            <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
+            
+            {/* AI Match Previews - Internal Links for SEO */}
+            <UpcomingMatchPreviews />
+            
+            {/* Latest Highlights Section */}
+            <LatestHighlights />
+            
+            {/* Marca Football News Section */}
+            <MarcaBlog />
             
             {/* Call to Action Section */}
             <section className="mb-10 mt-10">
