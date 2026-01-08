@@ -1,24 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { fetchLiveMatches } from '@/api/sportsApi';
 import { Match } from '@/types/sports';
 import { isMatchLive } from '@/utils/matchUtils';
 import { generateMatchSlug, extractNumericId } from '@/utils/matchSlug';
-
-interface LiveScore {
-  eventId: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: number | null;
-  awayScore: number | null;
-  status: string;
-  progress: string | null;
-  sport: string;
-  league: string;
-  homeBadge: string | null;
-  awayBadge: string | null;
-}
 
 interface TickerItem {
   id: string;
@@ -41,68 +26,14 @@ const LiveScoreTicker: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
 
   const trackRef = useRef<HTMLDivElement | null>(null);
-  // Keep scrolling speed readable regardless of how many items are in the ticker
   const [durationSec, setDurationSec] = useState<number>(600);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Add timestamp to bust cache
-        const timestamp = Date.now();
-        console.log('🎯 Fetching live scores at:', new Date(timestamp).toISOString());
+        console.log('📡 Fetching live matches for ticker...');
         
-        // First try to get live scores from TheSportsDB with a timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-        
-        try {
-          const { data: liveScoreData, error } = await supabase.functions.invoke('fetch-live-scores', {
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-            },
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (error) {
-            console.error('Error from fetch-live-scores:', error);
-          }
-          
-          let items: TickerItem[] = [];
-          
-          if (liveScoreData?.success && liveScoreData.liveScores?.length > 0) {
-            console.log(`✅ Received ${liveScoreData.liveScores.length} live scores`);
-            // Use live scores from TheSportsDB
-            items = liveScoreData.liveScores.map((score: LiveScore) => {
-              const sportSlug = getSportSlug(score.sport);
-              const matchSlug = generateMatchSlug(score.homeTeam, score.awayTeam, `${score.homeTeam} vs ${score.awayTeam}`);
-              return {
-                id: score.eventId,
-                homeTeam: score.homeTeam,
-                awayTeam: score.awayTeam,
-                homeScore: score.homeScore,
-                awayScore: score.awayScore,
-                status: formatProgress(score.progress, score.status),
-                sport: score.sport,
-                league: score.league,
-                homeBadge: score.homeBadge,
-                awayBadge: score.awayBadge,
-                isLive: true,
-                matchUrl: `/match/${sportSlug}/${extractNumericId(score.eventId)}/${matchSlug}`,
-              };
-            });
-            
-            setTickerItems(items);
-            setIsLoading(false);
-            return; // Success, exit early
-          }
-        } catch (fetchError) {
-          clearTimeout(timeoutId);
-          console.warn('Live scores fetch failed/timed out, falling back to match API:', fetchError);
-        }
-        
-        // Fallback: fetch from live matches API
-        console.log('📡 Falling back to live matches API...');
+        // Directly use live matches API (no edge function)
         const matches = await fetchLiveMatches();
         const now = Date.now();
         
@@ -113,11 +44,10 @@ const LiveScoreTicker: React.FC = () => {
           return live || isStartingSoon;
         }).slice(0, 20);
         
-        const fallbackItems = relevantMatches.map(match => {
+        const items = relevantMatches.map(match => {
           const home = match.teams?.home?.name || '';
           const away = match.teams?.away?.name || '';
           const matchSlug = generateMatchSlug(home, away, match.title);
-          // Only use badge if it's already a full URL (from TheSportsDB)
           const homeBadge = match.teams?.home?.badge?.startsWith('http') ? match.teams.home.badge : null;
           const awayBadge = match.teams?.away?.badge?.startsWith('http') ? match.teams.away.badge : null;
           
@@ -137,7 +67,8 @@ const LiveScoreTicker: React.FC = () => {
           };
         });
         
-        setTickerItems(fallbackItems);
+        setTickerItems(items);
+        console.log(`✅ Ticker loaded ${items.length} matches`);
       } catch (error) {
         console.error('Error fetching ticker data:', error);
       } finally {
@@ -147,8 +78,8 @@ const LiveScoreTicker: React.FC = () => {
 
     fetchData();
     
-    // Refresh every 30 seconds for more up-to-date scores
-    const interval = setInterval(fetchData, 30 * 1000);
+    // Refresh every 60 seconds (reduced from 30s)
+    const interval = setInterval(fetchData, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -156,7 +87,7 @@ const LiveScoreTicker: React.FC = () => {
     const el = trackRef.current;
     if (!el) return;
 
-    const speedPxPerSec = 18; // lower = slower
+    const speedPxPerSec = 18;
     const compute = () => {
       const distancePx = el.scrollWidth / 2;
       if (!distancePx || Number.isNaN(distancePx)) return;
@@ -178,40 +109,6 @@ const LiveScoreTicker: React.FC = () => {
       window.removeEventListener('resize', compute);
     };
   }, [tickerItems.length]);
-
-  const getSportSlug = (sport: string): string => {
-    const sportMap: Record<string, string> = {
-      'Soccer': 'football',
-      'soccer': 'football',
-      'Basketball': 'basketball',
-      'basketball': 'basketball',
-      'Ice Hockey': 'hockey',
-      'icehockey': 'hockey',
-      'American Football': 'american-football',
-      'american_football': 'american-football',
-      'Tennis': 'tennis',
-      'tennis': 'tennis',
-      'Rugby': 'rugby',
-      'rugby': 'rugby',
-      'Cricket': 'cricket',
-      'cricket': 'cricket',
-    };
-    return sportMap[sport] || sport.toLowerCase().replace(/\s+/g, '-');
-  };
-
-  const formatProgress = (progress: string | null, status: string): string => {
-    if (progress) return progress;
-    if (status) {
-      if (status.includes('HT')) return 'HT';
-      if (status.includes('FT')) return 'FT';
-      if (status.includes('Q1')) return 'Q1';
-      if (status.includes('Q2')) return 'Q2';
-      if (status.includes('Q3')) return 'Q3';
-      if (status.includes('Q4')) return 'Q4';
-      return status;
-    }
-    return 'LIVE';
-  };
 
   const getTimeUntil = (date: number | undefined): string => {
     if (!date) return '';

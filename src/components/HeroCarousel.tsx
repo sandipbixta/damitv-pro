@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { Link } from 'react-router-dom';
 import { Match } from '@/types/sports';
-import { fetchAllMatches, getBohoImageUrl } from '@/api/sportsApi';
+import { getBohoImageUrl } from '@/api/sportsApi';
 import { getCarouselMatches, isHotMatch, formatViewerCount } from '@/utils/heroCarouselFilter';
 import { isMatchLive } from '@/utils/matchUtils';
 import { ViewerCount } from './ViewerCount';
 import { Clock, Calendar, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import coverPhoto from '@/assets/damitv-cover.jpeg';
+import { useSportsData } from '@/contexts/SportsDataContext';
 
 export const HeroCarousel = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel(
@@ -22,7 +23,9 @@ export const HeroCarousel = () => {
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [carouselMatches, setCarouselMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Use shared sports data context instead of fetching independently
+  const { allMatches, loading } = useSportsData();
   
   // Static cover photo slide
   const coverSlide = {
@@ -38,37 +41,23 @@ export const HeroCarousel = () => {
     return getBohoImageUrl(posterPath);
   };
   
-  // Fetch ELITE matches only (La Liga, Premier League, Champions League, UFC, WWE, top teams)
+  // Filter elite matches when allMatches changes (from context)
   useEffect(() => {
-    const loadMatches = async () => {
-      setLoading(true);
+    const loadEliteMatches = async () => {
+      if (allMatches.length === 0) return;
+      
       try {
-        const allMatches = await fetchAllMatches();
-        
         // Get elite matches with viewer counts (filtered and sorted by importance)
         const topMatches = await getCarouselMatches(allMatches, 8);
-        
         setCarouselMatches(topMatches);
-        console.log(`🎬 Hero Carousel loaded ${topMatches.length} elite matches:`, 
-          topMatches.map(m => ({
-            title: m.title, 
-            viewers: m.viewerCount,
-            hot: isHotMatch(m)
-          }))
-        );
+        console.log(`🎬 Hero Carousel: ${topMatches.length} elite matches from context`);
       } catch (error) {
-        console.error('Error loading hero carousel matches:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error filtering hero carousel matches:', error);
       }
     };
 
-    loadMatches();
-    
-    // Refresh carousel every 2 minutes to update viewer counts
-    const interval = setInterval(loadMatches, 2 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    loadEliteMatches();
+  }, [allMatches]);
 
   useEffect(() => {
     if (!emblaApi) return;

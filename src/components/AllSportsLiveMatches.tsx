@@ -1,62 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Sport, Match } from '../types/sports';
-import { fetchLiveMatches, fetchSports, fetchAllMatches } from '../api/sportsApi';
-import { consolidateMatches, filterCleanMatches, sortMatchesByViewers } from '../utils/matchUtils';
 import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 import { filterMatchesWithImages } from '../utils/matchImageFilter';
 import MatchCard from './MatchCard';
-import { useToast } from '../hooks/use-toast';
-import { TrendingUp } from 'lucide-react';
+import { useSportsData } from '../contexts/SportsDataContext';
 
 interface AllSportsLiveMatchesProps {
   searchTerm?: string;
 }
 
 const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm = '' }) => {
-  const { toast } = useToast();
-  const [liveMatches, setLiveMatches] = useState<Match[]>([]);
-  const [allMatches, setAllMatches] = useState<Match[]>([]);
-  const [sports, setSports] = useState<Sport[]>([]);
-  const [loading, setLoading] = useState(false); // Start with false - show skeletons
+  // Use shared sports data context - no duplicate API calls!
+  const { sports, liveMatches, allMatches, loading } = useSportsData();
   const [mostViewedMatches, setMostViewedMatches] = useState<Match[]>([]);
 
+  // Enrich matches with viewer counts once when allMatches changes
   useEffect(() => {
-    const loadLiveMatches = async () => {
+    const enrichWithViewers = async () => {
+      if (allMatches.length === 0) return;
+      
       try {
-        // NO setLoading(true) - let content render immediately
-        
-        // Fetch sports, live matches, and all matches in parallel
-        const [sportsData, liveMatchesData, allMatchesData] = await Promise.all([
-          fetchSports(),
-          fetchLiveMatches(),
-          fetchAllMatches()
-        ]);
-        
-        setSports(sportsData);
-        
-        // Filter and consolidate live matches (remove matches without sources)
-        const cleanLiveMatches = filterCleanMatches(
-          liveMatchesData.filter(m => m.sources && m.sources.length > 0)
-        );
-        const consolidatedLiveMatches = consolidateMatches(cleanLiveMatches);
-        setLiveMatches(consolidatedLiveMatches);
-        
-        // Filter and consolidate all matches (must have sources)
-        const cleanAllMatches = filterCleanMatches(
-          allMatchesData.filter(m => m.sources && m.sources.length > 0)
-        );
-        const consolidatedAllMatches = consolidateMatches(cleanAllMatches);
-        setAllMatches(consolidatedAllMatches);
-        
-        console.log(`✅ Loaded ${consolidatedLiveMatches.length} live matches and ${consolidatedAllMatches.length} total matches from all sports`);
-        console.log('Live matches by sport:', consolidatedLiveMatches.reduce((acc, match) => {
-          const sport = match.sportId || match.category || 'unknown';
-          acc[sport] = (acc[sport] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>));
-        
-        // Enrich all matches with viewer counts from stream API
-        const enrichedAllMatches = await enrichMatchesWithViewers(consolidatedAllMatches);
+        const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
         
         // For "Popular by Viewers", only show live matches with viewers
         const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
@@ -69,53 +33,33 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
           (b.viewerCount || 0) - (a.viewerCount || 0)
         );
         
-        console.log('🔥 Popular live matches with viewers:', sortedByViewers.map(m => ({ 
-          id: m.id, 
-          title: m.title, 
-          viewers: m.viewerCount 
-        })));
-        
+        console.log('🔥 Popular live matches:', sortedByViewers.length);
         setMostViewedMatches(sortedByViewers.slice(0, 12));
-        
       } catch (error) {
-        console.error('Error loading matches:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load matches.",
-          variant: "destructive",
-        });
+        console.error('Error enriching viewer counts:', error);
       }
-      // NO finally block - no loading state to manage
     };
 
-    loadLiveMatches();
-  }, [toast]);
+    enrichWithViewers();
+  }, [allMatches]);
 
-  // Refresh viewer counts every 30 seconds
+  // Refresh viewer counts every 2 minutes (reduced from 30s)
   useEffect(() => {
     const refreshViewerCounts = async () => {
       if (allMatches.length === 0) return;
       
       try {
-        console.log('🔄 Refreshing viewer counts for', allMatches.length, 'matches');
+        console.log('🔄 Refreshing viewer counts...');
         const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
         
-        // Only show live matches with viewers
         const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
           isMatchLive(m) && 
           (m.viewerCount || 0) > 0
         );
         
-        // Sort by viewer count
         const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
           (b.viewerCount || 0) - (a.viewerCount || 0)
         );
-        
-        console.log('🔥 Refreshed - Popular live matches with viewers:', sortedByViewers.map(m => ({ 
-          id: m.id, 
-          title: m.title, 
-          viewers: m.viewerCount 
-        })));
         
         setMostViewedMatches(sortedByViewers.slice(0, 12));
       } catch (error) {
@@ -123,7 +67,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       }
     };
 
-    const interval = setInterval(refreshViewerCounts, 30000); // Refresh every 30 seconds
+    const interval = setInterval(refreshViewerCounts, 120000); // 2 minutes instead of 30s
     
     return () => clearInterval(interval);
   }, [allMatches]);
