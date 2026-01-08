@@ -1,8 +1,6 @@
 // BOHOSport API Service - fetches directly from API (no edge function)
 import { Sport, Match, Stream, Source } from '../types/sports';
-
-// Ad-free embed player (preferred)
-const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
+import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
 
 // API endpoints to try (direct calls)
 const API_BASES = [
@@ -19,9 +17,10 @@ const CORS_PROXIES = [
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
-// Build ad-free embed URL
-const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
-  return `${DAMITV_EMBED_BASE}/?id=${matchId}&source=${source}`;
+// Build ad-free embed URL using domain manager
+const buildAdFreeEmbedUrl = (matchId: string, source: string, streamNo: number = 1): string => {
+  const domain = getEmbedDomainSync();
+  return buildEmbedUrl(domain, source, matchId, streamNo);
 };
 
 // In-memory cache with TTL

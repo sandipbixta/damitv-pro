@@ -19,6 +19,8 @@ import {
   trackFullscreen,
   createProgressTracker 
 } from '../../utils/videoAnalytics';
+import { markDomainFailed, getFallbackDomain, buildEmbedUrl, hasFallbackAvailable } from '../../utils/embedDomains';
+import { toast } from 'sonner';
 
 
 interface SimpleVideoPlayerProps {
@@ -64,6 +66,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   
   // Click-to-play state - require user click to load stream
   const [requiresPlayClick, setRequiresPlayClick] = useState(true);
+  
+  // Embed fallback state
+  const [fallbackEmbedUrl, setFallbackEmbedUrl] = useState<string | null>(null);
+  const [embedFallbackAttempted, setEmbedFallbackAttempted] = useState(false);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -118,6 +124,8 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       setAutoDowngradeAttempted(false);
       bufferStallCountRef.current = 0;
       setLastStreamUrl(stream.embedUrl);
+      setFallbackEmbedUrl(null);
+      setEmbedFallbackAttempted(false);
       console.log('🎬 New stream loaded, resetting error state');
       
       // Track video start event
@@ -151,9 +159,38 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     return cleanup;
   }, []);
 
+  // Handle embed domain failure - try fallback
+  const handleEmbedFailed = (failedDomain: string) => {
+    console.log(`🔄 Embed failed for domain: ${failedDomain}`);
+    
+    // Mark domain as failed
+    markDomainFailed(failedDomain);
+    
+    // Check if we have a fallback available and haven't tried it yet
+    if (!embedFallbackAttempted && hasFallbackAvailable(failedDomain) && stream) {
+      const fallbackDomain = getFallbackDomain(failedDomain);
+      
+      if (fallbackDomain && stream.source && stream.id) {
+        const newUrl = buildEmbedUrl(fallbackDomain, stream.source, stream.id, stream.streamNo || 1);
+        console.log(`🔄 Switching to fallback embed: ${newUrl}`);
+        
+        toast.info('Switching to backup stream...', { duration: 2000 });
+        setFallbackEmbedUrl(newUrl);
+        setEmbedFallbackAttempted(true);
+        setError(false);
+        return;
+      }
+    }
+    
+    // No fallback available, show error
+    handleError();
+  };
+
   const handleRetry = () => {
     setError(false);
     setErrorCount(0);
+    setFallbackEmbedUrl(null);
+    setEmbedFallbackAttempted(false);
     if (onRetry) {
       onRetry();
     }
@@ -694,9 +731,14 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
         />
       ) : (
         <IframeVideoPlayer
-          src={stream.embedUrl.startsWith('http://') ? stream.embedUrl.replace(/^http:\/\//i, 'https://') : stream.embedUrl}
+          src={(() => {
+            // Use fallback URL if available, otherwise use original
+            const embedUrl = fallbackEmbedUrl || stream.embedUrl;
+            return embedUrl.startsWith('http://') ? embedUrl.replace(/^http:\/\//i, 'https://') : embedUrl;
+          })()}
           onLoad={() => setError(false)}
           onError={handleError}
+          onEmbedFailed={handleEmbedFailed}
           title={match?.title}
           matchStartTime={match?.date ? (typeof match.date === 'string' ? new Date(match.date).getTime() : match.date) : undefined}
           match={match}

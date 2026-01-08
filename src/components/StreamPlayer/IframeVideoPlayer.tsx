@@ -13,18 +13,20 @@ interface IframeVideoPlayerProps {
   src: string;
   onLoad: () => void;
   onError: () => void;
+  onEmbedFailed?: (failedDomain: string) => void;
   title?: string;
   matchStartTime?: number | Date | null;
   match?: Match | ManualMatch | null;
 }
 
-const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, title, matchStartTime, match }) => {
+const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onError, onEmbedFailed, title, matchStartTime, match }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [countdown, setCountdown] = useState<string>('');
+  const [loadAttempts, setLoadAttempts] = useState(0);
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -97,7 +99,21 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   const handleIframeError = () => {
     console.error('❌ Iframe failed to load');
     setIsLoading(false);
-    onError();
+    setLoadAttempts(prev => prev + 1);
+    
+    // Extract domain from src and notify parent for fallback
+    if (onEmbedFailed && loadAttempts === 0) {
+      try {
+        const url = new URL(src);
+        const domain = `${url.protocol}//${url.host}`;
+        console.log(`🔄 Notifying parent of embed failure: ${domain}`);
+        onEmbedFailed(domain);
+      } catch {
+        onError();
+      }
+    } else {
+      onError();
+    }
   };
 
   // Only track initial src - no reloading on re-renders

@@ -1,4 +1,5 @@
 import { Match, Source } from '@/types/sports';
+import { getEmbedDomainSync, buildEmbedUrl } from '@/utils/embedDomains';
 
 // API endpoints to try (direct calls - no edge function)
 const API_BASES = [
@@ -11,9 +12,6 @@ const CORS_PROXIES = [
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?'
 ];
-
-// Ad-free embed player
-const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 
 // Direct API fetch with CORS proxy fallback
 const fetchFromApi = async (endpoint: string): Promise<any> => {
@@ -237,8 +235,9 @@ export const fetchBohoSportViaProxy = async (sport: string): Promise<Match[]> =>
 // Fetch stream directly - returns ad-free embed URL (no edge function)
 export const fetchBohoStreamViaProxy = async (matchId: string): Promise<string | null> => {
   try {
-    // Build ad-free embed URL directly
-    const adFreeUrl = `${DAMITV_EMBED_BASE}/?id=${matchId}&source=main`;
+    // Build ad-free embed URL using domain manager
+    const domain = getEmbedDomainSync();
+    const adFreeUrl = buildEmbedUrl(domain, 'main', matchId, 1);
     console.log(`✅ Built ad-free embed URL: ${adFreeUrl}`);
     return adFreeUrl;
   } catch (err) {
