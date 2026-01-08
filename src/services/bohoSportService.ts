@@ -1,34 +1,86 @@
-import { supabase } from '@/integrations/supabase/client';
 import { Match, Source } from '@/types/sports';
 
-// Fetch matches through Supabase Edge Function proxy
-// The edge function now handles trying multiple API bases and endpoints
+// API endpoints to try (direct calls - no edge function)
+const API_BASES = [
+  'https://streamed.su/api',
+  'https://sportsrc.org/api'
+];
+
+// CORS proxy fallbacks
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?'
+];
+
+// Ad-free embed player
+const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
+
+// Direct API fetch with CORS proxy fallback
+const fetchFromApi = async (endpoint: string): Promise<any> => {
+  // First try direct calls
+  for (const baseUrl of API_BASES) {
+    try {
+      const url = `${baseUrl}/${endpoint}`;
+      console.log(`🔄 Trying direct: ${url}`);
+      
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Direct success: ${baseUrl}`);
+        return data;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Direct failed: ${baseUrl}/${endpoint}`);
+    }
+  }
+
+  // Fallback to CORS proxies
+  for (const proxy of CORS_PROXIES) {
+    for (const baseUrl of API_BASES) {
+      try {
+        const targetUrl = `${baseUrl}/${endpoint}`;
+        const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
+        console.log(`🔄 Trying CORS proxy: ${proxy.split('?')[0]}`);
+        
+        const response = await fetch(proxyUrl, {
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ CORS proxy success`);
+          return data;
+        }
+      } catch (error) {
+        console.warn(`⚠️ CORS proxy failed`);
+      }
+    }
+  }
+
+  throw new Error(`All API endpoints failed for: ${endpoint}`);
+};
+
+// Fetch matches directly (no edge function)
 export const fetchBohoMatchesViaProxy = async (): Promise<Match[]> => {
   try {
-    console.log('🔄 Fetching matches via BOHOSport proxy...');
+    console.log('🔄 Fetching matches directly from API...');
     
-    const { data, error } = await supabase.functions.invoke('boho-sport', {
-      body: { endpoint: '' },
-    });
-
-    if (error) {
-      console.error('❌ BOHOSport proxy error:', error);
-      return [];
-    }
-
-    console.log('📦 BOHOSport proxy response:', data);
+    const data = await fetchFromApi('matches/all');
 
     // If we got valid data, parse and return it
-    if (data && !data.error && data.success !== false) {
+    if (data) {
       const matches = parseBohoResponse(data);
-      console.log(`✅ Found ${matches.length} matches from BOHOSport proxy`);
+      console.log(`✅ Found ${matches.length} matches from direct API`);
       return matches;
     }
 
-    console.log('⚠️ BOHOSport proxy returned no valid data');
+    console.log('⚠️ Direct API returned no valid data');
     return [];
   } catch (err) {
-    console.error('❌ BOHOSport proxy failed:', err);
+    console.error('❌ Direct API failed:', err);
     return [];
   }
 };
@@ -55,7 +107,7 @@ const parseBohoResponse = (data: any): Match[] => {
     }
   }
 
-  console.log(`📊 Parsing ${items.length} items from BOHOSport response`);
+  console.log(`📊 Parsing ${items.length} items from API response`);
 
   return items.map((item: any, index: number): Match | null => {
     try {
@@ -169,49 +221,28 @@ const mapCategory = (category: string): string => {
   return categoryMap[category?.toLowerCase()] || category?.toLowerCase() || 'other';
 };
 
-// Fetch specific sport through proxy
+// Fetch specific sport directly (no edge function)
 export const fetchBohoSportViaProxy = async (sport: string): Promise<Match[]> => {
   try {
-    console.log(`🔄 Fetching BOHOSport: ${sport}`);
+    console.log(`🔄 Fetching sport directly: ${sport}`);
     
-    const { data, error } = await supabase.functions.invoke('boho-sport', {
-      body: { endpoint: sport },
-    });
-
-    if (error) {
-      console.error(`❌ BOHOSport ${sport} error:`, error);
-      return [];
-    }
-
+    const data = await fetchFromApi(`matches/${sport}`);
     return parseBohoResponse(data);
   } catch (err) {
-    console.error(`❌ BOHOSport ${sport} failed:`, err);
+    console.error(`❌ Direct API ${sport} failed:`, err);
     return [];
   }
 };
 
-// Fetch stream through proxy
+// Fetch stream directly - returns ad-free embed URL (no edge function)
 export const fetchBohoStreamViaProxy = async (matchId: string): Promise<string | null> => {
   try {
-    const { data, error } = await supabase.functions.invoke('boho-sport', {
-      body: { endpoint: `stream/${matchId}` },
-    });
-
-    if (error) {
-      console.error(`❌ BOHOSport stream error:`, error);
-      return null;
-    }
-
-    // Extract embed URL from response
-    if (data.embedUrl) return data.embedUrl;
-    if (data.embed) return data.embed;
-    if (data.iframe) return data.iframe;
-    if (data.url) return data.url;
-    if (Array.isArray(data) && data[0]?.embedUrl) return data[0].embedUrl;
-    
-    return null;
+    // Build ad-free embed URL directly
+    const adFreeUrl = `${DAMITV_EMBED_BASE}/?id=${matchId}&source=main`;
+    console.log(`✅ Built ad-free embed URL: ${adFreeUrl}`);
+    return adFreeUrl;
   } catch (err) {
-    console.error(`❌ BOHOSport stream failed:`, err);
+    console.error(`❌ Stream URL build failed:`, err);
     return null;
   }
 };

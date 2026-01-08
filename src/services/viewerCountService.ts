@@ -1,5 +1,16 @@
 import { Match } from '@/types/sports';
-import { supabase } from '@/integrations/supabase/client';
+
+// API endpoints to try (direct calls - no edge function)
+const API_BASES = [
+  'https://streamed.su/api',
+  'https://sportsrc.org/api'
+];
+
+// CORS proxy fallbacks
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?'
+];
 
 // Cache for viewer counts to minimize API calls (5 minute cache)
 interface ViewerCountCache {
@@ -9,6 +20,48 @@ interface ViewerCountCache {
 
 const viewerCountCache = new Map<string, ViewerCountCache>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Direct API fetch with CORS proxy fallback
+const fetchFromApi = async (endpoint: string): Promise<any> => {
+  // First try direct calls
+  for (const baseUrl of API_BASES) {
+    try {
+      const url = `${baseUrl}/${endpoint}`;
+      
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      // Silent fail, try next
+    }
+  }
+
+  // Fallback to CORS proxies
+  for (const proxy of CORS_PROXIES) {
+    for (const baseUrl of API_BASES) {
+      try {
+        const targetUrl = `${baseUrl}/${endpoint}`;
+        const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
+        
+        const response = await fetch(proxyUrl, {
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (response.ok) {
+          return await response.json();
+        }
+      } catch (error) {
+        // Silent fail, try next
+      }
+    }
+  }
+
+  return null;
+};
 
 /**
  * Check if a match is currently live
@@ -29,19 +82,16 @@ const validateViewerCount = (viewers: any): number | null => {
 };
 
 /**
- * Fetch viewer count from stream API for a specific source via Supabase proxy
+ * Fetch viewer count from stream API for a specific source (direct - no edge function)
  */
 export const fetchViewerCountFromSource = async (
   source: string,
   id: string
 ): Promise<number | null> => {
   try {
-    const { data, error } = await supabase.functions.invoke('boho-sport', {
-      body: { endpoint: `stream/${source}/${id}` },
-    });
+    const data = await fetchFromApi(`stream/${source}/${id}`);
 
-    if (error) {
-      console.warn(`Stream API error for ${source}/${id}:`, error);
+    if (!data) {
       return null;
     }
     

@@ -1,23 +1,67 @@
-import { supabase } from '@/integrations/supabase/client';
+// Sports API Service - Direct API calls (no edge function)
 
-// API endpoints for BOHOSport
+// API endpoints to try (direct calls)
+const API_BASES = [
+  'https://streamed.su/api',
+  'https://sportsrc.org/api'
+];
+
+// CORS proxy fallbacks
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?'
+];
+
+// API endpoints
 const ENDPOINTS = {
-  sports: '/sports',
-  matches: (category: string) => `/matches/${category}`,
-  matchDetail: (id: string) => `/matches/${id}/detail`,
-  leagues: '/results/leagues',
-  scores: (league: string) => `/results/scores/${league}`,
-  tables: (league: string) => `/results/tables/${league}`,
+  sports: 'sports',
+  matches: (category: string) => `matches/${category}`,
+  matchDetail: (id: string) => `matches/${id}/detail`,
+  leagues: 'results/leagues',
+  scores: (league: string) => `results/scores/${league}`,
+  tables: (league: string) => `results/tables/${league}`,
 };
 
-// Fetch from edge function (using boho-sport instead of deprecated sports-api)
-const fetchApi = async (endpoint: string) => {
-  const { data, error } = await supabase.functions.invoke('boho-sport', {
-    body: { endpoint },
-  });
-  
-  if (error) throw error;
-  return data;
+// Direct API fetch with CORS proxy fallback
+const fetchApi = async (endpoint: string): Promise<any> => {
+  // First try direct calls
+  for (const baseUrl of API_BASES) {
+    try {
+      const url = `${baseUrl}/${endpoint}`;
+      
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      // Silent fail, try next
+    }
+  }
+
+  // Fallback to CORS proxies
+  for (const proxy of CORS_PROXIES) {
+    for (const baseUrl of API_BASES) {
+      try {
+        const targetUrl = `${baseUrl}/${endpoint}`;
+        const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
+        
+        const response = await fetch(proxyUrl, {
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (response.ok) {
+          return await response.json();
+        }
+      } catch (error) {
+        // Silent fail, try next
+      }
+    }
+  }
+
+  throw new Error(`All API endpoints failed for: ${endpoint}`);
 };
 
 // Get all sport categories
