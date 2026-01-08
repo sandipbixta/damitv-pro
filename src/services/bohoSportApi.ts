@@ -1,11 +1,14 @@
-// BOHOSport API Service - fetches from sportsrc.org API
+// BOHOSport API Service - fetches directly from API (no edge function)
 import { Sport, Match, Stream, Source } from '../types/sports';
-import { supabase } from '@/integrations/supabase/client';
 
 // Ad-free embed player (preferred)
 const DAMITV_EMBED_BASE = 'https://embed.damitv.pro';
 
-// Legacy stream base URL (fallback only)
+// API endpoints to try (direct calls)
+const API_BASES = [
+  'https://streamed.su/api',
+  'https://sportsrc.org/api'
+];
 
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
@@ -15,9 +18,10 @@ const buildAdFreeEmbedUrl = (matchId: string, source: string): string => {
   return `${DAMITV_EMBED_BASE}/?id=${matchId}&source=${source}`;
 };
 
-// Cache for API responses
+// In-memory cache with TTL
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 60 * 1000; // 1 minute for match data
+const STREAM_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for stream data
 
 // Helper function to clear cache
 export const clearStreamCache = (matchId?: string) => {
@@ -43,10 +47,15 @@ export const clearStreamCache = (matchId?: string) => {
 };
 
 // Helper function to get cached data
-const getCachedData = (key: string) => {
+const getCachedData = (key: string, customTtl?: number) => {
   const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+  const ttl = customTtl || CACHE_DURATION;
+  if (cached && Date.now() - cached.timestamp < ttl) {
+    console.log(`📦 Cache HIT: ${key}`);
     return cached.data;
+  }
+  if (cached) {
+    cache.delete(key); // Clean expired
   }
   return null;
 };
@@ -54,6 +63,32 @@ const getCachedData = (key: string) => {
 // Helper function to set cached data
 const setCachedData = (key: string, data: any) => {
   cache.set(key, { data, timestamp: Date.now() });
+  console.log(`💾 Cache SET: ${key}`);
+};
+
+// Direct API fetch with fallback
+const fetchFromApi = async (endpoint: string): Promise<any> => {
+  for (const baseUrl of API_BASES) {
+    try {
+      const url = `${baseUrl}/${endpoint}`;
+      console.log(`🔄 Trying: ${url}`);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Success from: ${baseUrl}`);
+        return data;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed: ${baseUrl}/${endpoint}`);
+    }
+  }
+  throw new Error(`All API endpoints failed for: ${endpoint}`);
 };
 
 // Map category to our sport IDs
@@ -195,25 +230,16 @@ export const fetchSports = async (): Promise<Sport[]> => {
   }
 };
 
-// Fetch all matches from API via proxy
+// Fetch all matches from API directly (no edge function)
 export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'boho-matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log('🔄 Fetching matches via proxy...');
+    console.log('🔄 Fetching matches directly from API...');
     
-    const { data, error } = await supabase.functions.invoke('boho-sport', {
-      body: { endpoint: '' },
-    });
-
-    if (error) {
-      console.error('❌ Proxy error:', error);
-      return [];
-    }
-
-    console.log('📦 Proxy response received');
+    const data = await fetchFromApi('matches/all');
 
     let matches: Match[] = [];
 
