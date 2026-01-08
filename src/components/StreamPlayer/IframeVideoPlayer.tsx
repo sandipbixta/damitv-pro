@@ -24,8 +24,6 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastSrc, setLastSrc] = useState('');
-  const [reloadCount, setReloadCount] = useState(0);
   const [countdown, setCountdown] = useState<string>('');
 
   // Calculate countdown for upcoming matches
@@ -102,28 +100,17 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     onError();
   };
 
-  // Smart iframe reloading - only when src actually changes and with proper delay
+  // Only track initial src - no reloading on re-renders
+  const initialSrcRef = useRef(src);
+  
   useEffect(() => {
-    if (!src || src === lastSrc) return;
-    
-    console.log('🔄 Stream URL changed, reloading iframe...');
-    setLastSrc(src);
-    setIsLoading(true);
-    setReloadCount(prev => prev + 1);
-    
-    if (iframeRef.current) {
-      // Clear existing src first
-      iframeRef.current.src = 'about:blank';
-      
-      // Wait longer before setting new src to ensure clean reload
-      setTimeout(() => {
-        if (iframeRef.current && src) {
-          console.log('🎯 Setting new iframe src:', src.substring(0, 80) + '...');
-          iframeRef.current.src = src;
-        }
-      }, 300);
+    // Only log if src actually changed from initial
+    if (src && src !== initialSrcRef.current) {
+      console.log('🔄 Stream URL changed to:', src.substring(0, 80) + '...');
+      initialSrcRef.current = src;
+      setIsLoading(true);
     }
-  }, [src, lastSrc]);
+  }, [src]);
 
   // Timeout handling with longer duration for streaming content
   useEffect(() => {
@@ -138,7 +125,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     }, 15000);
 
     return () => clearTimeout(timeout);
-  }, [isLoading, onLoad, reloadCount]);
+  }, [isLoading, onLoad]);
 
   // Auto-hide controls
   useEffect(() => {
