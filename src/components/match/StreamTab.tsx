@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Clock, Users } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import StreamPlayer from '@/components/StreamPlayer';
@@ -7,7 +7,7 @@ import StreamSources from './StreamSources';
 import MatchCard from '@/components/MatchCard';
 import MatchDetails from '@/components/MatchDetails';
 import { Match as MatchType, Stream } from '@/types/sports';
-import { ViewerCount } from '@/components/ViewerCount';
+import { LiveViewerCount } from '@/components/LiveViewerCount';
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -197,10 +197,13 @@ const StreamTab = ({
         <div className="flex items-center justify-center gap-4 mt-4">
           <div className="flex items-center gap-3">
             {isMatchLive() ? (
-              <Badge variant="live" className="flex items-center gap-1.5 px-3 py-1">
-                <span className="h-2 w-2 bg-white rounded-full animate-pulse"></span>
-                LIVE NOW
-              </Badge>
+              <>
+                <Badge variant="live" className="flex items-center gap-1.5 px-3 py-1">
+                  <span className="h-2 w-2 bg-white rounded-full animate-pulse"></span>
+                  LIVE NOW
+                </Badge>
+                <LiveViewerCount match={match} size="md" showTrend={true} />
+              </>
             ) : (
               <Badge variant="info" className="flex items-center gap-1.5 px-3 py-1 text-white">
                 <Clock size={14} />
