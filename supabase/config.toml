@@ -3,15 +3,6 @@ project_id = "wxvsteaayxgygihpshoz"
 [functions.scrape-article]
 verify_jwt = false
 
-[functions.boho-sport]
-verify_jwt = false
-
-[functions.cdn-channels]
-verify_jwt = false
-
-[functions.fetch-live-scores]
-verify_jwt = false
-
 [functions.fetch-highlights]
 verify_jwt = false
 
@@ -28,9 +19,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.sitemap]
-verify_jwt = false
-
-[functions.sportsrc-channels]
 verify_jwt = false
 
 [functions.scrape-news]
