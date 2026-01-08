@@ -64,8 +64,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   const progressTrackerRef = useRef<ReturnType<typeof createProgressTracker> | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Click-to-play state - require user click to load stream
-  const [requiresPlayClick, setRequiresPlayClick] = useState(true);
+  // No click-to-play - stream loads immediately
   
   // Embed fallback state
   const [fallbackEmbedUrl, setFallbackEmbedUrl] = useState<string | null>(null);
@@ -216,10 +215,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     }
   };
 
-  // Handle play button click - load stream immediately (ads injected in embed)
-  const handlePlayClick = () => {
-    setRequiresPlayClick(false);
-  };
+  // Stream loads immediately - no play click required
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -435,59 +431,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       </div>
     );
   }
-
-  // Show click-to-play overlay when stream is available but user hasn't clicked play yet
-  if (stream && requiresPlayClick && !error) {
-    const matchAny = match as any;
-    const homeTeamName = matchAny?.teams?.home?.name ?? matchAny?.teams?.home ?? '';
-    const awayTeamName = matchAny?.teams?.away?.name ?? matchAny?.teams?.away ?? '';
-    const matchPoster = matchAny?.poster ?? null;
-    const matchTitle = match?.title || 'Live Stream';
-
-    return (
-      <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video rounded-lg sm:rounded-2xl overflow-hidden relative bg-background cursor-pointer group`}>
-        {/* Background */}
-        <div className="absolute inset-0">
-          {matchPoster && (
-            <img
-              src={typeof matchPoster === 'string' ? getBohoImageUrl(matchPoster) : ''}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity"
-              loading="lazy"
-              decoding="async"
-              onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
-        </div>
-
-        {/* Play Button Overlay */}
-        <div 
-          className="absolute inset-0 flex flex-col items-center justify-center z-10 px-3 sm:px-4"
-          onClick={handlePlayClick}
-        >
-          {/* Play Button - smaller on mobile */}
-          <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-primary/90 flex items-center justify-center shadow-2xl group-hover:bg-primary group-hover:scale-110 transition-all duration-300 mb-3 sm:mb-6">
-            <Play className="w-7 h-7 sm:w-12 sm:h-12 text-white ml-0.5 sm:ml-1" fill="white" />
-          </div>
-          
-          {/* Match Info - responsive text */}
-          <div className="text-center px-2 sm:px-4 max-w-full">
-            {homeTeamName && awayTeamName ? (
-              <div className="space-y-1 sm:space-y-2">
-                <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">
-                  {homeTeamName} <span className="text-white/60 font-normal">vs</span> {awayTeamName}
-                </h3>
-              </div>
-            ) : (
-              <h3 className="text-white text-base sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-2">{matchTitle}</h3>
-            )}
-            <p className="text-white/70 text-xs sm:text-lg mt-1.5 sm:mt-3">Tap to Watch Live</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Stream loads immediately - no overlay needed
 
   if (!stream || error) {
     // Show countdown timer if match hasn't started yet
