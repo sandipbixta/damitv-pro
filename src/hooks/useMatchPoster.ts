@@ -39,8 +39,8 @@ export const useMatchPoster = (
           const data = await response.json();
           const event = data?.event?.[0];
           
-          // TheSportsDB provides strThumb (portrait) and strPoster
-          const posterUrl = event?.strThumb || event?.strPoster || null;
+          // Prioritize strPoster (portrait) over strThumb (thumbnail/landscape)
+          const posterUrl = event?.strPoster || event?.strThumb || null;
           
           if (posterUrl) {
             posterCache.set(cacheKey, posterUrl);
