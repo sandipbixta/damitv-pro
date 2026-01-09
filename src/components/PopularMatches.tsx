@@ -166,7 +166,7 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
           className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
         >
           {enrichedMatches.slice(0, 12).map((match, index) => (
-            <div key={`popular-${match.id}-${index}`} className="flex-shrink-0 w-[160px] md:w-[200px]">
+            <div key={`popular-${match.id}-${index}`} className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[calc((100%-48px)/5)]">
               <MatchCard
                 match={match}
                 sportId={selectedSport || ''}
