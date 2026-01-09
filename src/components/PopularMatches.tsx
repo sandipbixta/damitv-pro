@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { Match } from '../types/sports';
-import MatchCard from './MatchCard';
+import PopularMatchCard from './PopularMatchCard';
 import { isTrendingMatch } from '../utils/popularLeagues';
 import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
 import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
@@ -201,16 +201,15 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
                   {index + 1}
                 </div>
                 
-                {/* Match Card */}
+                {/* Match Card with Banner */}
                 <div 
                   className="relative z-10 w-[160px] sm:w-[170px]"
                   style={{ marginLeft: index + 1 >= 10 ? '70px' : '50px' }}
                 >
-                  <MatchCard
+                  <PopularMatchCard
                     match={match}
+                    rank={index + 1}
                     sportId={selectedSport || match.sportId || ''}
-                    isPriority={true}
-                    isCompact={true}
                   />
                 </div>
               </div>

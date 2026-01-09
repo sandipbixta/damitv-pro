@@ -254,6 +254,7 @@ const parseMatchData = (item: any): Match | null => {
       sportId: sportId,
       date: matchDate,
       poster: item.poster || item.image || item.thumbnail || '',
+      banner: item.banner || item.wide_image || item.backdrop || '',
       popular: item.popular === true || item.featured === true,
       teams: {
         home: {
