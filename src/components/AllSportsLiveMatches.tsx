@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Sport, Match } from '../types/sports';
+import React, { useEffect, useState } from 'react';
+import { Match } from '../types/sports';
 import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 import { filterMatchesWithImages } from '../utils/matchImageFilter';
-import MatchCard from './MatchCard';
+import SportCarouselRow from './SportCarouselRow';
 import { useSportsData } from '../contexts/SportsDataContext';
 
 interface AllSportsLiveMatchesProps {
@@ -10,8 +10,7 @@ interface AllSportsLiveMatchesProps {
 }
 
 const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm = '' }) => {
-  // Use shared sports data context - no duplicate API calls!
-  const { sports, liveMatches, allMatches, loading } = useSportsData();
+  const { sports, liveMatches, allMatches } = useSportsData();
   const [mostViewedMatches, setMostViewedMatches] = useState<Match[]>([]);
 
   // Enrich matches with viewer counts once when allMatches changes
@@ -22,18 +21,15 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       try {
         const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
         
-        // For "Popular by Viewers", only show live matches with viewers
         const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
           isMatchLive(m) && 
           (m.viewerCount || 0) > 0
         );
         
-        // Sort by viewer count
         const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
           (b.viewerCount || 0) - (a.viewerCount || 0)
         );
         
-        console.log('🔥 Popular live matches:', sortedByViewers.length);
         setMostViewedMatches(sortedByViewers.slice(0, 12));
       } catch (error) {
         console.error('Error enriching viewer counts:', error);
@@ -43,13 +39,12 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
     enrichWithViewers();
   }, [allMatches]);
 
-  // Refresh viewer counts every 2 minutes (reduced from 30s)
+  // Refresh viewer counts every 2 minutes
   useEffect(() => {
     const refreshViewerCounts = async () => {
       if (allMatches.length === 0) return;
       
       try {
-        console.log('🔄 Refreshing viewer counts...');
         const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
         
         const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
@@ -67,17 +62,14 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       }
     };
 
-    const interval = setInterval(refreshViewerCounts, 120000); // 2 minutes instead of 30s
-    
+    const interval = setInterval(refreshViewerCounts, 120000);
     return () => clearInterval(interval);
   }, [allMatches]);
 
-  // Filter matches by search term (ended matches already filtered out in data loading)
+  // Filter matches by search term
   const filteredMatches = React.useMemo(() => {
-    // Only show matches with images on home page
     let matches = filterMatchesWithImages(liveMatches);
     
-    // Apply search filter if provided
     if (searchTerm.trim()) {
       const lowercaseSearch = searchTerm.toLowerCase();
       matches = matches.filter(match => {
@@ -90,7 +82,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
     return matches;
   }, [liveMatches, searchTerm]);
 
-  // Group matches by sport and sort by date (newest first)
+  // Group matches by sport
   const matchesBySport = React.useMemo(() => {
     const grouped: { [sportId: string]: Match[] } = {};
     
@@ -102,12 +94,8 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       grouped[sportId].push(match);
     });
     
-    // Sort matches within each sport by date (newest/most recent first)
     Object.keys(grouped).forEach(sportId => {
-      grouped[sportId].sort((a, b) => {
-        // Sort by date descending (newest matches first)
-        return b.date - a.date;
-      });
+      grouped[sportId].sort((a, b) => b.date - a.date);
     });
     
     return grouped;
@@ -115,15 +103,22 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
 
   const getSportName = (sportId: string) => {
     const sport = sports.find(s => s.id === sportId);
-    return sport?.name || sportId.charAt(0).toUpperCase() + sportId.slice(1);
+    return sport?.name || sportId.charAt(0).toUpperCase() + sportId.slice(1).replace(/-/g, ' ');
   };
 
-  // Show skeleton while data is empty, but don't block - let it render
+  // Show skeleton while loading
   if (liveMatches.length === 0) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-          <div key={i} className="h-[280px] bg-[#242836] rounded-xl animate-pulse"></div>
+      <div className="space-y-8">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-3">
+            <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+            <div className="flex gap-3 overflow-hidden">
+              {[1, 2, 3, 4, 5, 6].map((j) => (
+                <div key={j} className="flex-shrink-0 w-[180px] h-[240px] bg-muted rounded-xl animate-pulse" />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -131,15 +126,15 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
 
   if (filteredMatches.length === 0) {
     return (
-      <div className="bg-[#242836] border-[#343a4d] rounded-xl p-8 text-center">
+      <div className="bg-card border border-border rounded-xl p-8 text-center">
         <div className="text-4xl mb-4">📺</div>
-        <h3 className="text-xl font-bold text-white mb-2">No Live Matches</h3>
-        <p className="text-gray-400">There are currently no live matches available.</p>
+        <h3 className="text-xl font-bold text-foreground mb-2">No Live Matches</h3>
+        <p className="text-muted-foreground">There are currently no live matches available.</p>
       </div>
     );
   }
 
-  // Define preferred sport order with tennis at the end (excluded: golf, hockey, billiards)
+  // Sport priority for ordering
   const getSportPriority = (sportId: string): number => {
     const sportOrder: { [key: string]: number } = {
       'football': 1,
@@ -152,60 +147,38 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       'cricket': 8,
       'afl': 9,
       'other': 10,
-      'tennis': 12  // Tennis moved to last position
+      'tennis': 12
     };
     
     const normalizedSportId = sportId.toLowerCase();
     
-    // Check for exact match first
     if (sportOrder[normalizedSportId] !== undefined) {
       return sportOrder[normalizedSportId];
     }
     
-    // Check for partial matches
     for (const [sport, priority] of Object.entries(sportOrder)) {
       if (normalizedSportId.includes(sport) || sport.includes(normalizedSportId)) {
         return priority;
       }
     }
     
-    // Unknown sports get high priority (but before tennis)
     return 14.5;
   };
 
-  // Sort sports by priority with tennis at the end
   const sortedSports = Object.entries(matchesBySport).sort(([sportIdA], [sportIdB]) => {
-    const priorityA = getSportPriority(sportIdA);
-    const priorityB = getSportPriority(sportIdB);
-    return priorityA - priorityB;
+    return getSportPriority(sportIdA) - getSportPriority(sportIdB);
   });
 
   return (
     <div className="space-y-8">
-      {/* Sports Sections */}
       {sortedSports.map(([sportId, matches]) => (
-        <div key={sportId} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">
-              {getSportName(sportId)}
-            </h3>
-            <span className="text-sm text-gray-400">
-              {matches.length} live match{matches.length !== 1 ? 'es' : ''}
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-fr">
-            {matches.map((match) => (
-              <div key={`${match.sportId || sportId}-${match.id}`} className="h-full">
-                <MatchCard
-                  match={match}
-                  sportId={match.sportId || sportId}
-                  isCompact={true}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+        <SportCarouselRow
+          key={sportId}
+          sportId={sportId}
+          sportName={getSportName(sportId)}
+          matches={matches}
+          matchCount={matches.length}
+        />
       ))}
     </div>
   );
