@@ -60,7 +60,7 @@ const SportsNav: React.FC<SportsNavProps> = ({
   const allSports = [{ id: 'all', name: 'All Sports' }, ...sports];
 
   return (
-    <div className="relative group/nav bg-black/60 backdrop-blur-md">
+    <div className="relative group/nav">
       {/* Left Arrow */}
       {canScrollLeft && (
         <button
