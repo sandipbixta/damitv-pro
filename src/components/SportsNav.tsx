@@ -107,7 +107,7 @@ const SportsNav: React.FC<SportsNavProps> = ({
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm font-medium flex-shrink-0 ${
               isSelected
                 ? 'bg-white text-black shadow-lg'
-                : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                : 'bg-black/70 text-white hover:bg-black/80 border border-white/10'
             }`}
           >
               {sport.name}
