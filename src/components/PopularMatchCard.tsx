@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Match } from '../types/sports';
+import { getBohoImageUrl } from '../api/sportsApi';
 import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
 import { LiveViewerCount } from './LiveViewerCount';
 import { isMatchLive } from '../utils/matchUtils';
-import { useMatchTeamLogos } from '../hooks/useTeamLogo';
-import { useMatchPoster } from '../hooks/useMatchPoster';
 
 interface PopularMatchCardProps {
   match: Match;
@@ -21,27 +20,27 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
   const hasStream = match.sources?.length > 0;
   const isLive = isMatchLive(match);
 
-  // Fetch poster from TheSportsDB
-  const { poster: sportsDbPoster, isPoster, isLoading: isPosterLoading } = useMatchPoster(home, away);
-  const hasImage = sportsDbPoster && !imageFailed;
-
-  // Fetch team logos for fallback
-  const { homeLogo, awayLogo } = useMatchTeamLogos(
-    match.teams?.home,
-    match.teams?.away
-  );
+  // Use poster/banner directly from API for instant loading - no external API calls
+  const posterUrl = match.poster ? getBohoImageUrl(match.poster) : null;
+  const bannerUrl = match.banner ? getBohoImageUrl(match.banner) : null;
+  const imageUrl = posterUrl || bannerUrl;
+  const hasImage = imageUrl && !imageFailed;
+  
+  // Get team badges from API data
+  const homeBadge = match.teams?.home?.badge ? getBohoImageUrl(match.teams.home.badge) : null;
+  const awayBadge = match.teams?.away?.badge ? getBohoImageUrl(match.teams.away.badge) : null;
 
   const matchSlug = generateMatchSlug(home, away, match.title);
   const numericId = extractNumericId(match.id);
   const matchUrl = `/match/${sportId || match.sportId || match.category}/${numericId}/${matchSlug}`;
 
-  // Team badge fallback component
+  // Team badge fallback component - uses API data only
   const TeamBadgeFallback = () => (
     <div className="w-full h-full bg-gradient-to-br from-card via-muted/50 to-card flex items-center justify-center gap-3 p-4">
       <div className="flex-1 flex flex-col items-center">
-        {homeLogo ? (
+        {homeBadge ? (
           <img 
-            src={homeLogo} 
+            src={homeBadge} 
             alt={home} 
             className="w-16 h-16 object-contain"
             onError={(e) => {
@@ -59,9 +58,9 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
       <span className="text-muted-foreground font-bold text-lg">VS</span>
       
       <div className="flex-1 flex flex-col items-center">
-        {awayLogo ? (
+        {awayBadge ? (
           <img 
-            src={awayLogo} 
+            src={awayBadge} 
             alt={away} 
             className="w-16 h-16 object-contain"
             onError={(e) => {
@@ -82,15 +81,13 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
     <div className="relative h-[220px] sm:h-[240px] group cursor-pointer">
       <div className="relative h-full rounded-lg overflow-hidden bg-card border border-border/40 transition-colors duration-300 hover:border-primary/50">
         {hasImage ? (
-          <div className={`w-full h-full flex items-center justify-center ${!isPoster ? 'bg-muted/80' : ''}`}>
-            <img
-              src={sportsDbPoster}
-              alt={match.title}
-              className={`w-full h-full ${isPoster ? 'object-cover' : 'object-contain'}`}
-              loading="lazy"
-              onError={() => setImageFailed(true)}
-            />
-          </div>
+          <img
+            src={imageUrl}
+            alt={match.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
           <TeamBadgeFallback />
         )}
