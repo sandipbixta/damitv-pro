@@ -5,6 +5,7 @@ import { getBohoImageUrl } from '../api/sportsApi';
 import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
 import { LiveViewerCount } from './LiveViewerCount';
 import { isMatchLive } from '../utils/matchUtils';
+import { useMatchTeamLogos } from '../hooks/useTeamLogo';
 
 interface PopularMatchCardProps {
   match: Match;
@@ -20,18 +21,67 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
   const hasStream = match.sources?.length > 0;
   const isLive = isMatchLive(match);
 
-  // Use poster (portrait image) from API - this is the square/vertical one with both team badges
+  // Use poster (portrait image) from API
   const posterUrl = match.poster ? getBohoImageUrl(match.poster) : null;
+  const hasPoster = posterUrl && !imageFailed;
+
+  // Fetch team logos for fallback
+  const { homeLogo, awayLogo } = useMatchTeamLogos(
+    match.teams?.home,
+    match.teams?.away
+  );
 
   const matchSlug = generateMatchSlug(home, away, match.title);
   const numericId = extractNumericId(match.id);
   const matchUrl = `/match/${sportId || match.sportId || match.category}/${numericId}/${matchSlug}`;
 
+  // Team badge fallback component
+  const TeamBadgeFallback = () => (
+    <div className="w-full h-full bg-gradient-to-br from-card via-muted/50 to-card flex items-center justify-center gap-3 p-4">
+      <div className="flex-1 flex flex-col items-center">
+        {homeLogo ? (
+          <img 
+            src={homeLogo} 
+            alt={home} 
+            className="w-16 h-16 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+            <span className="text-primary font-bold text-xl">{home.charAt(0)}</span>
+          </div>
+        )}
+        <span className="text-xs text-muted-foreground mt-1 text-center line-clamp-1">{home}</span>
+      </div>
+      
+      <span className="text-muted-foreground font-bold text-lg">VS</span>
+      
+      <div className="flex-1 flex flex-col items-center">
+        {awayLogo ? (
+          <img 
+            src={awayLogo} 
+            alt={away} 
+            className="w-16 h-16 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+            <span className="text-primary font-bold text-xl">{away.charAt(0)}</span>
+          </div>
+        )}
+        <span className="text-xs text-muted-foreground mt-1 text-center line-clamp-1">{away}</span>
+      </div>
+    </div>
+  );
+
   const cardContent = (
     <div className="relative h-full group cursor-pointer">
-      {/* Image container - portrait style for poster images */}
       <div className="relative h-[220px] sm:h-[240px] rounded-lg overflow-hidden bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:scale-105">
-        {posterUrl && !imageFailed ? (
+        {hasPoster ? (
           <img
             src={posterUrl}
             alt={match.title}
@@ -40,9 +90,7 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center">
-            <span className="text-muted-foreground font-bold text-lg tracking-widest">DAMITV</span>
-          </div>
+          <TeamBadgeFallback />
         )}
 
         {/* Gradient overlay - only at bottom for text readability */}
