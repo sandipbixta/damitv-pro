@@ -4,7 +4,7 @@ import { useToast } from '../hooks/use-toast';
 import { Sport, Match } from '../types/sports';
 import { fetchMatches } from '../api/sportsApi';
 import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
-import SportsList from '../components/SportsList';
+import SportsNav from '../components/SportsNav';
 import MatchesList from '../components/MatchesList';
 import FeaturedMatches from '../components/FeaturedMatches';
 import AllSportsLiveMatches from '../components/AllSportsLiveMatches';
@@ -196,29 +196,19 @@ const Index = () => {
 
         {/* Hero Carousel with Match Posters */}
         <HeroCarousel />
-
-        <FeaturedMatches visibleManualMatches={visibleManualMatches} />
-
-        <div className="mb-10">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">Featured Sports</h2>
-            <div className="flex gap-2">
-              <Link to="/schedule">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary font-bold uppercase text-xs">
-                  <Calendar className="mr-2 h-4 w-4" /> Schedule
-                </Button>
-              </Link>
-            </div>
-          </div>
-          
-          <SportsList 
-            sports={sports}
-            onSelectSport={handleSelectSport}
-            selectedSport={selectedSport}
-            isLoading={loadingSports}
-          />
-        </div>
         
+        {/* Sports Category Nav - Touching Hero Carousel */}
+        <SportsNav 
+          sports={sports}
+          onSelectSport={handleSelectSport}
+          selectedSport={selectedSport}
+          isLoading={loadingSports}
+        />
+
+        <div className="mt-6">
+          <FeaturedMatches visibleManualMatches={visibleManualMatches} />
+        </div>
+
         <React.Suspense fallback={<div className="h-32 bg-[#242836] rounded-lg animate-pulse" />}>
           <FeaturedChannels />
         </React.Suspense>
