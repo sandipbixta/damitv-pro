@@ -194,22 +194,22 @@ const Index = () => {
         {/* Custom Match Cards - Above Hero Carousel */}
         <CustomMatchCards />
 
-        {/* Hero Carousel with Sports Nav Overlay */}
-        <div className="relative mb-6">
+        {/* Hero Carousel */}
+        <div className="mb-4">
           <HeroCarousel />
-          
-          {/* Sports Category Nav - Overlay at bottom of hero */}
-          <div className="absolute bottom-0 left-0 right-0 z-20">
-            <SportsNav 
-              sports={sports}
-              onSelectSport={handleSelectSport}
-              selectedSport={selectedSport}
-              isLoading={loadingSports}
-            />
-          </div>
         </div>
 
-        <div className="mt-6">
+        {/* Sports Category Nav - Below hero */}
+        <div className="mb-6">
+          <SportsNav 
+            sports={sports}
+            onSelectSport={handleSelectSport}
+            selectedSport={selectedSport}
+            isLoading={loadingSports}
+          />
+        </div>
+
+        <div>
           <FeaturedMatches visibleManualMatches={visibleManualMatches} />
         </div>
 
