@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Match } from '../types/sports';
+import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 import { filterMatchesWithImages } from '../utils/matchImageFilter';
 import SportCarouselRow from './SportCarouselRow';
 import { useSportsData } from '../contexts/SportsDataContext';
@@ -9,7 +10,62 @@ interface AllSportsLiveMatchesProps {
 }
 
 const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm = '' }) => {
-  const { sports, liveMatches } = useSportsData();
+  const { sports, liveMatches, allMatches } = useSportsData();
+  const [mostViewedMatches, setMostViewedMatches] = useState<Match[]>([]);
+
+  // Enrich matches with viewer counts once when allMatches changes
+  useEffect(() => {
+    const enrichWithViewers = async () => {
+      if (allMatches.length === 0) return;
+      
+      try {
+        const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
+        
+        const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
+          isMatchLive(m) && 
+          (m.viewerCount || 0) > 0
+        );
+        
+        const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
+          (b.viewerCount || 0) - (a.viewerCount || 0)
+        );
+        
+        setMostViewedMatches(sortedByViewers.slice(0, 12));
+      } catch (error) {
+        console.error('Error enriching viewer counts:', error);
+      }
+    };
+
+    enrichWithViewers();
+  }, [allMatches]);
+
+  // Refresh viewer counts every 2 minutes
+  useEffect(() => {
+    const refreshViewerCounts = async () => {
+      if (allMatches.length === 0) return;
+      
+      try {
+        const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
+        
+        const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
+          isMatchLive(m) && 
+          (m.viewerCount || 0) > 0
+        );
+        
+        const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
+          (b.viewerCount || 0) - (a.viewerCount || 0)
+        );
+        
+        setMostViewedMatches(sortedByViewers.slice(0, 12));
+      } catch (error) {
+        console.error('Error refreshing viewer counts:', error);
+      }
+    };
+
+    const interval = setInterval(refreshViewerCounts, 120000);
+    return () => clearInterval(interval);
+  }, [allMatches]);
+
   // Filter matches by search term
   const filteredMatches = React.useMemo(() => {
     let matches = filterMatchesWithImages(liveMatches);
@@ -115,7 +171,6 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
 
   return (
     <div className="space-y-8">
-      {/* Sport Categories */}
       {sortedSports.map(([sportId, matches]) => (
         <SportCarouselRow
           key={sportId}

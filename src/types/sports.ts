@@ -20,8 +20,7 @@ export interface Match {
   title: string;
   category: string;         // Sport category (e.g. "football", "basketball")
   date: number;            // Unix timestamp in milliseconds
-  poster?: string;         // URL path to match poster image (square/thumbnail)
-  banner?: string;         // URL path to match banner image (wide/landscape)
+  poster?: string;         // URL path to match poster image
   popular: boolean;        // Whether the match is marked as popular
   teams?: {
     home?: Team;
