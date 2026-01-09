@@ -104,12 +104,13 @@ const SportsNav: React.FC<SportsNavProps> = ({
             <button
               key={sport.id}
               onClick={() => onSelectSport(sport.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm font-medium flex-shrink-0 ${
-              isSelected
-                ? 'bg-white text-black shadow-lg'
-                : 'bg-black/70 text-white hover:bg-black/80 border border-white/10'
-            }`}
-          >
+              style={{ minWidth: 'calc(20% - 6.4px)' }}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm font-medium flex-shrink-0 ${
+                isSelected
+                  ? 'bg-white text-black shadow-lg'
+                  : 'bg-black/70 text-white hover:bg-black/80 border border-white/10'
+              }`}
+            >
               {sport.name}
             </button>
           );
