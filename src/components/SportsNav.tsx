@@ -95,7 +95,7 @@ const SportsNav: React.FC<SportsNavProps> = ({
       <div
         ref={scrollContainerRef}
         onScroll={checkScrollability}
-        className="flex gap-2 px-4 pt-12 pb-4 overflow-x-auto scrollbar-hide scroll-smooth"
+        className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide scroll-smooth"
       >
         {allSports.map((sport) => {
           const isSelected = selectedSport === sport.id;
