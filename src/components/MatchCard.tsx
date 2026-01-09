@@ -7,6 +7,7 @@ import { useMatchTeamLogos } from '../hooks/useTeamLogo';
 import { getBohoImageUrl } from '../api/sportsApi';
 import { LiveViewerCount } from './LiveViewerCount';
 import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
+import { getMatchPosterImage } from '../utils/matchImageMapping';
 
 interface MatchCardProps {
   match: Match;
@@ -99,6 +100,19 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   // Generate thumbnail
   const generateThumbnail = () => {
+    // First check for custom mapped poster image
+    const customPoster = getMatchPosterImage(match.title, match.category);
+    if (customPoster) {
+      return (
+        <img
+          src={customPoster}
+          alt={match.title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      );
+    }
+
     const poster = typeof match.poster === 'string' ? match.poster.trim() : '';
 
     if (!posterFailed && poster) {
