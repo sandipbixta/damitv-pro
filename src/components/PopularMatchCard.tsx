@@ -79,10 +79,10 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
   );
 
   const cardContent = (
-    <div className="relative h-full group cursor-pointer">
-      <div className="relative h-[220px] sm:h-[240px] rounded-lg overflow-hidden bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:scale-105">
+    <div className="relative h-[220px] sm:h-[240px] group cursor-pointer">
+      <div className="relative h-full rounded-lg overflow-hidden bg-card border border-border/40 transition-colors duration-300 hover:border-primary/50">
         {hasImage ? (
-          <div className={`w-full h-full ${!isPoster ? 'bg-muted/80' : ''}`}>
+          <div className={`w-full h-full flex items-center justify-center ${!isPoster ? 'bg-muted/80' : ''}`}>
             <img
               src={sportsDbPoster}
               alt={match.title}
