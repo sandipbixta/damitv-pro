@@ -104,12 +104,14 @@ const MatchCard: React.FC<MatchCardProps> = ({
     const customPoster = getMatchPosterImage(match.title, match.category);
     if (customPoster) {
       return (
-        <img
-          src={customPoster}
-          alt={match.title}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+        <div className="w-full h-full bg-card flex items-center justify-center">
+          <img
+            src={customPoster}
+            alt={match.title}
+            className="w-full h-full object-contain"
+            loading="lazy"
+          />
+        </div>
       );
     }
 
@@ -119,16 +121,18 @@ const MatchCard: React.FC<MatchCardProps> = ({
       const posterUrl = getBohoImageUrl(poster);
 
       return (
-        <img
-          src={posterUrl}
-          alt={match.title}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => {
-            setPosterFailed(true);
-          }}
-        />
+        <div className="w-full h-full bg-card flex items-center justify-center">
+          <img
+            src={posterUrl}
+            alt={match.title}
+            className="w-full h-full object-contain"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => {
+              setPosterFailed(true);
+            }}
+          />
+        </div>
       );
     }
 
