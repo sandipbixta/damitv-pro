@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 
 // In-memory cache for poster images
-const posterCache = new Map<string, string | null>();
+const posterCache = new Map<string, { url: string | null; isPoster: boolean }>();
 
 export const useMatchPoster = (
   homeTeam: string | undefined,
   awayTeam: string | undefined
-): { poster: string | null; isLoading: boolean } => {
+): { poster: string | null; isPoster: boolean; isLoading: boolean } => {
   const [poster, setPoster] = useState<string | null>(null);
+  const [isPoster, setIsPoster] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -20,7 +21,9 @@ export const useMatchPoster = (
     
     // Check cache first
     if (posterCache.has(cacheKey)) {
-      setPoster(posterCache.get(cacheKey) || null);
+      const cached = posterCache.get(cacheKey)!;
+      setPoster(cached.url);
+      setIsPoster(cached.isPoster);
       return;
     }
 
@@ -40,11 +43,13 @@ export const useMatchPoster = (
           const event = data?.event?.[0];
           
           // Prioritize strPoster (portrait) over strThumb (thumbnail/landscape)
-          const posterUrl = event?.strPoster || event?.strThumb || null;
+          const hasPosterImage = !!event?.strPoster;
+          const imageUrl = event?.strPoster || event?.strThumb || null;
           
-          if (posterUrl) {
-            posterCache.set(cacheKey, posterUrl);
-            setPoster(posterUrl);
+          if (imageUrl) {
+            posterCache.set(cacheKey, { url: imageUrl, isPoster: hasPosterImage });
+            setPoster(imageUrl);
+            setIsPoster(hasPosterImage);
             setIsLoading(false);
             return;
           }
@@ -59,18 +64,20 @@ export const useMatchPoster = (
         if (teamResponse.ok) {
           const teamData = await teamResponse.json();
           const team = teamData?.teams?.[0];
-          // strTeamBadge is the team logo/badge
           const teamBadge = team?.strTeamBadge || null;
-          posterCache.set(cacheKey, teamBadge);
+          posterCache.set(cacheKey, { url: teamBadge, isPoster: false });
           setPoster(teamBadge);
+          setIsPoster(false);
         } else {
-          posterCache.set(cacheKey, null);
+          posterCache.set(cacheKey, { url: null, isPoster: false });
           setPoster(null);
+          setIsPoster(false);
         }
       } catch (error) {
         console.warn('Failed to fetch poster from TheSportsDB:', error);
-        posterCache.set(cacheKey, null);
+        posterCache.set(cacheKey, { url: null, isPoster: false });
         setPoster(null);
+        setIsPoster(false);
       } finally {
         setIsLoading(false);
       }
@@ -79,5 +86,5 @@ export const useMatchPoster = (
     fetchPoster();
   }, [homeTeam, awayTeam]);
 
-  return { poster, isLoading };
+  return { poster, isPoster, isLoading };
 };

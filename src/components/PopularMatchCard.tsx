@@ -22,8 +22,8 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
   const isLive = isMatchLive(match);
 
   // Fetch poster from TheSportsDB
-  const { poster: sportsDbPoster, isLoading: isPosterLoading } = useMatchPoster(home, away);
-  const hasPoster = sportsDbPoster && !imageFailed;
+  const { poster: sportsDbPoster, isPoster, isLoading: isPosterLoading } = useMatchPoster(home, away);
+  const hasImage = sportsDbPoster && !imageFailed;
 
   // Fetch team logos for fallback
   const { homeLogo, awayLogo } = useMatchTeamLogos(
@@ -81,14 +81,16 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
   const cardContent = (
     <div className="relative h-full group cursor-pointer">
       <div className="relative h-[220px] sm:h-[240px] rounded-lg overflow-hidden bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:scale-105">
-        {hasPoster ? (
-          <img
-            src={sportsDbPoster}
-            alt={match.title}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-          />
+        {hasImage ? (
+          <div className={`w-full h-full ${!isPoster ? 'bg-muted/80' : ''}`}>
+            <img
+              src={sportsDbPoster}
+              alt={match.title}
+              className={`w-full h-full ${isPoster ? 'object-cover' : 'object-contain'}`}
+              loading="lazy"
+              onError={() => setImageFailed(true)}
+            />
+          </div>
         ) : (
           <TeamBadgeFallback />
         )}
