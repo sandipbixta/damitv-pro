@@ -121,13 +121,13 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
 
   const cardContent = (
     <div className="relative h-full group cursor-pointer">
-      {/* Image container - taller for poster style */}
-      <div className="relative h-[200px] sm:h-[220px] rounded-lg overflow-hidden bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:scale-105">
+      {/* Image container - use object-contain to show full image */}
+      <div className="relative h-[220px] sm:h-[240px] rounded-lg overflow-hidden bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:scale-105">
         {displayImage && !bannerFailed ? (
           <img
             src={displayImage}
             alt={match.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain bg-black/50"
             loading="lazy"
             onError={() => setBannerFailed(true)}
           />
@@ -137,8 +137,8 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
           </div>
         )}
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+        {/* Gradient overlay - only at bottom for text readability */}
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/95 to-transparent" />
 
         {/* Live badge */}
         {isLive && (
@@ -149,12 +149,12 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
         )}
 
         {/* Content overlay at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-3">
-          <h4 className="text-white font-bold text-sm line-clamp-2 mb-1">
+        <div className="absolute bottom-0 left-0 right-0 p-2">
+          <h4 className="text-white font-bold text-xs line-clamp-2">
             {home && away ? `${home} vs ${away}` : match.title}
           </h4>
           {isLive && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-1">
               <LiveViewerCount match={match} size="sm" />
             </div>
           )}
