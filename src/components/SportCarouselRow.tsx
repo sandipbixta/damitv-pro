@@ -110,7 +110,7 @@ const SportCarouselRow: React.FC<SportCarouselRowProps> = ({
           {matches.map((match) => (
             <div
               key={`${match.sportId || sportId}-${match.id}`}
-              className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[200px]"
+              className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[calc((100%-48px)/5)]"
             >
               <MatchCard
                 match={match}
