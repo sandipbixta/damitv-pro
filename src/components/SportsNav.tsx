@@ -47,10 +47,10 @@ const SportsNav: React.FC<SportsNavProps> = ({
 
   if (isLoading) {
     return (
-      <div className="relative bg-background/80 backdrop-blur-md border-b border-border/30">
+      <div className="relative bg-black/60 backdrop-blur-md">
         <div className="flex gap-2 px-4 py-3 overflow-hidden">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="h-10 w-28 bg-muted animate-pulse rounded-lg flex-shrink-0" />
+            <div key={i} className="h-10 w-28 bg-white/10 animate-pulse rounded-lg flex-shrink-0" />
           ))}
         </div>
       </div>
@@ -60,14 +60,14 @@ const SportsNav: React.FC<SportsNavProps> = ({
   const allSports = [{ id: 'all', name: 'All Sports' }, ...sports];
 
   return (
-    <div className="relative group/nav bg-background/80 backdrop-blur-md border-b border-border/30">
+    <div className="relative group/nav bg-black/60 backdrop-blur-md">
       {/* Left Arrow */}
       {canScrollLeft && (
         <button
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background p-1.5 rounded-full shadow-lg opacity-0 group-hover/nav:opacity-100 transition-opacity ml-1"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-black p-1.5 rounded-full shadow-lg opacity-0 group-hover/nav:opacity-100 transition-opacity ml-1"
         >
-          <ChevronLeft className="w-4 h-4 text-foreground" />
+          <ChevronLeft className="w-4 h-4 text-white" />
         </button>
       )}
 
@@ -75,20 +75,20 @@ const SportsNav: React.FC<SportsNavProps> = ({
       {canScrollRight && (
         <button
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background p-1.5 rounded-full shadow-lg opacity-0 group-hover/nav:opacity-100 transition-opacity mr-1"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-black p-1.5 rounded-full shadow-lg opacity-0 group-hover/nav:opacity-100 transition-opacity mr-1"
         >
-          <ChevronRight className="w-4 h-4 text-foreground" />
+          <ChevronRight className="w-4 h-4 text-white" />
         </button>
       )}
 
       {/* Left Gradient */}
       {canScrollLeft && (
-        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-background to-transparent z-[5] pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black/60 to-transparent z-[5] pointer-events-none" />
       )}
 
       {/* Right Gradient */}
       {canScrollRight && (
-        <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-background to-transparent z-[5] pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/60 to-transparent z-[5] pointer-events-none" />
       )}
 
       {/* Scrollable Content */}
@@ -104,12 +104,12 @@ const SportsNav: React.FC<SportsNavProps> = ({
             <button
               key={sport.id}
               onClick={() => onSelectSport(sport.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm font-medium flex-shrink-0 ${
-                isSelected
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50'
-              }`}
-            >
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm font-medium flex-shrink-0 ${
+              isSelected
+                ? 'bg-white text-black shadow-lg'
+                : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+            }`}
+          >
               {sport.name}
             </button>
           );
