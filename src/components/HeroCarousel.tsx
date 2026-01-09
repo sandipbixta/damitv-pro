@@ -91,7 +91,7 @@ export const HeroCarousel = () => {
   if (allSlides.length === 0) return null;
 
   return (
-    <div className="relative mb-6 rounded-xl overflow-hidden" ref={emblaRef}>
+    <div className="relative rounded-xl overflow-hidden" ref={emblaRef}>
       <div className="flex">
         {allSlides.map((slide) => {
           const isCover = (slide as any).isCover;
