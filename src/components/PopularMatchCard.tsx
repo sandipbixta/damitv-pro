@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Match } from '../types/sports';
-import { getBohoImageUrl } from '../api/sportsApi';
 import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
 import { LiveViewerCount } from './LiveViewerCount';
 import { isMatchLive } from '../utils/matchUtils';
 import { useMatchTeamLogos } from '../hooks/useTeamLogo';
+import { useMatchPoster } from '../hooks/useMatchPoster';
 
 interface PopularMatchCardProps {
   match: Match;
@@ -21,9 +21,9 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
   const hasStream = match.sources?.length > 0;
   const isLive = isMatchLive(match);
 
-  // Use poster (portrait image) from API
-  const posterUrl = match.poster ? getBohoImageUrl(match.poster) : null;
-  const hasPoster = posterUrl && !imageFailed;
+  // Fetch poster from TheSportsDB
+  const { poster: sportsDbPoster, isLoading: isPosterLoading } = useMatchPoster(home, away);
+  const hasPoster = sportsDbPoster && !imageFailed;
 
   // Fetch team logos for fallback
   const { homeLogo, awayLogo } = useMatchTeamLogos(
@@ -83,7 +83,7 @@ const PopularMatchCard: React.FC<PopularMatchCardProps> = ({ match, rank, sportI
       <div className="relative h-[220px] sm:h-[240px] rounded-lg overflow-hidden bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:scale-105">
         {hasPoster ? (
           <img
-            src={posterUrl}
+            src={sportsDbPoster}
             alt={match.title}
             className="w-full h-full object-cover"
             loading="lazy"
