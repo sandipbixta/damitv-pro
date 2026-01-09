@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MatchDetails from '@/components/MatchDetails';
 import { triggerStreamChangeAd } from '@/utils/streamAdTrigger';
 import AdsterraSocialBar from '@/components/AdsterraSocialBar';
+import BannerAd from '@/components/BannerAd';
 
 const ChannelPlayer = () => {
   const { country, channelId } = useParams();
@@ -120,6 +121,9 @@ const ChannelPlayer = () => {
           </div>
         </div>
       </div>
+
+      {/* Banner Ad at top of player page */}
+      <BannerAd className="mb-2" />
 
 
       {/* Player Settings Panel */}

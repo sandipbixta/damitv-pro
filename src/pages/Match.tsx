@@ -24,6 +24,7 @@ import MatchCard from '@/components/MatchCard';
 import MatchAnalysis from '@/components/match/MatchAnalysis';
 import { ViewerStats } from '@/components/match/ViewerStats';
 import AdsterraSocialBar from '@/components/AdsterraSocialBar';
+import BannerAd from '@/components/BannerAd';
 
 
 const Match = () => {
@@ -225,6 +226,9 @@ const Match = () => {
       />
       
       <div className="container mx-auto px-4 py-4 sm:py-8">
+        {/* Banner Ad at top of player page */}
+        <BannerAd className="mb-4" />
+        
         <div className="w-full flex justify-center mb-4">
           <div className="text-center max-w-4xl px-4">
             {homeTeam && awayTeam ? (
