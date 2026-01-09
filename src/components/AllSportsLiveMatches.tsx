@@ -3,6 +3,7 @@ import { Match } from '../types/sports';
 import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 import { filterMatchesWithImages } from '../utils/matchImageFilter';
 import SportCarouselRow from './SportCarouselRow';
+import PopularMatchesRow from './PopularMatchesRow';
 import { useSportsData } from '../contexts/SportsDataContext';
 
 interface AllSportsLiveMatchesProps {
@@ -171,6 +172,12 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
 
   return (
     <div className="space-y-8">
+      {/* Popular by Viewers - Netflix Top 10 style */}
+      {mostViewedMatches.length > 0 && (
+        <PopularMatchesRow matches={mostViewedMatches} />
+      )}
+
+      {/* Sport Categories */}
       {sortedSports.map(([sportId, matches]) => (
         <SportCarouselRow
           key={sportId}
