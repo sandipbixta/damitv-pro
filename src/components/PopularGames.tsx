@@ -86,7 +86,7 @@ const PopularGames: React.FC<PopularGamesProps> = ({
   return (
     <div className="mb-6">
       <h2 className="text-xl font-bold mb-3 text-white">Trending Games</h2>
-      <div className={`grid grid-cols-2 ${!isMobile ? 'md:grid-cols-5' : ''} gap-2`}>
+      <div className={`grid grid-cols-2 ${!isMobile ? 'md:grid-cols-4 lg:grid-cols-5' : ''} gap-2`}>
         {filteredMatches.slice(0, 5).map((match, index) => (
           <MatchCard 
             key={`trending-${match.id}-${index}`}
