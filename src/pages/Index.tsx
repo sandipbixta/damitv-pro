@@ -194,16 +194,16 @@ const Index = () => {
         {/* Custom Match Cards - Above Hero Carousel */}
         <CustomMatchCards />
 
-        {/* Hero Carousel with Match Posters */}
-        <HeroCarousel />
-        
-        {/* Sports Category Nav - Touching Hero Carousel */}
+        {/* Sports Category Nav - Above Hero Carousel like DAZN */}
         <SportsNav 
           sports={sports}
           onSelectSport={handleSelectSport}
           selectedSport={selectedSport}
           isLoading={loadingSports}
         />
+
+        {/* Hero Carousel with Match Posters - Touching the nav */}
+        <HeroCarousel />
 
         <div className="mt-6">
           <FeaturedMatches visibleManualMatches={visibleManualMatches} />
