@@ -4,11 +4,11 @@
 export const EMBED_DOMAINS = {
   primary: {
     url: 'https://embed.damitv.pro',
-    format: 'damitv', // /?id={id}&source={source}
+    format: 'damitv', // /?id={id}&source={source}&streamNo={streamNo}
   },
   fallback: {
-    url: 'https://embedsports.top',
-    format: 'embedsports', // /embed/{source}/{id}/{streamNo}
+    url: 'https://embed.damitv.pro', // Use same domain as primary
+    format: 'damitv',
   }
 };
 
