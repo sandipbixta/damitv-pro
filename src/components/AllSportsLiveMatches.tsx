@@ -53,46 +53,6 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
     return sport?.name || sportId.charAt(0).toUpperCase() + sportId.slice(1).replace(/-/g, ' ');
   };
 
-  // Filter matches by search term
-  const filteredMatches = React.useMemo(() => {
-    let matches = filterMatchesWithImages(liveMatches);
-    
-    if (searchTerm.trim()) {
-      const lowercaseSearch = searchTerm.toLowerCase();
-      matches = matches.filter(match => {
-        return match.title.toLowerCase().includes(lowercaseSearch) || 
-          match.teams?.home?.name?.toLowerCase().includes(lowercaseSearch) ||
-          match.teams?.away?.name?.toLowerCase().includes(lowercaseSearch);
-      });
-    }
-    
-    return matches;
-  }, [liveMatches, searchTerm]);
-
-  // Group matches by sport
-  const matchesBySport = React.useMemo(() => {
-    const grouped: { [sportId: string]: Match[] } = {};
-    
-    filteredMatches.forEach(match => {
-      const sportId = match.sportId || match.category || 'unknown';
-      if (!grouped[sportId]) {
-        grouped[sportId] = [];
-      }
-      grouped[sportId].push(match);
-    });
-    
-    Object.keys(grouped).forEach(sportId => {
-      grouped[sportId].sort((a, b) => b.date - a.date);
-    });
-    
-    return grouped;
-  }, [filteredMatches]);
-
-  const getSportName = (sportId: string) => {
-    const sport = sports.find(s => s.id === sportId);
-    return sport?.name || sportId.charAt(0).toUpperCase() + sportId.slice(1).replace(/-/g, ' ');
-  };
-
   // Show skeleton while loading
   if (liveMatches.length === 0) {
     return (
@@ -125,7 +85,7 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
   const getSportPriority = (sportId: string): number => {
     const sportOrder: { [key: string]: number } = {
       'football': 1,
-      'basketball': 2, 
+      'basketball': 2,
       'american-football': 3,
       'baseball': 4,
       'motor-sports': 5,
@@ -136,19 +96,19 @@ const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm 
       'other': 10,
       'tennis': 12
     };
-    
+
     const normalizedSportId = sportId.toLowerCase();
-    
+
     if (sportOrder[normalizedSportId] !== undefined) {
       return sportOrder[normalizedSportId];
     }
-    
+
     for (const [sport, priority] of Object.entries(sportOrder)) {
       if (normalizedSportId.includes(sport) || sport.includes(normalizedSportId)) {
         return priority;
       }
     }
-    
+
     return 14.5;
   };
 
