@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Match as MatchType } from '@/types/sports';
-import { fetchMatch, fetchMatches, getBohoImageUrl } from '@/api/sportsApi';
+import { getBohoImageUrl } from '@/api/sportsApi';
 import { useStreamPlayer } from '@/hooks/useStreamPlayer';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { Helmet } from 'react-helmet-async';
 import { isTrendingMatch } from '@/utils/popularLeagues';
 import { generateMatchSlug } from '@/utils/matchSlug';
+import { useSportsData } from '@/contexts/SportsDataContext';
 
 import { teamLogoService } from '@/services/teamLogoService';
 import SEOMetaTags from '@/components/SEOMetaTags';
@@ -33,9 +34,8 @@ const Match = () => {
   const [match, setMatch] = useState<MatchType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [allMatches, setAllMatches] = useState<MatchType[]>([]);
-  const [recommendedMatches, setRecommendedMatches] = useState<MatchType[]>([]);
-  const [trendingMatches, setTrendingMatches] = useState<MatchType[]>([]);
+  // Use shared sports data context - instant from cache!
+  const { allMatches, loading: contextLoading } = useSportsData();
 
   // Track viewer count for this match
   useViewerTracking(matchId);
@@ -59,71 +59,73 @@ const Match = () => {
     handleRefreshStreams
   } = useStreamPlayer();
 
-  // Load match data and streams
+  // Find match from context cache INSTANTLY - no API call needed
+  const foundMatch = useMemo(() => {
+    if (!matchId || allMatches.length === 0) return null;
+    
+    return allMatches.find(m => {
+      if (m.id === matchId) return true;
+      const numericMatch = m.id.match(/-(\d+)$/);
+      if (numericMatch && numericMatch[1] === matchId) return true;
+      const anyNumeric = m.id.match(/(\d+)/);
+      if (anyNumeric && anyNumeric[1] === matchId) return true;
+      return false;
+    }) || null;
+  }, [matchId, allMatches]);
+
+  // Recommended matches - computed from cached context (instant)
+  const recommendedMatches = useMemo(() => {
+    if (!match || allMatches.length === 0) return [];
+    return allMatches
+      .filter(m => m.category === match.category && m.id !== matchId)
+      .slice(0, 6);
+  }, [match, allMatches, matchId]);
+
+  // Trending matches - computed from cached context (instant)
+  const trendingMatches = useMemo(() => {
+    if (!matchId || allMatches.length === 0) return [];
+    return allMatches
+      .filter(m => m.id !== matchId && isTrendingMatch(m.title).isTrending)
+      .slice(0, 6);
+  }, [matchId, allMatches]);
+
+  // Load match from context and setup streams - INSTANT
   useEffect(() => {
-    const loadMatchData = async () => {
+    const setupMatch = async () => {
       if (!sportId || !matchId) return;
+      
+      // Wait for context to have data
+      if (contextLoading || allMatches.length === 0) return;
 
-      try {
-        setIsLoading(true);
-        console.log(`Loading match: ${sportId}/${matchId}`);
-        
-        // Fetch the specific match
-        const matchData = await fetchMatch(sportId, matchId);
-        const enhancedMatch = teamLogoService.enhanceMatchWithLogos(matchData);
+      if (foundMatch) {
+        console.log(`⚡ Match found instantly from cache: ${foundMatch.title}`);
+        const enhancedMatch = teamLogoService.enhanceMatchWithLogos(foundMatch);
         setMatch(enhancedMatch);
+        setIsLoading(false);
 
-        // Use the enhanced stream player to load all streams
+        // Setup streams immediately (instant, no API calls)
         await handleMatchSelect(enhancedMatch);
 
-        // Auto-scroll to video player after data loads
+        // Auto-scroll to video player
         setTimeout(() => {
           const streamElement = document.querySelector('[data-stream-container]') || 
-                              document.querySelector('#stream-player') ||
-                              document.querySelector('.stream-player');
+                              document.querySelector('#stream-container');
           if (streamElement) {
-            streamElement.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'start' 
-            });
+            streamElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        }, 500);
-
-        // Load all matches for recommended sections
-        const allMatches = await fetchMatches(sportId);
-        const otherMatches = allMatches.filter(m => m.id !== matchId);
-        setAllMatches(allMatches);
-        
-        // Recommended matches (similar category)
-        const recommended = otherMatches
-          .filter(m => m.category === matchData.category && m.id !== matchId)
-          .slice(0, 6);
-        
-        // Trending matches (using trending logic)
-        const trending = otherMatches
-          .filter(m => isTrendingMatch(m.title).isTrending)
-          .slice(0, 6);
-
-        setRecommendedMatches(recommended);
-        setTrendingMatches(trending);
-        
-      } catch (error) {
-        console.error('Error loading match:', error);
+        }, 100);
+      } else {
+        console.warn(`Match ${matchId} not found in cache`);
         setMatch(null);
-        toast({
-          title: "Error loading match",
-          description: "Failed to load match details. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
         setIsLoading(false);
       }
     };
 
-    loadMatchData();
-  }, [sportId, matchId, toast, handleMatchSelect]);
+    setupMatch();
+  }, [sportId, matchId, foundMatch, contextLoading, allMatches.length, handleMatchSelect]);
 
-  if (isLoading) {
+  // Show loading only briefly while context initializes
+  if (isLoading && contextLoading) {
     return <LoadingState />;
   }
 
