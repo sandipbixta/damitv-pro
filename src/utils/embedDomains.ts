@@ -27,12 +27,13 @@ export const buildEmbedUrl = (
   streamNo: number = 1
 ): string => {
   if (domain.includes('damitv')) {
-    return `${domain}/?id=${id}&source=${source}`;
+    // Include streamNo in damitv format for multiple stream support
+    return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
   } else if (domain.includes('embedsports')) {
     return `${domain}/embed/${source}/${id}/${streamNo}`;
   }
-  // Default to damitv format
-  return `${domain}/?id=${id}&source=${source}`;
+  // Default to damitv format with streamNo
+  return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
 };
 
 // Get cached working domain from localStorage
