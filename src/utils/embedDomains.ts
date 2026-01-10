@@ -1,29 +1,16 @@
 // Embed Domain Manager - handles fallback between embed providers
-// Priority order:
-// 1) stream.streamapi.cc
-// 2) embed.damitv.pro
-// 3) embedsports.top
+// Primary: embed.damitv.pro | Fallback: embedsports.top (streamed.su's embed)
 
 export const EMBED_DOMAINS = {
   primary: {
-    url: 'https://stream.streamapi.cc',
-    format: 'streamapi', // /?id={id}&source={source}&streamNo={streamNo}
+    url: 'https://embed.damitv.pro',
+    format: 'damitv', // /?id={id}&source={source}
   },
   fallback: {
-    url: 'https://embed.damitv.pro',
-    format: 'damitv', // /?id={id}&source={source}&streamNo={streamNo}
-  },
-  tertiary: {
     url: 'https://embedsports.top',
     format: 'embedsports', // /embed/{source}/{id}/{streamNo}
-  },
-} as const;
-
-const DOMAIN_PRIORITY: string[] = [
-  EMBED_DOMAINS.primary.url,
-  EMBED_DOMAINS.fallback.url,
-  EMBED_DOMAINS.tertiary.url,
-];
+  }
+};
 
 // Cache key for localStorage
 const WORKING_DOMAIN_KEY = 'embed_working_domain';
@@ -39,22 +26,14 @@ export const buildEmbedUrl = (
   id: string,
   streamNo: number = 1
 ): string => {
-  if (domain.includes('streamapi')) {
-    // IMPORTANT: include streamNo so Stream 1/2/3 generate different URLs
-    // (also prevents "no reload" when users switch streams)
-    return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
-  }
-
   if (domain.includes('damitv')) {
+    // Include streamNo in damitv format for multiple stream support
     return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
-  }
-
-  if (domain.includes('embedsports')) {
+  } else if (domain.includes('embedsports')) {
     return `${domain}/embed/${source}/${id}/${streamNo}`;
   }
-
-  // Default to primary format
-  return `${EMBED_DOMAINS.primary.url}/?id=${id}&source=${source}&streamNo=${streamNo}`;
+  // Default to damitv format with streamNo
+  return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
 };
 
 // Get cached working domain from localStorage
@@ -62,9 +41,9 @@ const getCachedDomain = (): string | null => {
   try {
     const cached = localStorage.getItem(WORKING_DOMAIN_KEY);
     if (!cached) return null;
-
+    
     const { domain, timestamp } = JSON.parse(cached);
-
+    
     // Check if cache is still valid
     if (Date.now() - timestamp < DOMAIN_CACHE_TTL) {
       // Also check it's not in failed list
@@ -72,7 +51,7 @@ const getCachedDomain = (): string | null => {
         return domain;
       }
     }
-
+    
     // Clear expired cache
     localStorage.removeItem(WORKING_DOMAIN_KEY);
     return null;
@@ -84,13 +63,10 @@ const getCachedDomain = (): string | null => {
 // Save working domain to localStorage
 const cacheDomain = (domain: string): void => {
   try {
-    localStorage.setItem(
-      WORKING_DOMAIN_KEY,
-      JSON.stringify({
-        domain,
-        timestamp: Date.now(),
-      })
-    );
+    localStorage.setItem(WORKING_DOMAIN_KEY, JSON.stringify({
+      domain,
+      timestamp: Date.now()
+    }));
   } catch {
     // Ignore localStorage errors
   }
@@ -101,17 +77,17 @@ const testDomain = async (domain: string): Promise<boolean> => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
-
+    
     // Try to load a simple URL from the domain
     const testUrl = `${domain}/`;
-    await fetch(testUrl, {
+    const response = await fetch(testUrl, {
       method: 'HEAD',
       mode: 'no-cors', // Just check if reachable
-      signal: controller.signal,
+      signal: controller.signal
     });
-
+    
     clearTimeout(timeoutId);
-    // no-cors mode always returns opaque response, so "no throw" = reachable
+    // no-cors mode always returns opaque response, so check if we didn't throw
     return true;
   } catch {
     return false;
@@ -126,32 +102,39 @@ export const getWorkingEmbedDomain = async (): Promise<string> => {
     console.log(`⚡ Using cached embed domain: ${cached}`);
     return cached;
   }
-
-  // Test domains in priority order
-  for (const domain of DOMAIN_PRIORITY) {
-    if (failedDomains.has(domain)) continue;
-
-    const works = await testDomain(domain);
-    if (works) {
-      console.log(`✅ Embed domain working: ${domain}`);
-      cacheDomain(domain);
-      return domain;
+  
+  // Check if primary is marked as failed this session
+  if (!failedDomains.has(EMBED_DOMAINS.primary.url)) {
+    // Test primary domain
+    const primaryWorks = await testDomain(EMBED_DOMAINS.primary.url);
+    
+    if (primaryWorks) {
+      console.log(`✅ Primary embed domain working: ${EMBED_DOMAINS.primary.url}`);
+      cacheDomain(EMBED_DOMAINS.primary.url);
+      return EMBED_DOMAINS.primary.url;
     }
-
-    console.warn(`⚠️ Embed domain failed: ${domain}`);
-    failedDomains.add(domain);
+    
+    console.warn(`⚠️ Primary embed domain failed: ${EMBED_DOMAINS.primary.url}`);
+    failedDomains.add(EMBED_DOMAINS.primary.url);
   }
-
-  // If everything failed, return primary anyway
-  return EMBED_DOMAINS.primary.url;
+  
+  // Fall back to embedsports.top
+  console.log(`🔄 Falling back to: ${EMBED_DOMAINS.fallback.url}`);
+  cacheDomain(EMBED_DOMAINS.fallback.url);
+  return EMBED_DOMAINS.fallback.url;
 };
 
-// Synchronous version that returns cached or first non-failed domain (use for initial render)
+// Synchronous version that returns cached or primary (use for initial render)
 export const getEmbedDomainSync = (): string => {
   const cached = getCachedDomain();
   if (cached) return cached;
-
-  return DOMAIN_PRIORITY.find((d) => !failedDomains.has(d)) ?? EMBED_DOMAINS.primary.url;
+  
+  // If primary is marked failed, use fallback
+  if (failedDomains.has(EMBED_DOMAINS.primary.url)) {
+    return EMBED_DOMAINS.fallback.url;
+  }
+  
+  return EMBED_DOMAINS.primary.url;
 };
 
 // Mark a domain as failed (called when embed fails to load)
@@ -161,22 +144,14 @@ export const markDomainFailed = (domain: string): void => {
   localStorage.removeItem(WORKING_DOMAIN_KEY);
 };
 
-// Get fallback domain (next in priority order)
+// Get fallback domain (different from current)
 export const getFallbackDomain = (currentDomain: string): string | null => {
-  const idx = DOMAIN_PRIORITY.indexOf(currentDomain);
-
-  // Unknown domain: give first available
-  if (idx === -1) {
-    return DOMAIN_PRIORITY.find((d) => !failedDomains.has(d)) ?? null;
+  if (currentDomain.includes('damitv')) {
+    return EMBED_DOMAINS.fallback.url;
+  } else if (currentDomain.includes('embedsports')) {
+    return EMBED_DOMAINS.primary.url;
   }
-
-  // Next available domain after current
-  for (let i = idx + 1; i < DOMAIN_PRIORITY.length; i++) {
-    const candidate = DOMAIN_PRIORITY[i];
-    if (!failedDomains.has(candidate)) return candidate;
-  }
-
-  return null;
+  return EMBED_DOMAINS.fallback.url;
 };
 
 // Check if we have a fallback available
@@ -198,14 +173,11 @@ export const getDomainStatus = (): {
   failedDomains: string[];
   primaryAvailable: boolean;
   fallbackAvailable: boolean;
-  tertiaryAvailable: boolean;
 } => {
   return {
     currentDomain: getEmbedDomainSync(),
     failedDomains: Array.from(failedDomains),
     primaryAvailable: !failedDomains.has(EMBED_DOMAINS.primary.url),
-    fallbackAvailable: !failedDomains.has(EMBED_DOMAINS.fallback.url),
-    tertiaryAvailable: !failedDomains.has(EMBED_DOMAINS.tertiary.url),
+    fallbackAvailable: !failedDomains.has(EMBED_DOMAINS.fallback.url)
   };
 };
-
