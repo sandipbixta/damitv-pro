@@ -456,10 +456,58 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   }
 };
 
-// Number of stream variations to generate per source (stream 1, 2, 3, etc.)
-const STREAMS_PER_SOURCE = 3;
+// Fetch streams from dedicated API endpoint for a source
+const fetchStreamsFromApi = async (source: string, id: string): Promise<Stream[]> => {
+  const cacheKey = `boho-streams-${source}-${id}`;
+  const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
+  if (cached) return cached;
 
-// Fetch all streams for a match - generates multiple streamNo per source like other streaming sites
+  try {
+    console.log(`🔄 Fetching streams from API: /stream/${source}/${id}`);
+    const data = await fetchFromApi(`stream/${source}/${id}`);
+    
+    if (!data || !Array.isArray(data)) {
+      console.warn(`⚠️ No streams returned for ${source}/${id}`);
+      return [];
+    }
+
+    const streams: Stream[] = data.map((item: any, index: number) => {
+      const streamNo = item.streamNo || item.stream_no || index + 1;
+      const adFreeUrl = buildAdFreeEmbedUrl(id, source, streamNo);
+      
+      return {
+        id: id,
+        streamNo: streamNo,
+        language: item.language || item.lang || 'EN',
+        hd: item.hd !== false,
+        embedUrl: adFreeUrl,
+        source: source,
+        timestamp: Date.now(),
+        name: item.name || `Stream ${streamNo}`,
+        viewers: item.viewers || item.viewerCount || 0
+      } as Stream;
+    });
+
+    console.log(`✅ Fetched ${streams.length} streams from API for ${source}/${id}`);
+    setCachedData(cacheKey, streams);
+    return streams;
+  } catch (error) {
+    console.error(`❌ Error fetching streams for ${source}/${id}:`, error);
+    // Fallback: generate 3 default streams
+    return [1, 2, 3].map(streamNo => ({
+      id: id,
+      streamNo: streamNo,
+      language: 'EN',
+      hd: true,
+      embedUrl: buildAdFreeEmbedUrl(id, source, streamNo),
+      source: source,
+      timestamp: Date.now(),
+      name: `Stream ${streamNo}`
+    } as Stream));
+  }
+};
+
+// Fetch all streams for a match - fetches from API for each source
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -469,43 +517,41 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
   
-  console.log(`🎬 Building ad-free streams for: ${match.title}`);
+  console.log(`🎬 Fetching all streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // Generate multiple stream numbers per source (like other streaming sites)
   if (match.sources && match.sources.length > 0) {
-    let globalStreamIndex = 1;
-    
-    for (const src of match.sources) {
+    // Fetch streams for all sources in parallel
+    const streamPromises = match.sources.map(async (src) => {
       if (src.source && src.id) {
-        // Generate multiple streams per source (streamNo 1, 2, 3)
-        for (let streamNo = 1; streamNo <= STREAMS_PER_SOURCE; streamNo++) {
-          const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source, streamNo);
-          
-          allStreams.push({
-            id: src.id,
-            streamNo: streamNo,
-            language: 'EN',
-            hd: true,
-            embedUrl: adFreeUrl,
-            source: src.source,
-            timestamp: Date.now(),
-            name: `Stream ${globalStreamIndex}`
-          } as Stream);
-          
-          console.log(`✅ Stream ${globalStreamIndex}: ${src.source}/${src.id}/${streamNo} → ${adFreeUrl}`);
-          globalStreamIndex++;
+        const streams = await fetchStreamsFromApi(src.source, src.id);
+        if (streams.length > 0) {
+          sourcesWithStreams.add(src.source);
         }
-        
-        sourcesWithStreams.add(src.source);
+        return streams;
       }
-    }
+      return [];
+    });
+
+    const results = await Promise.all(streamPromises);
+    
+    // Flatten and renumber streams
+    let globalIndex = 1;
+    results.forEach(streams => {
+      streams.forEach(stream => {
+        allStreams.push({
+          ...stream,
+          name: `Stream ${globalIndex}`
+        });
+        globalIndex++;
+      });
+    });
   } else {
     console.warn(`⚠️ No sources available for match: ${match.title}`);
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`✅ Created ${allStreams.length} ad-free streams from ${match.sources?.length || 0} API sources`);
+  console.log(`✅ Total ${allStreams.length} streams from ${sourceNames.length} sources`);
 
   return {
     streams: allStreams,

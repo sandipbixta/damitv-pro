@@ -40,4 +40,6 @@ export interface Stream {
   embedUrl: string;
   source: string;
   timestamp?: number;  // Optional timestamp for freshness tracking
+  name?: string;       // Display name for the stream
+  viewers?: number;    // Current viewer count from source
 }
