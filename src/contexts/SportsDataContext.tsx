@@ -180,9 +180,9 @@ export const SportsDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   );
 };
 
-export const useSportsData = () => {
+export const useSportsData = (): SportsDataContextType => {
   const context = useContext(SportsDataContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useSportsData must be used within SportsDataProvider');
   }
   return context;
