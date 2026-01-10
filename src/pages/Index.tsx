@@ -8,7 +8,7 @@ import SportsNav from '../components/SportsNav';
 import MatchesList from '../components/MatchesList';
 import FeaturedMatches from '../components/FeaturedMatches';
 import AllSportsLiveMatches from '../components/AllSportsLiveMatches';
-import { useSportsData } from '../contexts/SportsDataContext';
+import { useSportsData } from '@/contexts/SportsDataContext';
 
 // Lazy load more components to reduce initial bundle
 const PopularMatches = React.lazy(() => import('../components/PopularMatches'));

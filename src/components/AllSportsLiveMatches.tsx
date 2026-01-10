@@ -2,7 +2,7 @@ import React from 'react';
 import { Match } from '../types/sports';
 import { filterMatchesWithImages } from '../utils/matchImageFilter';
 import SportCarouselRow from './SportCarouselRow';
-import { useSportsData } from '../contexts/SportsDataContext';
+import { useSportsData } from '@/contexts/SportsDataContext';
 
 interface AllSportsLiveMatchesProps {
   searchTerm?: string;
