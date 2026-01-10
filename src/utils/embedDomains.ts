@@ -1,12 +1,16 @@
 // Embed Domain Manager - handles fallback between embed providers
-// Primary: embed.damitv.pro | Fallback: embedsports.top (streamed.su's embed)
+// Primary: stream.streamapi.cc | Fallback: embed.damitv.pro
 
 export const EMBED_DOMAINS = {
   primary: {
-    url: 'https://embed.damitv.pro',
-    format: 'damitv', // /?id={id}&source={source}
+    url: 'https://stream.streamapi.cc',
+    format: 'streamapi', // /?id={id}&source={source}
   },
   fallback: {
+    url: 'https://embed.damitv.pro',
+    format: 'damitv', // /?id={id}&source={source}&streamNo={streamNo}
+  },
+  tertiary: {
     url: 'https://embedsports.top',
     format: 'embedsports', // /embed/{source}/{id}/{streamNo}
   }
@@ -26,14 +30,17 @@ export const buildEmbedUrl = (
   id: string,
   streamNo: number = 1
 ): string => {
-  if (domain.includes('damitv')) {
-    // Include streamNo in damitv format for multiple stream support
+  if (domain.includes('streamapi')) {
+    // streamapi format: ?id={id}&source={source}
+    return `${domain}/?id=${id}&source=${source}`;
+  } else if (domain.includes('damitv')) {
+    // damitv format with streamNo for multiple stream support
     return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
   } else if (domain.includes('embedsports')) {
     return `${domain}/embed/${source}/${id}/${streamNo}`;
   }
-  // Default to damitv format with streamNo
-  return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
+  // Default to streamapi format
+  return `${domain}/?id=${id}&source=${source}`;
 };
 
 // Get cached working domain from localStorage
