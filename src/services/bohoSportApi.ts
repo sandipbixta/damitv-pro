@@ -456,7 +456,10 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   }
 };
 
-// Fetch all streams for a match - uses ONLY real source IDs from API (no fabricated IDs)
+// Number of stream variations to generate per source (stream 1, 2, 3, etc.)
+const STREAMS_PER_SOURCE = 3;
+
+// Fetch all streams for a match - generates multiple streamNo per source like other streaming sites
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -469,28 +472,32 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   console.log(`🎬 Building ad-free streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // ONLY use real source IDs from the API - don't fabricate any
+  // Generate multiple stream numbers per source (like other streaming sites)
   if (match.sources && match.sources.length > 0) {
-    let streamNumber = 1;
+    let globalStreamIndex = 1;
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source);
-        
-        allStreams.push({
-          id: src.id,
-          streamNo: streamNumber,
-          language: 'EN',
-          hd: true,
-          embedUrl: adFreeUrl,
-          source: src.source,
-          timestamp: Date.now(),
-          name: `Stream ${streamNumber}`
-        } as Stream);
+        // Generate multiple streams per source (streamNo 1, 2, 3)
+        for (let streamNo = 1; streamNo <= STREAMS_PER_SOURCE; streamNo++) {
+          const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source, streamNo);
+          
+          allStreams.push({
+            id: src.id,
+            streamNo: streamNo,
+            language: 'EN',
+            hd: true,
+            embedUrl: adFreeUrl,
+            source: src.source,
+            timestamp: Date.now(),
+            name: `Stream ${globalStreamIndex}`
+          } as Stream);
+          
+          console.log(`✅ Stream ${globalStreamIndex}: ${src.source}/${src.id}/${streamNo} → ${adFreeUrl}`);
+          globalStreamIndex++;
+        }
         
         sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${adFreeUrl}`);
-        streamNumber++;
       }
     }
   } else {
@@ -498,7 +505,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`✅ Created ${allStreams.length} ad-free streams from real API sources`);
+  console.log(`✅ Created ${allStreams.length} ad-free streams from ${match.sources?.length || 0} API sources`);
 
   return {
     streams: allStreams,
