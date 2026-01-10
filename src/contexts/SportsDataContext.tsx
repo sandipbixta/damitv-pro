@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Sport, Match } from '../types/sports';
-import { fetchSports, fetchAllMatches } from '../api/sportsApi';
+import { fetchSports, fetchAllMatches, fetchMatches } from '../api/sportsApi';
 import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
-import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 
 interface SportsDataContextType {
   sports: Sport[];
@@ -19,7 +18,7 @@ const SportsDataContext = createContext<SportsDataContextType | undefined>(undef
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 const CACHE_KEY = 'damitv_matches_cache';
 const SPORTS_CACHE_KEY = 'damitv_sports_cache';
-const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes localStorage cache
+const CACHE_EXPIRY = 60 * 60 * 1000; // 60 minutes localStorage cache
 
 // Load cached data from localStorage
 const loadFromCache = () => {
@@ -53,55 +52,78 @@ const saveToCache = (matches: Match[], sports: Sport[]) => {
 export const SportsDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Load cached data immediately
   const cachedData = useMemo(() => loadFromCache(), []);
-  
+
   const [sports, setSports] = useState<Sport[]>(cachedData?.sports || []);
   const [allMatches, setAllMatches] = useState<Match[]>(cachedData?.matches || []);
   const [loading, setLoading] = useState(!cachedData);
   const [lastFetch, setLastFetch] = useState(cachedData ? Date.now() : 0);
 
-  // Fetch all data once
-  const fetchData = useCallback(async (force = false) => {
-    // Skip if data was fetched recently (unless forced)
-    if (!force && Date.now() - lastFetch < REFRESH_INTERVAL && allMatches.length > 0) {
-      console.log('📦 Using cached context data');
-      return;
-    }
+  // Fetch all data once (progressive: football first, then full refresh)
+  const fetchData = useCallback(
+    async (force = false) => {
+      // Skip if data was fetched recently (unless forced)
+      if (!force && Date.now() - lastFetch < REFRESH_INTERVAL && allMatches.length > 0) {
+        console.log('📦 Using cached context data');
+        return;
+      }
 
-    try {
-      console.log('🔄 SportsDataContext: Fetching all data...');
-      
-      const [sportsData, matchesData] = await Promise.all([
-        fetchSports(),
-        fetchAllMatches()
-      ]);
+      const hasAnyData = allMatches.length > 0 || sports.length > 0;
+      if (!hasAnyData) setLoading(true);
 
-      // Sort sports with football first
-      const sortedSports = sportsData.sort((a, b) => {
-        if (a.name.toLowerCase() === 'football') return -1;
-        if (b.name.toLowerCase() === 'football') return 1;
-        return a.name.localeCompare(b.name);
-      });
+      try {
+        console.log('🔄 SportsDataContext: Fetching sports + initial football...');
 
-      setSports(sortedSports);
+        const [sportsData, initialFootballMatches] = await Promise.all([
+          fetchSports(),
+          fetchMatches('football')
+        ]);
 
-      // Process matches
-      const matchesWithSources = matchesData.filter(m => m.sources && m.sources.length > 0);
-      const cleanMatches = filterCleanMatches(matchesWithSources);
-      const consolidatedMatches = consolidateMatches(cleanMatches);
+        // Sort sports with football first
+        const sortedSports = sportsData.sort((a, b) => {
+          if (a.name.toLowerCase() === 'football') return -1;
+          if (b.name.toLowerCase() === 'football') return 1;
+          return a.name.localeCompare(b.name);
+        });
 
-      setAllMatches(consolidatedMatches);
-      setLastFetch(Date.now());
-      
-      // Save to localStorage for instant load next time
-      saveToCache(consolidatedMatches, sortedSports);
-      
-      console.log(`✅ SportsDataContext: Loaded ${sortedSports.length} sports, ${consolidatedMatches.length} matches`);
-    } catch (error) {
-      console.error('❌ SportsDataContext fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [lastFetch, allMatches.length]);
+        setSports(sortedSports);
+
+        // Show football matches ASAP for perceived performance (only if we don't already have data)
+        if (allMatches.length === 0 && Array.isArray(initialFootballMatches) && initialFootballMatches.length > 0) {
+          const initialMatchesWithSources = initialFootballMatches.filter(m => m.sources && m.sources.length > 0);
+          const initialCleanMatches = filterCleanMatches(initialMatchesWithSources);
+          const initialConsolidatedMatches = consolidateMatches(initialCleanMatches);
+          setAllMatches(initialConsolidatedMatches);
+          saveToCache(initialConsolidatedMatches, sortedSports);
+        }
+
+        // We have something to render now
+        setLoading(false);
+
+        // Full refresh (all sports) - updates in the background
+        console.log('🔄 SportsDataContext: Fetching all matches (background)...');
+        const matchesData = await fetchAllMatches();
+
+        const matchesWithSources = matchesData.filter(m => m.sources && m.sources.length > 0);
+        const cleanMatches = filterCleanMatches(matchesWithSources);
+        const consolidatedMatches = consolidateMatches(cleanMatches);
+
+        setAllMatches(consolidatedMatches);
+        setLastFetch(Date.now());
+
+        // Save to localStorage for instant load next time
+        saveToCache(consolidatedMatches, sortedSports);
+
+        console.log(
+          `✅ SportsDataContext: Loaded ${sortedSports.length} sports, ${consolidatedMatches.length} matches`
+        );
+      } catch (error) {
+        console.error('❌ SportsDataContext fetch error:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [lastFetch, allMatches.length, sports.length]
+  );
 
   // Initial fetch
   useEffect(() => {
