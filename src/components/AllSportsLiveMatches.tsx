@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Match } from '../types/sports';
-import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 import { filterMatchesWithImages } from '../utils/matchImageFilter';
 import SportCarouselRow from './SportCarouselRow';
 import { useSportsData } from '../contexts/SportsDataContext';
@@ -10,61 +9,49 @@ interface AllSportsLiveMatchesProps {
 }
 
 const AllSportsLiveMatches: React.FC<AllSportsLiveMatchesProps> = ({ searchTerm = '' }) => {
-  const { sports, liveMatches, allMatches } = useSportsData();
-  const [mostViewedMatches, setMostViewedMatches] = useState<Match[]>([]);
+  const { sports, liveMatches } = useSportsData();
 
-  // Enrich matches with viewer counts once when allMatches changes
-  useEffect(() => {
-    const enrichWithViewers = async () => {
-      if (allMatches.length === 0) return;
-      
-      try {
-        const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
-        
-        const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
-          isMatchLive(m) && 
-          (m.viewerCount || 0) > 0
+  // Filter matches by search term
+  const filteredMatches = React.useMemo(() => {
+    let matches = filterMatchesWithImages(liveMatches);
+
+    if (searchTerm.trim()) {
+      const lowercaseSearch = searchTerm.toLowerCase();
+      matches = matches.filter(match => {
+        return (
+          match.title.toLowerCase().includes(lowercaseSearch) ||
+          match.teams?.home?.name?.toLowerCase().includes(lowercaseSearch) ||
+          match.teams?.away?.name?.toLowerCase().includes(lowercaseSearch)
         );
-        
-        const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
-          (b.viewerCount || 0) - (a.viewerCount || 0)
-        );
-        
-        setMostViewedMatches(sortedByViewers.slice(0, 12));
-      } catch (error) {
-        console.error('Error enriching viewer counts:', error);
+      });
+    }
+
+    return matches;
+  }, [liveMatches, searchTerm]);
+
+  // Group matches by sport
+  const matchesBySport = React.useMemo(() => {
+    const grouped: { [sportId: string]: Match[] } = {};
+
+    filteredMatches.forEach(match => {
+      const sportId = match.sportId || match.category || 'unknown';
+      if (!grouped[sportId]) {
+        grouped[sportId] = [];
       }
-    };
+      grouped[sportId].push(match);
+    });
 
-    enrichWithViewers();
-  }, [allMatches]);
+    Object.keys(grouped).forEach(sportId => {
+      grouped[sportId].sort((a, b) => b.date - a.date);
+    });
 
-  // Refresh viewer counts every 2 minutes
-  useEffect(() => {
-    const refreshViewerCounts = async () => {
-      if (allMatches.length === 0) return;
-      
-      try {
-        const enrichedAllMatches = await enrichMatchesWithViewers(allMatches);
-        
-        const liveMatchesWithViewers = enrichedAllMatches.filter(m => 
-          isMatchLive(m) && 
-          (m.viewerCount || 0) > 0
-        );
-        
-        const sortedByViewers = liveMatchesWithViewers.sort((a, b) => 
-          (b.viewerCount || 0) - (a.viewerCount || 0)
-        );
-        
-        setMostViewedMatches(sortedByViewers.slice(0, 12));
-      } catch (error) {
-        console.error('Error refreshing viewer counts:', error);
-      }
-    };
+    return grouped;
+  }, [filteredMatches]);
 
-    const interval = setInterval(refreshViewerCounts, 120000);
-    return () => clearInterval(interval);
-  }, [allMatches]);
+  const getSportName = (sportId: string) => {
+    const sport = sports.find(s => s.id === sportId);
+    return sport?.name || sportId.charAt(0).toUpperCase() + sportId.slice(1).replace(/-/g, ' ');
+  };
 
   // Filter matches by search term
   const filteredMatches = React.useMemo(() => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Match } from '@/types/sports';
 import { fetchMatchViewerCount, formatViewerCount, isMatchLive } from '@/services/viewerCountService';
@@ -19,11 +19,11 @@ const useCounterAnimation = (targetValue: number, duration: number = 500) => {
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Ease out animation
       const easeOut = 1 - Math.pow(1 - progress, 3);
       const currentValue = Math.round(startValue + difference * easeOut);
-      
+
       setDisplayValue(currentValue);
 
       if (progress < 1) {
@@ -38,7 +38,7 @@ const useCounterAnimation = (targetValue: number, duration: number = 500) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [targetValue, duration]);
+  }, [targetValue, duration, displayValue]);
 
   return displayValue;
 };
@@ -58,13 +58,19 @@ export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
   rounded = false,
   className
 }) => {
-  const [viewerCount, setViewerCount] = useState<number | null>(null);
-  const [previousCount, setPreviousCount] = useState<number | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [viewerCount, setViewerCount] = useState<number | null>(() => {
+    const initial = match.viewerCount;
+    return typeof initial === 'number' && initial > 0 ? initial : null;
+  });
   const [trend, setTrend] = useState<'up' | 'down' | 'neutral'>('neutral');
-  const updateIntervalRef = useRef<NodeJS.Timeout>();
-  const retryCountRef = useRef(0);
-  
+  const [isVisible, setIsVisible] = useState(false);
+  const [inView, setInView] = useState(false);
+
+  const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const idleHandleRef = useRef<number | null>(null);
+  const sentinelRef = useRef<HTMLSpanElement | null>(null);
+  const previousCountRef = useRef<number | null>(null);
+
   // Animated counter value
   const animatedCount = useCounterAnimation(viewerCount || 0, 500);
 
@@ -80,85 +86,122 @@ export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
     lg: 'w-5 h-5'
   };
 
-  // Fetch viewer count with retry mechanism
-  const fetchCount = async () => {
+  // Reset when match changes
+  useEffect(() => {
+    const initial = match.viewerCount;
+    const nextInitial = typeof initial === 'number' && initial > 0 ? initial : null;
+
+    setViewerCount(nextInitial);
+    previousCountRef.current = nextInitial;
+    setTrend('neutral');
+    setIsVisible(!!nextInitial);
+    setInView(false);
+  }, [match.id]);
+
+  // Observe viewport: only fetch counts for cards that are actually on-screen.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || inView) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some(e => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { root: null, rootMargin: '200px', threshold: 0.01 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [inView]);
+
+  const fetchCount = useCallback(async () => {
     try {
       const count = await fetchMatchViewerCount(match);
-      
-      if (count !== null) {
-        // Update trend if showing trends
-        if (showTrend && previousCount !== null) {
-          if (count > previousCount) {
-            setTrend('up');
-          } else if (count < previousCount) {
-            setTrend('down');
-          } else {
-            setTrend('neutral');
-          }
-        }
-        
-        setPreviousCount(viewerCount);
-        setViewerCount(count);
-        setIsVisible(true);
-        retryCountRef.current = 0; // Reset retry count on success
-      } else {
-        // Retry logic with exponential backoff
-        if (retryCountRef.current < 3) {
-          retryCountRef.current++;
-          const backoffDelay = Math.pow(2, retryCountRef.current) * 1000;
-          setTimeout(fetchCount, backoffDelay);
-        }
+
+      if (count === null || count <= 0) {
+        // No valid data: don't spam retries; keep whatever we already have.
+        return;
       }
-    } catch (error) {
-      console.error('Error fetching viewer count:', error);
+
+      const prev = previousCountRef.current;
+
+      if (showTrend && typeof prev === 'number') {
+        if (count > prev) setTrend('up');
+        else if (count < prev) setTrend('down');
+        else setTrend('neutral');
+      }
+
+      previousCountRef.current = count;
+      setViewerCount(count);
+      setIsVisible(true);
+    } catch {
+      // silent
     }
-  };
+  }, [match, showTrend]);
 
   useEffect(() => {
+    if (!inView) return;
+
     // Only fetch for live matches
     if (!isMatchLive(match)) {
       setIsVisible(false);
       return;
     }
 
-    // Initial fetch
-    fetchCount();
+    const start = () => {
+      fetchCount();
+      updateIntervalRef.current = setInterval(fetchCount, 30000);
+    };
 
-    // Update every 30 seconds for live matches
-    updateIntervalRef.current = setInterval(fetchCount, 30000);
+    // Defer initial fetch so match cards render first (improves perceived performance)
+    const ric = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout: number }) => number)
+      | undefined;
+
+    if (ric) {
+      idleHandleRef.current = ric(start, { timeout: 1500 });
+    } else {
+      idleHandleRef.current = window.setTimeout(start, 800) as unknown as number;
+    }
 
     return () => {
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+      if (idleHandleRef.current) {
+        if (ric) {
+          (window as any).cancelIdleCallback?.(idleHandleRef.current);
+        } else {
+          clearTimeout(idleHandleRef.current);
+        }
+        idleHandleRef.current = null;
       }
     };
-  }, [match.id]);
-
-  // Fade-in animation
-  useEffect(() => {
-    if (viewerCount !== null) {
-      setTimeout(() => setIsVisible(true), 100);
-    }
-  }, [viewerCount]);
-
-  // Don't show if no valid count or not live
-  if (viewerCount === null || viewerCount === 0 || !isVisible) {
-    return null;
-  }
+  }, [inView, match, fetchCount]);
 
   const getTrendIcon = () => {
     if (!showTrend || trend === 'neutral') return null;
-    
+
     const TrendIcon = trend === 'up' ? TrendingUp : TrendingDown;
     const trendColor = trend === 'up' ? 'text-green-500' : 'text-red-500';
-    
+
     return <TrendIcon className={cn(iconSizes[size], trendColor)} />;
   };
 
+  // Always render a tiny sentinel so we can lazy-fetch when it scrolls into view.
+  if (viewerCount === null || viewerCount === 0 || !isVisible) {
+    return <span ref={sentinelRef} className="inline-block w-px h-px" aria-hidden="true" />;
+  }
+
   return (
-    <div 
+    <span
+      ref={sentinelRef}
       className={cn(
-        'flex items-center font-semibold text-foreground transition-all duration-500',
+        'inline-flex items-center font-semibold text-foreground transition-all duration-500',
         sizeClasses[size],
         isVisible ? 'animate-fade-in opacity-100' : 'opacity-0',
         className
@@ -169,6 +212,6 @@ export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
       <Users className={cn(iconSizes[size], 'text-sports-primary animate-pulse')} />
       <span className="transition-all duration-500">{formatViewerCount(animatedCount, rounded)}</span>
       {getTrendIcon()}
-    </div>
+    </span>
   );
 };

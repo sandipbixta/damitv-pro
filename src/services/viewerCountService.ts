@@ -1,7 +1,13 @@
 import { Match } from '@/types/sports';
 
 // Track which endpoints work (smart selection)
-let workingEndpoint: string | null = null;
+// We keep a structured config (not string templates) to avoid invalid cached URLs.
+type WorkingEndpoint =
+  | { kind: 'direct'; baseUrl: string }
+  | { kind: 'proxy'; proxyBase: string; baseUrl: string }
+  | null;
+
+let workingEndpoint: WorkingEndpoint = null;
 let lastEndpointCheck = 0;
 const ENDPOINT_CHECK_INTERVAL = 60 * 1000; // Re-check every 60 seconds
 
@@ -32,10 +38,10 @@ const FETCH_TIMEOUT = 2000;
 const fetchWithTimeout = async (url: string, timeout: number): Promise<Response> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
+
   try {
     const response = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
+      headers: { Accept: 'application/json' },
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -46,14 +52,23 @@ const fetchWithTimeout = async (url: string, timeout: number): Promise<Response>
   }
 };
 
+const buildWorkingUrl = (endpoint: string, cfg: Exclude<WorkingEndpoint, null>) => {
+  if (cfg.kind === 'direct') {
+    return `${cfg.baseUrl}/${endpoint}`;
+  }
+  const targetUrl = `${cfg.baseUrl}/${endpoint}`;
+  return `${cfg.proxyBase}${encodeURIComponent(targetUrl)}`;
+};
+
 // Direct API fetch with smart endpoint selection and fast timeout
 const fetchFromApi = async (endpoint: string): Promise<any> => {
   const now = Date.now();
-  
+
   // If we have a working endpoint and it's recent, use it directly
-  if (workingEndpoint && (now - lastEndpointCheck) < ENDPOINT_CHECK_INTERVAL) {
+  if (workingEndpoint && now - lastEndpointCheck < ENDPOINT_CHECK_INTERVAL) {
     try {
-      const response = await fetchWithTimeout(workingEndpoint.replace('{endpoint}', endpoint), FETCH_TIMEOUT);
+      const url = buildWorkingUrl(endpoint, workingEndpoint);
+      const response = await fetchWithTimeout(url, FETCH_TIMEOUT);
       if (response.ok) {
         return await response.json();
       }
@@ -68,10 +83,10 @@ const fetchFromApi = async (endpoint: string): Promise<any> => {
     try {
       const url = `${baseUrl}/${endpoint}`;
       const response = await fetchWithTimeout(url, FETCH_TIMEOUT);
-      
+
       if (response.ok) {
         // Remember this endpoint works
-        workingEndpoint = `${baseUrl}/{endpoint}`;
+        workingEndpoint = { kind: 'direct', baseUrl };
         lastEndpointCheck = now;
         return await response.json();
       }
@@ -81,16 +96,16 @@ const fetchFromApi = async (endpoint: string): Promise<any> => {
   }
 
   // Try ONE CORS proxy only (fastest one)
-  const proxy = CORS_PROXIES[0];
+  const proxyBase = CORS_PROXIES[0];
   for (const baseUrl of API_BASES) {
     try {
       const targetUrl = `${baseUrl}/${endpoint}`;
-      const proxyUrl = `${proxy}${encodeURIComponent(targetUrl)}`;
-      
+      const proxyUrl = `${proxyBase}${encodeURIComponent(targetUrl)}`;
+
       const response = await fetchWithTimeout(proxyUrl, FETCH_TIMEOUT);
-      
+
       if (response.ok) {
-        workingEndpoint = `${proxy}${encodeURIComponent(baseUrl + '/{endpoint}')}`.replace('{endpoint}', '');
+        workingEndpoint = { kind: 'proxy', proxyBase, baseUrl };
         lastEndpointCheck = now;
         return await response.json();
       }
