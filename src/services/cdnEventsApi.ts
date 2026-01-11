@@ -35,13 +35,13 @@ interface CDNEventApiResponse {
   sources?: Array<{ source: string; id: string; url?: string }>;
 }
 
-// API Endpoints - Using the correct VIP path structure
+// API Endpoints - Using the correct VIP path structure with trailing slashes
 const CDN_EVENTS_ENDPOINTS = [
-  'https://api.cdn-live.tv/api/v1/vip/damitv/events/sports',
-  'https://api.cdn-live.tv/api/v1/vip/damitv/events/football',
-  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba',
-  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl',
-  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/sports/',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/football/',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba/',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl/',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl/',
 ];
 
 // CORS proxy fallbacks - try more options
@@ -227,17 +227,17 @@ class CDNEventsApiService {
 
   async fetchEventsBySport(sport: string): Promise<CDNEvent[]> {
     const sportEndpoints: Record<string, string> = {
-      'football': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/football',
-      'soccer': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/football',
-      'nba': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba',
-      'basketball': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba',
-      'nfl': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl',
-      'american-football': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl',
-      'nhl': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl',
-      'hockey': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl'
+      'football': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/football/',
+      'soccer': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/football/',
+      'nba': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba/',
+      'basketball': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba/',
+      'nfl': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl/',
+      'american-football': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl/',
+      'nhl': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl/',
+      'hockey': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl/'
     };
 
-    const url = sportEndpoints[sport.toLowerCase()] || `https://api.cdn-live.tv/api/v1/vip/damitv/events/${sport}`;
+    const url = sportEndpoints[sport.toLowerCase()] || `https://api.cdn-live.tv/api/v1/vip/damitv/events/${sport}/`;
     
     try {
       const data = await fetchWithCorsProxy(url);
