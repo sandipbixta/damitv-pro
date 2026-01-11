@@ -29,6 +29,7 @@ import LatestHighlights from '../components/LatestHighlights';
 import MarcaBlog from '../components/MarcaBlog';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 import CDNEventsCarousel from '../components/CDNEventsCarousel';
+import LiveMatchesCarousel from '../components/LiveMatchesCarousel';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -192,7 +193,10 @@ const Index = () => {
         {/* SEO H1 - Hidden but present for SEO */}
         <h1 className="sr-only">Top 10 Sports Streaming Site Alternatives - Free HD Streams</h1>
 
-        {/* CDN Events Carousel - Above Hero */}
+        {/* Live Matches with CDN Channels - From TheSportsDB */}
+        <LiveMatchesCarousel />
+
+        {/* CDN TV Channels Carousel */}
         <CDNEventsCarousel />
 
         {/* Custom Match Cards - Above Hero Carousel */}
