@@ -124,23 +124,28 @@ const LiveMatchCard: React.FC<{ match: LiveMatchWithChannels }> = ({ match }) =>
             <span className="capitalize">{match.sport}</span>
           </div>
 
-          {/* Available Channels */}
-          {match.channels.length > 0 && (
+          {/* Available Channels - Show actual broadcasters */}
+          {match.channels.length > 0 ? (
             <div className="flex items-center gap-1 flex-wrap">
-              <Tv className="w-3 h-3 text-muted-foreground" />
-              {match.channels.slice(0, 3).map((channel, idx) => (
+              <Tv className="w-3 h-3 text-primary" />
+              {match.channels.slice(0, 3).map((channel) => (
                 <span 
                   key={channel.id}
-                  className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground"
+                  className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium"
                 >
-                  {channel.name.length > 12 ? channel.name.slice(0, 12) + '...' : channel.name}
+                  {channel.name.length > 15 ? channel.name.slice(0, 15) + '...' : channel.name}
                 </span>
               ))}
               {match.channels.length > 3 && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-primary">
                   +{match.channels.length - 3}
                 </span>
               )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Tv className="w-3 h-3" />
+              <span>No broadcast info</span>
             </div>
           )}
         </div>

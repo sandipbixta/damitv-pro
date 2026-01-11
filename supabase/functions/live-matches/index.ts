@@ -40,35 +40,51 @@ interface CDNChannel {
   image: string | null;
 }
 
-// Sport to channel keyword mapping for intelligent matching
-const SPORT_CHANNEL_KEYWORDS: Record<string, string[]> = {
-  'soccer': ['sport', 'football', 'espn', 'sky', 'bein', 'dazn', 'premier', 'la liga', 'serie', 'bundesliga', 'fox', 'bt sport', 'supersport'],
-  'football': ['sport', 'football', 'espn', 'sky', 'bein', 'dazn', 'premier', 'la liga', 'serie', 'bundesliga', 'fox', 'bt sport', 'supersport'],
-  'basketball': ['sport', 'espn', 'nba', 'tnt', 'sky', 'bein', 'fox'],
-  'american football': ['espn', 'nfl', 'fox', 'cbs', 'nbc', 'abc'],
-  'baseball': ['espn', 'mlb', 'fox', 'tbs'],
-  'ice hockey': ['espn', 'nhl', 'tnt', 'nbc'],
-  'tennis': ['sport', 'tennis', 'espn', 'eurosport', 'sky'],
-  'cricket': ['sport', 'cricket', 'sky', 'star', 'willow', 'supersport'],
-  'rugby': ['sport', 'rugby', 'sky', 'bt sport', 'supersport'],
-  'motorsport': ['sport', 'f1', 'sky', 'espn', 'fox'],
-  'boxing': ['sport', 'espn', 'showtime', 'dazn', 'sky', 'bt sport'],
-  'mma': ['sport', 'espn', 'bt sport', 'ufc'],
+// Common broadcaster name variations to help matching
+const BROADCASTER_ALIASES: Record<string, string[]> = {
+  'sky sports': ['sky sport', 'skysports', 'sky'],
+  'bt sport': ['btsport', 'bt sports', 'tnt sports'],
+  'bein sports': ['bein sport', 'beinsports', 'bein'],
+  'espn': ['espn+', 'espn2', 'espn3'],
+  'fox sports': ['fox sport', 'foxsports', 'fs1', 'fs2'],
+  'dazn': ['dazn1', 'dazn2'],
+  'paramount+': ['paramount', 'cbs sports'],
+  'peacock': ['nbc sports', 'nbcsn'],
+  'tnt sports': ['tnt', 'tbs'],
+  'supersport': ['super sport'],
+  'star sports': ['star sport', 'hotstar'],
+  'sony': ['sony ten', 'sony six', 'sony liv'],
+  'eurosport': ['euro sport'],
 };
 
-// Country to channel country code mapping
-const LEAGUE_COUNTRY_HINTS: Record<string, string[]> = {
-  'english premier league': ['gb', 'uk', 'us'],
-  'la liga': ['es', 'us'],
-  'serie a': ['it', 'us'],
-  'bundesliga': ['de', 'us'],
-  'ligue 1': ['fr', 'us'],
-  'champions league': ['gb', 'uk', 'us', 'es', 'de', 'fr', 'it'],
-  'europa league': ['gb', 'uk', 'us', 'es', 'de', 'fr', 'it'],
-  'nba': ['us'],
-  'nfl': ['us'],
-  'mlb': ['us'],
-  'nhl': ['us', 'ca'],
+// League to typical broadcasters mapping (for when API doesn't provide broadcaster data)
+const LEAGUE_BROADCASTERS: Record<string, string[]> = {
+  'english premier league': ['sky sports', 'tnt sports', 'peacock', 'usa network'],
+  'premier league': ['sky sports', 'tnt sports', 'peacock', 'usa network'],
+  'la liga': ['espn', 'espn+', 'movistar'],
+  'serie a': ['paramount+', 'cbs sports', 'sky sport'],
+  'bundesliga': ['espn+', 'sky sport', 'dazn'],
+  'ligue 1': ['bein sports', 'canal+'],
+  'champions league': ['paramount+', 'tnt sports', 'movistar'],
+  'europa league': ['paramount+', 'tnt sports'],
+  'nba': ['espn', 'tnt', 'nba tv'],
+  'nfl': ['espn', 'fox', 'cbs', 'nbc', 'nfl network'],
+  'mlb': ['espn', 'fox', 'tbs', 'mlb network'],
+  'nhl': ['espn', 'tnt', 'nhl network'],
+  'mls': ['apple tv', 'espn', 'fox'],
+  'saudi pro league': ['ssc', 'shahid'],
+  'turkish super lig': ['bein sports', 'trt spor'],
+  'eredivisie': ['espn', 'ziggo sport'],
+  'primeira liga': ['sport tv', 'eleven sports'],
+  'scottish premiership': ['sky sports', 'paramount+'],
+  'fa cup': ['espn', 'espn+'],
+  'copa del rey': ['espn', 'espn+'],
+  'coppa italia': ['paramount+', 'cbs sports'],
+  'dfb pokal': ['espn+'],
+  'afc champions league': ['paramount+'],
+  'copa libertadores': ['bein sports', 'paramount+'],
+  'afcon': ['bein sports', 'supersport', 'canal+'],
+  'africa cup': ['bein sports', 'supersport', 'canal+'],
 };
 
 // Fetch live scores from TheSportsDB
@@ -169,89 +185,97 @@ async function fetchCDNChannels(): Promise<CDNChannel[]> {
   }
 }
 
-// Match live events to appropriate channels
+// Parse TV broadcasters string into individual channels
+function parseBroadcasters(tvStation: string | null): string[] {
+  if (!tvStation) return [];
+  
+  // Split by common delimiters: comma, slash, pipe, "and", parentheses
+  const broadcasters = tvStation
+    .split(/[,\/\|]|\s+and\s+|\s*\(\s*|\s*\)\s*/i)
+    .map(b => b.trim().toLowerCase())
+    .filter(b => b.length > 2);
+  
+  return broadcasters;
+}
+
+// Find matching CDN channels for a broadcaster name
+function findChannelsForBroadcaster(
+  broadcaster: string,
+  channels: CDNChannel[]
+): CDNChannel[] {
+  const broadcasterLower = broadcaster.toLowerCase();
+  const matchedChannels: CDNChannel[] = [];
+  
+  // Get aliases for this broadcaster
+  let searchTerms = [broadcasterLower];
+  for (const [main, aliases] of Object.entries(BROADCASTER_ALIASES)) {
+    if (broadcasterLower.includes(main) || aliases.some(a => broadcasterLower.includes(a))) {
+      searchTerms = [main, ...aliases, broadcasterLower];
+      break;
+    }
+  }
+  
+  // Find channels matching any search term
+  for (const channel of channels) {
+    const channelName = channel.name.toLowerCase();
+    
+    for (const term of searchTerms) {
+      if (channelName.includes(term) || term.includes(channelName.split(' ')[0])) {
+        matchedChannels.push(channel);
+        break;
+      }
+    }
+  }
+  
+  return matchedChannels;
+}
+
+// Match live events to appropriate channels based on actual broadcaster data
 function matchChannelsToEvent(
   event: any,
   channels: CDNChannel[]
 ): MatchChannel[] {
-  const sport = event.sport?.toLowerCase() || 'soccer';
-  const league = event.league?.toLowerCase() || '';
-  const tvChannel = event.tvChannel?.toLowerCase() || '';
+  const tvStation = event.tvChannel || '';
+  const league = (event.league || '').toLowerCase();
+  let broadcasters = parseBroadcasters(tvStation);
   
-  // Get keywords for this sport
-  const sportKeywords = SPORT_CHANNEL_KEYWORDS[sport] || SPORT_CHANNEL_KEYWORDS['soccer'];
-  
-  // Get country hints for this league
-  let countryHints: string[] = [];
-  for (const [leagueKey, countries] of Object.entries(LEAGUE_COUNTRY_HINTS)) {
-    if (league.includes(leagueKey)) {
-      countryHints = countries;
-      break;
-    }
-  }
-
-  // Score channels based on relevance
-  const scoredChannels = channels.map(channel => {
-    let score = 0;
-    const channelName = channel.name.toLowerCase();
-    const channelCode = channel.code.toLowerCase();
-    
-    // Exact TV channel match (highest priority)
-    if (tvChannel && channelName.includes(tvChannel)) {
-      score += 100;
-    }
-    
-    // Sport keyword matches
-    for (const keyword of sportKeywords) {
-      if (channelName.includes(keyword)) {
-        score += 10;
+  // If no broadcaster data from API, use league-based mapping
+  if (broadcasters.length === 0) {
+    for (const [leagueKey, leagueBroadcasters] of Object.entries(LEAGUE_BROADCASTERS)) {
+      if (league.includes(leagueKey)) {
+        broadcasters = leagueBroadcasters;
+        break;
       }
     }
-    
-    // Country code match
-    if (countryHints.includes(channelCode)) {
-      score += 5;
-    }
-    
-    // Boost for "sport" channels
-    if (channelName.includes('sport')) {
-      score += 3;
-    }
-    
-    return { channel, score };
-  });
-
-  // Sort by score and take top matches
-  const topChannels = scoredChannels
-    .filter(sc => sc.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6)
-    .map(sc => ({
-      id: `cdn-${sc.channel.code}-${sc.channel.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-      name: sc.channel.name,
-      country: sc.channel.code.toUpperCase(),
-      embedUrl: sc.channel.url,
-      logo: sc.channel.image,
-    }));
-
-  // If no matches found, return popular sports channels
-  if (topChannels.length === 0) {
-    const fallbackKeywords = ['sport', 'espn', 'sky', 'bein', 'fox'];
-    const fallbackChannels = channels
-      .filter(ch => fallbackKeywords.some(kw => ch.name.toLowerCase().includes(kw)))
-      .slice(0, 4)
-      .map(ch => ({
-        id: `cdn-${ch.code}-${ch.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-        name: ch.name,
-        country: ch.code.toUpperCase(),
-        embedUrl: ch.url,
-        logo: ch.image,
-      }));
-    
-    return fallbackChannels;
   }
-
-  return topChannels;
+  
+  const matchedChannels: Map<string, MatchChannel> = new Map();
+  
+  // Find channels for each broadcaster
+  for (const broadcaster of broadcasters) {
+    const foundChannels = findChannelsForBroadcaster(broadcaster, channels);
+    
+    for (const ch of foundChannels.slice(0, 2)) { // Max 2 per broadcaster
+      const id = `cdn-${ch.code}-${ch.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      if (!matchedChannels.has(id)) {
+        matchedChannels.set(id, {
+          id,
+          name: ch.name,
+          country: ch.code.toUpperCase(),
+          embedUrl: ch.url,
+          logo: ch.image,
+        });
+      }
+    }
+  }
+  
+  // If we found broadcaster-matched channels, return them
+  if (matchedChannels.size > 0) {
+    return Array.from(matchedChannels.values()).slice(0, 5);
+  }
+  
+  // No matching channels found
+  return [];
 }
 
 serve(async (req) => {
