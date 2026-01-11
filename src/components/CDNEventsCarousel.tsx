@@ -1,46 +1,23 @@
-import React, { useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Play, Radio } from 'lucide-react';
-import { useSportsData } from '@/contexts/SportsDataContext';
-import { Match } from '@/types/sports';
+import { CDNEvent } from '@/services/cdnEventsApi';
+import { useFeaturedCDNEvents } from '@/hooks/useCDNEvents';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { triggerPopunderAd } from '@/utils/popunderAd';
-import { getBohoImageUrl, getTeamBadgeUrl } from '@/api/sportsApi';
 
-const CDNEventCard: React.FC<{ match: Match }> = ({ match }) => {
+const CDNEventCard: React.FC<{ event: CDNEvent }> = ({ event }) => {
   const navigate = useNavigate();
-  
-  // Get the first source to build embed URL
-  const firstSource = match.sources?.[0];
-  const sportSlug = (match.sportId || match.category || 'football').toLowerCase().replace(/\s+/g, '-');
-  
-  // Build channel-style URL for CDN events
-  const channelUrl = `/channel/${sportSlug}/${match.id}`;
 
   // Handle card click with popunder ad
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     // Trigger popunder ad on click
-    triggerPopunderAd(match.id, 'cdn_event_click');
-    // Navigate to channel player
-    navigate(channelUrl);
+    triggerPopunderAd(event.id, 'cdn_event_click');
+    // Navigate to CDN event player
+    navigate(`/event/${event.id}`);
   };
-
-  // Get team badges
-  const homeBadge = match.teams?.home?.badge ? getTeamBadgeUrl(match.teams.home.badge) : null;
-  const awayBadge = match.teams?.away?.badge ? getTeamBadgeUrl(match.teams.away.badge) : null;
-  const hasBadges = homeBadge || awayBadge;
-  
-  // Get poster image
-  const posterUrl = match.poster ? getBohoImageUrl(match.poster) : null;
-
-  // Format time
-  const matchTime = new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  // Check if live
-  const now = Date.now();
-  const isLive = match.date <= now && match.date > now - (3 * 60 * 60 * 1000);
 
   return (
     <div
@@ -50,28 +27,28 @@ const CDNEventCard: React.FC<{ match: Match }> = ({ match }) => {
       <div className="relative bg-card rounded-xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
         {/* Event Image/Poster */}
         <div className="relative h-28 md:h-32 bg-gradient-to-br from-primary/20 to-muted overflow-hidden">
-          {posterUrl ? (
+          {event.poster ? (
             <img
-              src={posterUrl}
-              alt={match.title}
-              className="w-full h-full object-contain"
+              src={event.poster}
+              alt={event.title}
+              className="w-full h-full object-cover"
               loading="lazy"
             />
-          ) : hasBadges ? (
+          ) : event.teams?.home?.badge || event.teams?.away?.badge ? (
             <div className="flex items-center justify-center h-full gap-3 px-4">
-              {homeBadge && (
+              {event.teams?.home?.badge && (
                 <img
-                  src={homeBadge}
-                  alt={match.teams?.home?.name || 'Home'}
+                  src={event.teams.home.badge}
+                  alt={event.teams?.home?.name || 'Home'}
                   className="w-12 h-12 md:w-14 md:h-14 object-contain"
                   loading="lazy"
                 />
               )}
               <span className="text-muted-foreground font-bold text-sm">VS</span>
-              {awayBadge && (
+              {event.teams?.away?.badge && (
                 <img
-                  src={awayBadge}
-                  alt={match.teams?.away?.name || 'Away'}
+                  src={event.teams.away.badge}
+                  alt={event.teams?.away?.name || 'Away'}
                   className="w-12 h-12 md:w-14 md:h-14 object-contain"
                   loading="lazy"
                 />
@@ -84,7 +61,7 @@ const CDNEventCard: React.FC<{ match: Match }> = ({ match }) => {
           )}
 
           {/* Live Badge */}
-          {isLive && (
+          {event.isLive && (
             <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
               <Radio className="w-3 h-3 animate-pulse" />
               LIVE
@@ -102,11 +79,11 @@ const CDNEventCard: React.FC<{ match: Match }> = ({ match }) => {
         {/* Event Info */}
         <div className="p-3">
           <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-            {match.title}
+            {event.title}
           </h3>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="capitalize">{match.sportId || match.category || 'Sports'}</span>
-            <span>{matchTime}</span>
+            <span className="capitalize">{event.sport}</span>
+            <span>{event.time}</span>
           </div>
         </div>
       </div>
@@ -115,14 +92,7 @@ const CDNEventCard: React.FC<{ match: Match }> = ({ match }) => {
 };
 
 const CDNEventsCarousel: React.FC = () => {
-  const { liveMatches, loading } = useSportsData();
-  
-  // Get featured events from live matches
-  const events = useMemo(() => {
-    return liveMatches
-      .filter(m => m.sources && m.sources.length > 0)
-      .slice(0, 15);
-  }, [liveMatches]);
+  const { events, isLoading } = useFeaturedCDNEvents(15);
   
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
@@ -134,16 +104,16 @@ const CDNEventsCarousel: React.FC = () => {
     [Autoplay({ delay: 4000, stopOnInteraction: true })]
   );
 
-  const scrollPrev = React.useCallback(() => {
+  const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
   }, [emblaApi]);
 
-  const scrollNext = React.useCallback(() => {
+  const scrollNext = useCallback(() => {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
   // Loading skeleton
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -170,10 +140,10 @@ const CDNEventsCarousel: React.FC = () => {
         <div className="flex items-center gap-2">
           <Radio className="w-5 h-5 text-primary animate-pulse" />
           <h2 className="text-lg md:text-xl font-bold text-foreground">
-            Live Events
+            CDN Live Events
           </h2>
           <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">
-            {events.length} Live
+            {events.filter(e => e.isLive).length} Live
           </span>
         </div>
         
@@ -199,8 +169,8 @@ const CDNEventsCarousel: React.FC = () => {
       {/* Carousel */}
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex gap-4">
-          {events.map((match) => (
-            <CDNEventCard key={match.id} match={match} />
+          {events.map((event) => (
+            <CDNEventCard key={event.id} event={event} />
           ))}
         </div>
       </div>

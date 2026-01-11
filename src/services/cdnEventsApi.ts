@@ -18,7 +18,7 @@ export interface CDNEvent {
   source: string;
 }
 
-// API response format based on BOHOSport-style structure
+// API response format based on CDN API structure
 interface CDNEventApiResponse {
   id?: string;
   title?: string;
@@ -26,11 +26,13 @@ interface CDNEventApiResponse {
   poster?: string;
   category?: string;
   league?: string;
+  url?: string; // Direct embed URL from API
+  embed_url?: string; // Alternative embed URL field
   teams?: {
     home?: { name: string; badge?: string };
     away?: { name: string; badge?: string };
   };
-  sources?: Array<{ source: string; id: string }>;
+  sources?: Array<{ source: string; id: string; url?: string }>;
 }
 
 // API Endpoints - Using the correct VIP path structure
@@ -87,11 +89,12 @@ const transformEvent = (event: CDNEventApiResponse, sport: string): CDNEvent => 
   const timestamp = parseEventTime(event.time);
   const isLive = timestamp <= Date.now() && timestamp > Date.now() - (3 * 60 * 60 * 1000); // Within last 3 hours
   
-  // Get first source for embed URL
+  // Use direct embed URL from API if available, otherwise check sources
   const firstSource = event.sources?.[0];
-  const embedUrl = firstSource 
-    ? `https://embed.damitv.pro/${firstSource.source}/${firstSource.id}`
-    : '';
+  const embedUrl = event.url 
+    || event.embed_url 
+    || firstSource?.url 
+    || '';
 
   // Parse title to extract team names if not provided
   let teams = event.teams;
