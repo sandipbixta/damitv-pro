@@ -48,8 +48,7 @@ import Highlights from "./pages/Highlights";
 import News from "./pages/News";
 import Article from "./pages/Article";
 import MatchDetail from "./pages/MatchDetail";
-import CDNEventPlayer from "./pages/CDNEventPlayer";
-import CDNPlayerPage from "./pages/CDNPlayerPage";
+
 import TelegramFAB from "./components/TelegramFAB";
 
 // Optimized query client configuration
@@ -115,16 +114,6 @@ const App: React.FC = () => {
               <Route path="/channel/:country/:channelId" element={
                 <SEOPageTracker contentType="channels">
                   <ChannelPlayer />
-                </SEOPageTracker>
-              } />
-              <Route path="/event/:eventId" element={
-                <SEOPageTracker contentType="match">
-                  <CDNEventPlayer />
-                </SEOPageTracker>
-              } />
-              <Route path="/cdn-player/:channelId" element={
-                <SEOPageTracker contentType="channels">
-                  <CDNPlayerPage />
                 </SEOPageTracker>
               } />
               <Route path="/analytics" element={
