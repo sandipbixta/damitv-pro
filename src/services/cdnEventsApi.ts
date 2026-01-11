@@ -33,45 +33,40 @@ interface CDNEventApiResponse {
   sources?: Array<{ source: string; id: string }>;
 }
 
-// API Endpoints
-const CDN_EVENTS_BASE = 'https://api.cdn-live.tv/api/v1/vip/damitv/events';
+// API Endpoints - Using the correct VIP path structure
+const CDN_EVENTS_ENDPOINTS = [
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/sports',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/football',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl',
+  'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl',
+];
 
-// CORS proxy fallbacks
+// CORS proxy fallbacks - try more options
 const CORS_PROXIES = [
+  '', // Try direct first
   'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.io/?'
+  'https://corsproxy.io/?',
+  'https://thingproxy.freeboard.io/fetch/',
 ];
 
 // Direct fetch with CORS proxy fallback
 const fetchWithCorsProxy = async (url: string): Promise<any> => {
-  // First try direct
-  try {
-    const response = await fetch(url, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch (error) {
-    console.warn(`⚠️ Direct fetch failed: ${url}`);
-  }
-
-  // Fallback to CORS proxies
   for (const proxy of CORS_PROXIES) {
     try {
-      const proxyUrl = `${proxy}${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl, {
+      const fetchUrl = proxy ? `${proxy}${encodeURIComponent(url)}` : url;
+      const response = await fetch(fetchUrl, {
         headers: { 'Accept': 'application/json' }
       });
       if (response.ok) {
-        console.log(`✅ CORS proxy success for events`);
-        return await response.json();
+        const data = await response.json();
+        console.log(`✅ CDN Events fetch success${proxy ? ' via proxy' : ''}`);
+        return data;
       }
     } catch (error) {
-      // Silent fail, try next
+      // Silent fail, try next proxy
     }
   }
-
   return null;
 };
 
@@ -159,36 +154,55 @@ class CDNEventsApiService {
     try {
       console.log('🎮 Fetching events from CDN API...');
       
-      // Fetch from all sports endpoint
-      const sportsUrl = `${CDN_EVENTS_BASE}/sports/`;
-      const data = await fetchWithCorsProxy(sportsUrl);
-      
-      if (!data) {
-        console.warn('🎮 No data from CDN events API');
-        return this.cache.data || [];
-      }
+      let allEvents: CDNEvent[] = [];
 
-      let events: CDNEvent[] = [];
+      // Fetch from all endpoints in parallel
+      const fetchPromises = CDN_EVENTS_ENDPOINTS.map(async (endpoint) => {
+        try {
+          const data = await fetchWithCorsProxy(endpoint);
+          if (!data) return [];
 
-      // Handle different response structures
-      if (Array.isArray(data)) {
-        events = data.map((e: CDNEventApiResponse) => transformEvent(e, e.category || 'sports'));
-      } else if (data.matches && Array.isArray(data.matches)) {
-        events = data.matches.map((e: CDNEventApiResponse) => transformEvent(e, e.category || 'sports'));
-      } else if (data.data && Array.isArray(data.data)) {
-        events = data.data.map((e: CDNEventApiResponse) => transformEvent(e, e.category || 'sports'));
-      } else if (typeof data === 'object') {
-        // Response might be organized by sport
-        for (const [sport, sportData] of Object.entries(data)) {
-          if (Array.isArray(sportData)) {
-            const sportEvents = (sportData as CDNEventApiResponse[]).map(e => transformEvent(e, sport));
-            events.push(...sportEvents);
+          let events: CDNEvent[] = [];
+          const sport = endpoint.split('/').pop() || 'sports';
+
+          // Handle different response structures
+          if (Array.isArray(data)) {
+            events = data.map((e: CDNEventApiResponse) => transformEvent(e, e.category || sport));
+          } else if (data.matches && Array.isArray(data.matches)) {
+            events = data.matches.map((e: CDNEventApiResponse) => transformEvent(e, e.category || sport));
+          } else if (data.data && Array.isArray(data.data)) {
+            events = data.data.map((e: CDNEventApiResponse) => transformEvent(e, e.category || sport));
+          } else if (data.events && Array.isArray(data.events)) {
+            events = data.events.map((e: CDNEventApiResponse) => transformEvent(e, e.category || sport));
+          } else if (typeof data === 'object' && !Array.isArray(data)) {
+            // Response might be organized by category
+            for (const [category, categoryData] of Object.entries(data)) {
+              if (Array.isArray(categoryData)) {
+                const categoryEvents = (categoryData as CDNEventApiResponse[]).map(e => transformEvent(e, category));
+                events.push(...categoryEvents);
+              }
+            }
           }
+
+          return events;
+        } catch (error) {
+          console.warn(`🎮 Failed to fetch from ${endpoint}`);
+          return [];
+        }
+      });
+
+      const results = await Promise.allSettled(fetchPromises);
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.length > 0) {
+          allEvents.push(...result.value);
         }
       }
 
+      // Remove duplicates by ID
+      const uniqueEvents = Array.from(new Map(allEvents.map(e => [e.id, e])).values());
+
       // Sort by date (live first, then upcoming)
-      events.sort((a, b) => {
+      uniqueEvents.sort((a, b) => {
         if (a.isLive && !b.isLive) return -1;
         if (!a.isLive && b.isLive) return 1;
         return a.date - b.date;
@@ -196,12 +210,12 @@ class CDNEventsApiService {
 
       // Update cache
       this.cache = {
-        data: events,
+        data: uniqueEvents,
         timestamp: Date.now()
       };
 
-      console.log(`🎮 CDN Events loaded: ${events.length}`);
-      return events;
+      console.log(`🎮 CDN Events loaded: ${uniqueEvents.length}`);
+      return uniqueEvents;
     } catch (error) {
       console.error('🎮 Error fetching CDN events:', error);
       return this.cache.data || [];
@@ -210,18 +224,17 @@ class CDNEventsApiService {
 
   async fetchEventsBySport(sport: string): Promise<CDNEvent[]> {
     const sportEndpoints: Record<string, string> = {
-      'football': 'football',
-      'soccer': 'football',
-      'nba': 'nba',
-      'basketball': 'nba',
-      'nfl': 'nfl',
-      'american-football': 'nfl',
-      'nhl': 'nhl',
-      'hockey': 'nhl'
+      'football': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/football',
+      'soccer': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/football',
+      'nba': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba',
+      'basketball': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nba',
+      'nfl': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl',
+      'american-football': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nfl',
+      'nhl': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl',
+      'hockey': 'https://api.cdn-live.tv/api/v1/vip/damitv/events/nhl'
     };
 
-    const endpoint = sportEndpoints[sport.toLowerCase()] || sport;
-    const url = `${CDN_EVENTS_BASE}/${endpoint}/`;
+    const url = sportEndpoints[sport.toLowerCase()] || `https://api.cdn-live.tv/api/v1/vip/damitv/events/${sport}`;
     
     try {
       const data = await fetchWithCorsProxy(url);

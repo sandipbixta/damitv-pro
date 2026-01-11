@@ -1,38 +1,58 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Play, Radio } from 'lucide-react';
-import { useFeaturedCDNEvents } from '@/hooks/useCDNEvents';
-import { CDNEvent } from '@/services/cdnEventsApi';
+import { useSportsData } from '@/contexts/SportsDataContext';
+import { Match } from '@/types/sports';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
+import { triggerPopunderAd } from '@/utils/popunderAd';
+import { getBohoImageUrl, getTeamBadgeUrl } from '@/api/sportsApi';
+import { generateMatchSlug } from '@/utils/matchSlug';
 
-const CDNEventCard: React.FC<{ event: CDNEvent }> = ({ event }) => {
-  // Generate match slug for navigation
-  const matchSlug = event.title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+const CDNEventCard: React.FC<{ match: Match }> = ({ match }) => {
+  const navigate = useNavigate();
+  
+  // Generate match URL
+  const sportSlug = (match.sportId || match.category || 'football').toLowerCase().replace(/\s+/g, '-');
+  const matchSlug = generateMatchSlug(match.title);
+  const matchUrl = `/match/${sportSlug}/${match.id}/${matchSlug}`;
 
-  const sportSlug = event.sport.toLowerCase().replace(/\s+/g, '-');
-  const matchUrl = `/match/${sportSlug}/${event.id}/${matchSlug}`;
+  // Handle card click with popunder ad
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Trigger popunder ad on click
+    triggerPopunderAd(match.id, 'cdn_event_click');
+    // Navigate to match
+    navigate(matchUrl);
+  };
 
-  // Get team badges or use poster
-  const homeBadge = event.teams?.home?.badge;
-  const awayBadge = event.teams?.away?.badge;
+  // Get team badges
+  const homeBadge = match.teams?.home?.badge ? getTeamBadgeUrl(match.teams.home.badge) : null;
+  const awayBadge = match.teams?.away?.badge ? getTeamBadgeUrl(match.teams.away.badge) : null;
   const hasBadges = homeBadge || awayBadge;
+  
+  // Get poster image
+  const posterUrl = match.poster ? getBohoImageUrl(match.poster) : null;
+
+  // Format time
+  const matchTime = new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  // Check if live
+  const now = Date.now();
+  const isLive = match.date <= now && match.date > now - (3 * 60 * 60 * 1000);
 
   return (
-    <Link
-      to={matchUrl}
-      className="flex-shrink-0 w-[200px] md:w-[240px] group"
+    <div
+      onClick={handleClick}
+      className="flex-shrink-0 w-[200px] md:w-[240px] group cursor-pointer"
     >
       <div className="relative bg-card rounded-xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
         {/* Event Image/Poster */}
         <div className="relative h-28 md:h-32 bg-gradient-to-br from-primary/20 to-muted overflow-hidden">
-          {event.poster ? (
+          {posterUrl ? (
             <img
-              src={event.poster}
-              alt={event.title}
+              src={posterUrl}
+              alt={match.title}
               className="w-full h-full object-contain"
               loading="lazy"
             />
@@ -41,7 +61,7 @@ const CDNEventCard: React.FC<{ event: CDNEvent }> = ({ event }) => {
               {homeBadge && (
                 <img
                   src={homeBadge}
-                  alt={event.teams?.home?.name || 'Home'}
+                  alt={match.teams?.home?.name || 'Home'}
                   className="w-12 h-12 md:w-14 md:h-14 object-contain"
                   loading="lazy"
                 />
@@ -50,7 +70,7 @@ const CDNEventCard: React.FC<{ event: CDNEvent }> = ({ event }) => {
               {awayBadge && (
                 <img
                   src={awayBadge}
-                  alt={event.teams?.away?.name || 'Away'}
+                  alt={match.teams?.away?.name || 'Away'}
                   className="w-12 h-12 md:w-14 md:h-14 object-contain"
                   loading="lazy"
                 />
@@ -63,7 +83,7 @@ const CDNEventCard: React.FC<{ event: CDNEvent }> = ({ event }) => {
           )}
 
           {/* Live Badge */}
-          {event.isLive && (
+          {isLive && (
             <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
               <Radio className="w-3 h-3 animate-pulse" />
               LIVE
@@ -81,25 +101,27 @@ const CDNEventCard: React.FC<{ event: CDNEvent }> = ({ event }) => {
         {/* Event Info */}
         <div className="p-3">
           <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-            {event.title}
+            {match.title}
           </h3>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="capitalize">{event.sport}</span>
-            <span>{event.time}</span>
+            <span className="capitalize">{match.sportId || match.category || 'Sports'}</span>
+            <span>{matchTime}</span>
           </div>
-          {event.league && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              {event.league}
-            </p>
-          )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 
 const CDNEventsCarousel: React.FC = () => {
-  const { events, isLoading } = useFeaturedCDNEvents(15);
+  const { liveMatches, loading } = useSportsData();
+  
+  // Get featured events from live matches
+  const events = useMemo(() => {
+    return liveMatches
+      .filter(m => m.sources && m.sources.length > 0)
+      .slice(0, 15);
+  }, [liveMatches]);
   
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
@@ -120,7 +142,7 @@ const CDNEventsCarousel: React.FC = () => {
   }, [emblaApi]);
 
   // Loading skeleton
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -150,7 +172,7 @@ const CDNEventsCarousel: React.FC = () => {
             Live Events
           </h2>
           <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">
-            {events.filter(e => e.isLive).length} Live
+            {events.length} Live
           </span>
         </div>
         
@@ -176,8 +198,8 @@ const CDNEventsCarousel: React.FC = () => {
       {/* Carousel */}
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex gap-4">
-          {events.map((event) => (
-            <CDNEventCard key={event.id} event={event} />
+          {events.map((match) => (
+            <CDNEventCard key={match.id} match={match} />
           ))}
         </div>
       </div>
