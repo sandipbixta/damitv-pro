@@ -9,6 +9,8 @@ import { Helmet } from 'react-helmet-async';
 import VideoPlayerSelector from '@/components/StreamPlayer/VideoPlayerSelector';
 import MatchDetails from '@/components/MatchDetails';
 import AdsterraSocialBar from '@/components/AdsterraSocialBar';
+import BannerAd from '@/components/BannerAd';
+import { triggerPopunderAd } from '@/utils/popunderAd';
 
 const ManualMatchPlayer = () => {
   const { matchId } = useParams();
@@ -23,6 +25,14 @@ const ManualMatchPlayer = () => {
   );
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [hasTriggeredAd, setHasTriggeredAd] = useState(false);
+
+  const handlePlayClick = () => {
+    if (!hasTriggeredAd && matchId) {
+      triggerPopunderAd(matchId);
+      setHasTriggeredAd(true);
+    }
+  };
 
   const handleFullscreen = () => {
     const playerContainer = document.querySelector('[data-player-container]') as HTMLElement;
@@ -204,6 +214,9 @@ const ManualMatchPlayer = () => {
         </div>
       </div>
 
+      {/* Banner Ad at top */}
+      <BannerAd className="bg-[#1a1f2e]" />
+
       <div className="max-w-7xl mx-auto p-2 sm:p-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           <div className="lg:col-span-3">
@@ -269,7 +282,10 @@ const ManualMatchPlayer = () => {
                 {match.links.map((link) => (
                   <Button
                     key={link.id}
-                    onClick={() => setSelectedLink(link)}
+                    onClick={() => {
+                      handlePlayClick();
+                      setSelectedLink(link);
+                    }}
                     variant={selectedLink?.id === link.id ? "default" : "outline"}
                     className={`w-full justify-start text-left text-sm ${
                       selectedLink?.id === link.id
