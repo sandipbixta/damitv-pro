@@ -3,28 +3,55 @@ import { Link } from 'react-router-dom';
 import { Play, Clock, Tv } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CustomMatch } from '@/pages/AdminCustomMatch';
+import { supabase } from '@/integrations/supabase/client';
 
-const STORAGE_KEY = 'damitv_custom_matches';
+interface CustomMatch {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  streamUrl: string;
+  date: string;
+  category: string;
+  imageUrl?: string;
+  visible: boolean;
+}
 
 const CustomMatchCards = () => {
   const [matches, setMatches] = useState<CustomMatch[]>([]);
 
   useEffect(() => {
-    const loadMatches = () => {
-      const savedMatches = localStorage.getItem(STORAGE_KEY);
-      if (savedMatches) {
-        const allMatches: CustomMatch[] = JSON.parse(savedMatches);
-        // Only show visible matches
-        setMatches(allMatches.filter(m => m.visible));
+    const loadMatches = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('custom_matches')
+          .select('*')
+          .eq('visible', true)
+          .order('match_date', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching custom matches:', error);
+          return;
+        }
+
+        if (data) {
+          const formattedMatches: CustomMatch[] = data.map(m => ({
+            id: m.id,
+            homeTeam: m.home_team,
+            awayTeam: m.away_team,
+            streamUrl: m.stream_url,
+            date: m.match_date,
+            category: m.category || 'Football',
+            imageUrl: m.image_url || undefined,
+            visible: m.visible ?? true
+          }));
+          setMatches(formattedMatches);
+        }
+      } catch (err) {
+        console.error('Error loading matches:', err);
       }
     };
 
     loadMatches();
-    
-    // Listen for storage changes (in case admin adds new matches)
-    window.addEventListener('storage', loadMatches);
-    return () => window.removeEventListener('storage', loadMatches);
   }, []);
 
   if (matches.length === 0) {
