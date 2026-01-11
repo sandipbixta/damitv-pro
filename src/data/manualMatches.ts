@@ -11,6 +11,36 @@ const getTomorrowDate = () => {
 
 export const manualMatches: ManualMatch[] = [
   {
+    id: "fc-barcelona-vs-real-madrid",
+    title: "FC Barcelona vs Real Madrid",
+    date: new Date().toISOString(), // Live now
+    teams: {
+      home: "FC Barcelona",
+      away: "Real Madrid"
+    },
+    links: [
+      {
+        id: "tnt-sports-4",
+        name: "TNT Sports 4",
+        url: "https://topembed.pw/channel/TNTSports4[UK]",
+        quality: "HD"
+      },
+      {
+        id: "hls-stream",
+        name: "HLS Stream",
+        url: "https://play7ba.peodlc.com/sport/202_4857525_2.m3u8",
+        quality: "HD"
+      }
+    ],
+    visible: true,
+    image: "https://i.imgur.com/el-clasico.jpeg",
+    seo: {
+      keywords: "FC Barcelona vs Real Madrid live stream, El Clasico free stream, Barcelona Real Madrid watch online",
+      description: "Watch FC Barcelona vs Real Madrid El Clasico live stream online for free in HD quality.",
+      category: "Football"
+    }
+  },
+  {
     id: "Kathmandu-Gurkhas-Biratnagar-Kings",
     title: "Kathmandu Gurkhas - Biratnagar Kings",
     date: new Date().toISOString(), // Live now
