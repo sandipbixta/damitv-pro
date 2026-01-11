@@ -30,6 +30,7 @@ export interface Match {
   related?: Match[];       // Related matches
   sportId?: string;        // Added for compatibility - maps to category
   viewerCount?: number;    // Number of current viewers
+  embedUrl?: string;       // Direct iframe URL if provided by API
 }
 
 export interface Stream {
