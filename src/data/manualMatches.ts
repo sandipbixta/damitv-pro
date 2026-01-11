@@ -1,5 +1,6 @@
 
 import { ManualMatch } from '@/types/manualMatch';
+import elClasicoImage from '@/assets/el-clasico-supercopa.jpg';
 
 // Helper function to get tomorrow's date
 const getTomorrowDate = () => {
@@ -33,7 +34,7 @@ export const manualMatches: ManualMatch[] = [
       }
     ],
     visible: true,
-    image: "https://i.imgur.com/el-clasico.jpeg",
+    image: elClasicoImage,
     seo: {
       keywords: "FC Barcelona vs Real Madrid live stream, El Clasico free stream, Barcelona Real Madrid watch online",
       description: "Watch FC Barcelona vs Real Madrid El Clasico live stream online for free in HD quality.",
