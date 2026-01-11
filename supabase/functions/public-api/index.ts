@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const API_BASES = [
+  'https://streamed.pk/api',
   'https://streamed.su/api',
   'https://justcast.stream/api',
 ];

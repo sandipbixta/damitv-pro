@@ -4,6 +4,7 @@ import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
 
 // API endpoints to try (direct calls)
 const API_BASES = [
+  'https://streamed.pk/api',
   'https://streamed.su/api',
   'https://sportsrc.org/api'
 ];
@@ -15,7 +16,7 @@ const CORS_PROXIES = [
 ];
 
 // Legacy stream base URL (fallback only)
-const STREAM_BASE = 'https://streamed.su';
+const STREAM_BASE = 'https://streamed.pk';
 
 // Build ad-free embed URL using domain manager
 const buildAdFreeEmbedUrl = (matchId: string, source: string, streamNo: number = 1): string => {

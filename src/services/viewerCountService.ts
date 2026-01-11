@@ -13,6 +13,7 @@ const ENDPOINT_CHECK_INTERVAL = 60 * 1000; // Re-check every 60 seconds
 
 // API endpoints to try (direct calls - no edge function)
 const API_BASES = [
+  'https://streamed.pk/api',
   'https://streamed.su/api',
   'https://sportsrc.org/api'
 ];
