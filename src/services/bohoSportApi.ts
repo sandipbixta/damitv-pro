@@ -4,7 +4,6 @@ import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
 
 // API endpoints to try (direct calls)
 const API_BASES = [
-  'https://streamed.pk/api',
   'https://streamed.su/api',
   'https://sportsrc.org/api'
 ];
@@ -16,7 +15,7 @@ const CORS_PROXIES = [
 ];
 
 // Legacy stream base URL (fallback only)
-const STREAM_BASE = 'https://streamed.pk';
+const STREAM_BASE = 'https://streamed.su';
 
 // Build ad-free embed URL using domain manager
 const buildAdFreeEmbedUrl = (matchId: string, source: string, streamNo: number = 1): string => {
@@ -194,71 +193,12 @@ const mapCategoryToSportId = (category: string): string => {
   return categoryMap[category?.toLowerCase()] || category?.toLowerCase() || 'other';
 };
 
-// Parse stream data from /api/streams endpoint to our Match format
-const parseStreamData = (stream: any, categoryName: string): Match | null => {
-  try {
-    if (!stream || !stream.id) return null;
-
-    // Parse teams from name if available
-    let homeTeam = '';
-    let awayTeam = '';
-    const title = stream.name || '';
-    
-    if (title.includes(' vs ')) {
-      const parts = title.split(' vs ');
-      homeTeam = parts[0]?.trim() || '';
-      awayTeam = parts[1]?.trim() || '';
-    } else if (title.includes(' v ')) {
-      const parts = title.split(' v ');
-      homeTeam = parts[0]?.trim() || '';
-      awayTeam = parts[1]?.trim() || '';
-    } else if (title.includes(' at ')) {
-      const parts = title.split(' at ');
-      awayTeam = parts[0]?.trim() || ''; // "Team at Team" = away at home
-      homeTeam = parts[1]?.trim() || '';
-    }
-
-    // Parse date from starts_at (Unix timestamp in seconds)
-    const matchDate = stream.starts_at ? stream.starts_at * 1000 : Date.now();
-
-    // Build sources array from uri_name
-    const sources: Source[] = [];
-    if (stream.uri_name) {
-      sources.push({ source: 'alpha', id: stream.uri_name });
-      sources.push({ source: 'bravo', id: stream.uri_name });
-      sources.push({ source: 'charlie', id: stream.uri_name });
-    }
-
-    const sportId = mapCategoryToSportId(categoryName || stream.category_name || '');
-
-    return {
-      id: String(stream.id),
-      title: title,
-      category: sportId,
-      sportId: sportId,
-      date: matchDate,
-      poster: stream.poster || '',
-      popular: stream.always_live === 1,
-      teams: {
-        home: { name: homeTeam, badge: '' },
-        away: { name: awayTeam, badge: '' }
-      },
-      sources: sources,
-      viewerCount: 0,
-      // Store iframe URL if provided directly
-      embedUrl: stream.iframe || undefined
-    } as Match;
-  } catch (error) {
-    console.error('Error parsing stream data:', error, stream);
-    return null;
-  }
-};
-
-// Legacy parser for backward compatibility with old API format
+// Parse BOHOSport match data to our Match format
 const parseMatchData = (item: any): Match | null => {
   try {
     if (!item || !item.id) return null;
 
+    // Parse teams from title if available
     let homeTeam = '';
     let awayTeam = '';
     const title = item.title || item.name || '';
@@ -273,15 +213,19 @@ const parseMatchData = (item: any): Match | null => {
       awayTeam = parts[1]?.trim() || '';
     }
 
+    // Parse date - BOHOSport might use different formats
     let matchDate = 0;
     if (item.date) {
-      matchDate = typeof item.date === 'number' ? item.date : new Date(item.date).getTime();
-    } else if (item.starts_at) {
-      matchDate = item.starts_at * 1000;
+      if (typeof item.date === 'number') {
+        matchDate = item.date;
+      } else if (typeof item.date === 'string') {
+        matchDate = new Date(item.date).getTime();
+      }
     } else if (item.time) {
       matchDate = new Date(item.time).getTime();
     }
 
+    // Build sources array
     const sources: Source[] = [];
     if (item.sources && Array.isArray(item.sources)) {
       item.sources.forEach((src: any) => {
@@ -291,15 +235,17 @@ const parseMatchData = (item: any): Match | null => {
       });
     }
     
-    if (sources.length === 0 && item.uri_name) {
-      sources.push({ source: 'alpha', id: item.uri_name });
+    // If no sources but has stream URL, create a default source
+    if (sources.length === 0 && (item.stream || item.embed || item.iframe)) {
+      sources.push({ source: 'boho', id: item.id });
     }
 
+    // If still no sources but has id, create source from id
     if (sources.length === 0 && item.id) {
-      sources.push({ source: 'main', id: String(item.id) });
+      sources.push({ source: 'main', id: item.id });
     }
 
-    const sportId = mapCategoryToSportId(item.category || item.category_name || item.sport || '');
+    const sportId = mapCategoryToSportId(item.category || item.sport || '');
 
     return {
       id: String(item.id),
@@ -308,7 +254,7 @@ const parseMatchData = (item: any): Match | null => {
       sportId: sportId,
       date: matchDate,
       poster: item.poster || item.image || item.thumbnail || '',
-      popular: item.popular === true || item.featured === true || item.always_live === 1,
+      popular: item.popular === true || item.featured === true,
       teams: {
         home: {
           name: homeTeam || item.teams?.home?.name || item.home_team || item.homeTeam || '',
@@ -320,9 +266,8 @@ const parseMatchData = (item: any): Match | null => {
         }
       },
       sources: sources,
-      viewerCount: item.viewers || item.viewerCount || 0,
-      embedUrl: item.iframe || undefined
-    } as Match;
+      viewerCount: item.viewers || item.viewerCount || 0
+    };
   } catch (error) {
     console.error('Error parsing match data:', error, item);
     return null;
@@ -360,46 +305,35 @@ export const fetchSports = async (): Promise<Sport[]> => {
   }
 };
 
-// Fetch all matches from API directly using /api/streams endpoint
+// Fetch all matches from API directly (no edge function)
 export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'boho-matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log('🔄 Fetching streams from /api/streams...');
+    console.log('🔄 Fetching matches directly from API...');
     
-    const data = await fetchFromApi('streams');
+    const data = await fetchFromApi('matches/all');
 
     let matches: Match[] = [];
 
-    // Handle new /api/streams response format
-    if (data.success && data.streams && Array.isArray(data.streams)) {
-      // Iterate through category objects
-      data.streams.forEach((category: any) => {
-        if (category.streams && Array.isArray(category.streams)) {
-          const categoryName = category.category || '';
-          category.streams.forEach((stream: any) => {
-            const match = parseStreamData(stream, categoryName);
-            if (match) matches.push(match);
-          });
-        }
-      });
-    } 
-    // Fallback to old format handlers
-    else if (Array.isArray(data)) {
+    // Handle different response formats
+    if (Array.isArray(data)) {
       matches = data.map(parseMatchData).filter((m): m is Match => m !== null);
     } else if (data.matches && Array.isArray(data.matches)) {
       matches = data.matches.map(parseMatchData).filter((m): m is Match => m !== null);
     } else if (data.data && Array.isArray(data.data)) {
       matches = data.data.map(parseMatchData).filter((m): m is Match => m !== null);
+    } else if (data.events && Array.isArray(data.events)) {
+      matches = data.events.map(parseMatchData).filter((m): m is Match => m !== null);
     }
 
     setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} streams/matches`);
+    console.log(`✅ Fetched ${matches.length} matches`);
     return matches;
   } catch (error) {
-    console.error('❌ Error fetching streams:', error);
+    console.error('❌ Error fetching matches:', error);
     return [];
   }
 };

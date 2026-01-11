@@ -4,19 +4,9 @@ import { ArrowLeft, Maximize2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/PageLayout';
 import Hls from 'hls.js';
-import { supabase } from '@/integrations/supabase/client';
-import BannerAd from '@/components/BannerAd';
-import { triggerPopunderAd } from '@/utils/popunderAd';
+import { CustomMatch } from './AdminCustomMatch';
 
-interface CustomMatch {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  streamUrl: string;
-  date: string;
-  category: string;
-  imageUrl?: string;
-}
+const STORAGE_KEY = 'damitv_custom_matches';
 
 const CustomMatchPlayer = () => {
   const { matchId } = useParams<{ matchId: string }>();
@@ -26,45 +16,22 @@ const CustomMatchPlayer = () => {
   const [match, setMatch] = useState<CustomMatch | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasTriggeredAd, setHasTriggeredAd] = useState(false);
 
-  // Load match from Supabase
+  // Load match from localStorage
   useEffect(() => {
-    const fetchMatch = async () => {
-      try {
-        const { data, error: fetchError } = await supabase
-          .from('custom_matches')
-          .select('*')
-          .eq('id', matchId)
-          .eq('visible', true)
-          .single();
-
-        if (fetchError) {
-          console.error('Error fetching match:', fetchError);
-          setError('Match not found');
-        } else if (data) {
-          setMatch({
-            id: data.id,
-            homeTeam: data.home_team,
-            awayTeam: data.away_team,
-            streamUrl: data.stream_url,
-            date: data.match_date,
-            category: data.category || 'Football',
-            imageUrl: data.image_url || undefined
-          });
-        } else {
-          setError('Match not found');
-        }
-      } catch (err) {
-        console.error('Error:', err);
-        setError('Failed to load match');
+    const savedMatches = localStorage.getItem(STORAGE_KEY);
+    if (savedMatches) {
+      const matches: CustomMatch[] = JSON.parse(savedMatches);
+      const foundMatch = matches.find(m => m.id === matchId);
+      if (foundMatch) {
+        setMatch(foundMatch);
+      } else {
+        setError('Match not found');
       }
-      setIsLoading(false);
-    };
-
-    if (matchId) {
-      fetchMatch();
+    } else {
+      setError('No matches available');
     }
+    setIsLoading(false);
   }, [matchId]);
 
   // Initialize video player
@@ -143,13 +110,6 @@ const CustomMatchPlayer = () => {
     }
   };
 
-  const handlePlayClick = () => {
-    if (!hasTriggeredAd && matchId) {
-      triggerPopunderAd(matchId, 'play_button');
-      setHasTriggeredAd(true);
-    }
-  };
-
   const isIframeStream = match?.streamUrl && !match.streamUrl.includes('.m3u8') && 
     !match.streamUrl.includes('.mp4') && !match.streamUrl.includes('.webm');
 
@@ -184,9 +144,6 @@ const CustomMatchPlayer = () => {
   return (
     <PageLayout>
       <div className="container mx-auto px-4 py-6">
-        {/* Banner Ad */}
-        <BannerAd className="mb-4" />
-
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Link to="/">
@@ -234,8 +191,6 @@ const CustomMatchPlayer = () => {
               autoPlay
               muted
               poster={match.imageUrl}
-              onClick={handlePlayClick}
-              onPlay={handlePlayClick}
             />
           )}
           

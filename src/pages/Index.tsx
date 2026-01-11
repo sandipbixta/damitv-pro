@@ -24,7 +24,7 @@ import { manualMatches } from '../data/manualMatches';
 import { HeroCarousel } from '../components/HeroCarousel';
 import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
-
+import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
 import MarcaBlog from '../components/MarcaBlog';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
@@ -191,6 +191,8 @@ const Index = () => {
         {/* SEO H1 - Hidden but present for SEO */}
         <h1 className="sr-only">Top 10 Sports Streaming Site Alternatives - Free HD Streams</h1>
 
+        {/* Custom Match Cards - Above Hero Carousel */}
+        <CustomMatchCards />
 
         {/* Hero Carousel */}
         <div className="mb-4">

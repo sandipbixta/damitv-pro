@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 const API_BASES = [
-  'https://streamed.pk/api',
   'https://streamed.su/api',
   'https://justcast.stream/api',
 ];
@@ -37,42 +36,15 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
   return { allowed: true, remaining: RATE_LIMIT - record.count };
 }
 
-// Fetch from Streamed API using /api/streams endpoint
+// Fetch from BOHOSport API
 async function fetchMatches() {
   for (const base of API_BASES) {
     try {
-      const response = await fetch(`${base}/streams`, {
+      const response = await fetch(`${base}/matches/all`, {
         signal: AbortSignal.timeout(8000),
       });
       if (response.ok) {
         const data = await response.json();
-        
-        // Handle new /api/streams format
-        if (data.success && data.streams && Array.isArray(data.streams)) {
-          const allMatches: any[] = [];
-          data.streams.forEach((category: any) => {
-            if (category.streams && Array.isArray(category.streams)) {
-              category.streams.forEach((stream: any) => {
-                allMatches.push({
-                  id: stream.id,
-                  title: stream.name,
-                  name: stream.name,
-                  category: category.category?.toLowerCase() || 'other',
-                  poster: stream.poster,
-                  uri_name: stream.uri_name,
-                  starts_at: stream.starts_at,
-                  ends_at: stream.ends_at,
-                  iframe: stream.iframe,
-                  tag: stream.tag,
-                  always_live: stream.always_live
-                });
-              });
-            }
-          });
-          return allMatches;
-        }
-        
-        // Fallback to old format
         return Array.isArray(data) ? data : data?.data || [];
       }
     } catch (e) {
