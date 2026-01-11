@@ -73,17 +73,21 @@ serve(async (req) => {
     // Apply limit
     channels = channels.slice(0, limit);
     
-    // Transform to a consistent format with IDs
+    // Transform to a consistent format with IDs and higher viewer counts for popular channels
     const transformedChannels = channels.map((ch, index) => ({
       id: `cdn-${ch.code}-${ch.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       title: ch.name,
       country: ch.code.toUpperCase(),
       embedUrl: ch.url,
       logo: ch.image,
-      viewers: ch.viewers || Math.floor(Math.random() * 500) + 50, // Fallback random viewers
-      isLive: true, // Channels are always "live"
-      sport: 'tv', // Mark as TV channel
+      // Higher viewers for earlier channels (tend to be more popular) + random variation
+      viewers: ch.viewers || Math.floor(Math.random() * 8000) + 2000 + Math.max(0, (200 - index) * 30),
+      isLive: true,
+      sport: 'tv',
     }));
+    
+    // Sort by viewers (highest first) to show most watched channels
+    transformedChannels.sort((a, b) => b.viewers - a.viewers);
     
     return new Response(JSON.stringify({
       success: true,
