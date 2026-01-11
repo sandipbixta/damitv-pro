@@ -272,12 +272,39 @@ serve(async (req) => {
       fetchCDNChannels(),
     ]);
 
-    console.log(`Got ${liveScores.length} live events and ${cdnChannels.length} CDN channels`);
+    console.log(`Got ${liveScores.length} raw events and ${cdnChannels.length} CDN channels`);
+
+    // Filter out finished matches - only show truly live ones
+    const FINISHED_STATUSES = [
+      'match finished', 'ft', 'finished', 'ended', 'full time', 
+      'aet', 'after extra time', 'pen', 'penalties', 
+      'postponed', 'cancelled', 'abandoned', 'suspended',
+      'not started', 'ns', 'tbd', 'delayed'
+    ];
+    
+    const trulyLiveScores = liveScores.filter(event => {
+      const status = (event.status || '').toLowerCase().trim();
+      const progress = (event.progress || '').toLowerCase().trim();
+      
+      // Check if status indicates finished
+      if (FINISHED_STATUSES.some(fs => status.includes(fs) || progress.includes(fs))) {
+        return false;
+      }
+      
+      // Check for score patterns that indicate finished (like "FT 2-1")
+      if (progress.startsWith('ft') || status.startsWith('ft')) {
+        return false;
+      }
+      
+      return true;
+    });
+
+    console.log(`Filtered to ${trulyLiveScores.length} truly live events`);
 
     // Filter by sport if specified
-    let filteredScores = liveScores;
+    let filteredScores = trulyLiveScores;
     if (sport) {
-      filteredScores = liveScores.filter(s => 
+      filteredScores = trulyLiveScores.filter(s => 
         s.sport.toLowerCase().includes(sport.toLowerCase())
       );
     }
