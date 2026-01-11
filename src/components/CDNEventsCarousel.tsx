@@ -1,0 +1,188 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Play, Radio } from 'lucide-react';
+import { useFeaturedCDNEvents } from '@/hooks/useCDNEvents';
+import { CDNEvent } from '@/services/cdnEventsApi';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
+
+const CDNEventCard: React.FC<{ event: CDNEvent }> = ({ event }) => {
+  // Generate match slug for navigation
+  const matchSlug = event.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  const sportSlug = event.sport.toLowerCase().replace(/\s+/g, '-');
+  const matchUrl = `/match/${sportSlug}/${event.id}/${matchSlug}`;
+
+  // Get team badges or use poster
+  const homeBadge = event.teams?.home?.badge;
+  const awayBadge = event.teams?.away?.badge;
+  const hasBadges = homeBadge || awayBadge;
+
+  return (
+    <Link
+      to={matchUrl}
+      className="flex-shrink-0 w-[200px] md:w-[240px] group"
+    >
+      <div className="relative bg-card rounded-xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
+        {/* Event Image/Poster */}
+        <div className="relative h-28 md:h-32 bg-gradient-to-br from-primary/20 to-muted overflow-hidden">
+          {event.poster ? (
+            <img
+              src={event.poster}
+              alt={event.title}
+              className="w-full h-full object-contain"
+              loading="lazy"
+            />
+          ) : hasBadges ? (
+            <div className="flex items-center justify-center h-full gap-3 px-4">
+              {homeBadge && (
+                <img
+                  src={homeBadge}
+                  alt={event.teams?.home?.name || 'Home'}
+                  className="w-12 h-12 md:w-14 md:h-14 object-contain"
+                  loading="lazy"
+                />
+              )}
+              <span className="text-muted-foreground font-bold text-sm">VS</span>
+              {awayBadge && (
+                <img
+                  src={awayBadge}
+                  alt={event.teams?.away?.name || 'Away'}
+                  className="w-12 h-12 md:w-14 md:h-14 object-contain"
+                  loading="lazy"
+                />
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <Play className="w-10 h-10 text-muted-foreground/50" />
+            </div>
+          )}
+
+          {/* Live Badge */}
+          {event.isLive && (
+            <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              <Radio className="w-3 h-3 animate-pulse" />
+              LIVE
+            </div>
+          )}
+
+          {/* Play overlay on hover */}
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="bg-primary rounded-full p-3">
+              <Play className="w-6 h-6 text-primary-foreground fill-current" />
+            </div>
+          </div>
+        </div>
+
+        {/* Event Info */}
+        <div className="p-3">
+          <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
+            {event.title}
+          </h3>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="capitalize">{event.sport}</span>
+            <span>{event.time}</span>
+          </div>
+          {event.league && (
+            <p className="text-xs text-muted-foreground mt-1 truncate">
+              {event.league}
+            </p>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+};
+
+const CDNEventsCarousel: React.FC = () => {
+  const { events, isLoading } = useFeaturedCDNEvents(15);
+  
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { 
+      loop: true, 
+      align: 'start',
+      slidesToScroll: 1,
+      dragFree: true
+    },
+    [Autoplay({ delay: 4000, stopOnInteraction: true })]
+  );
+
+  const scrollPrev = React.useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = React.useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-6 w-40 bg-muted rounded animate-pulse" />
+        </div>
+        <div className="flex gap-4 overflow-hidden">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex-shrink-0 w-[200px] md:w-[240px] h-[180px] bg-muted rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if no events
+  if (events.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Radio className="w-5 h-5 text-primary animate-pulse" />
+          <h2 className="text-lg md:text-xl font-bold text-foreground">
+            Live Events
+          </h2>
+          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">
+            {events.filter(e => e.isLive).length} Live
+          </span>
+        </div>
+        
+        {/* Navigation Arrows */}
+        <div className="flex gap-2">
+          <button
+            onClick={scrollPrev}
+            className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={scrollNext}
+            className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+            aria-label="Next"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Carousel */}
+      <div className="overflow-hidden" ref={emblaRef}>
+        <div className="flex gap-4">
+          {events.map((event) => (
+            <CDNEventCard key={event.id} event={event} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CDNEventsCarousel;
