@@ -1,16 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { triggerPopunderAd } from '@/utils/popunderAd';
 
 interface CustomChannelPlayerProps {
   embedUrl: string;
   title?: string;
+  matchId?: string;
   onError?: () => void;
 }
 
 const CustomChannelPlayer: React.FC<CustomChannelPlayerProps> = ({
   embedUrl,
   title = "Live Stream",
+  matchId,
   onError
 }) => {
   const navigate = useNavigate();
@@ -132,7 +135,13 @@ const CustomChannelPlayer: React.FC<CustomChannelPlayerProps> = ({
             {/* Left controls */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsPlaying(!isPlaying)}
+                onClick={() => {
+                  // Trigger popup ad on play button click
+                  if (matchId) {
+                    triggerPopunderAd(matchId, 'play_button');
+                  }
+                  setIsPlaying(!isPlaying);
+                }}
                 className="p-2 hover:bg-muted/40 rounded-full transition-colors"
                 title={isPlaying ? "Pause" : "Play"}
               >
