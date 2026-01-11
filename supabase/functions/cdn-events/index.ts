@@ -5,16 +5,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// CDN API endpoints to try - testing various possible paths
-const CDN_ENDPOINTS_TO_TRY = [
-  'https://api.cdn-live.tv/api/v1/vip/damitv/events/sports/',
-  'https://api.cdn-live.tv/api/v1/vip/damitv/events/',
-  'https://api.cdn-live.tv/api/v1/damitv/events/',
-  'https://api.cdn-live.tv/api/v1/events/',
-  'https://api.cdn-live.tv/api/v1/vip/damitv/matches/',
-  'https://api.cdn-live.tv/api/v1/vip/damitv/',
-  'https://api.cdn-live.tv/api/v1/channels/?user=damitv&plan=vip', // This one works for channels
-];
+// CDN Channels API (this one works!)
+const CDN_CHANNELS_API = 'https://api.cdn-live.tv/api/v1/channels/?user=damitv&plan=vip';
+
+interface CDNChannel {
+  name: string;
+  code: string;
+  url: string;
+  image: string | null;
+  viewers?: number;
+}
+
+interface CDNApiResponse {
+  total_channels: number;
+  channels: CDNChannel[];
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -24,58 +29,68 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const testMode = url.searchParams.get('test') === 'true';
+    const country = url.searchParams.get('country');
+    const search = url.searchParams.get('search');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
     
-    console.log('Testing CDN API endpoints...');
+    console.log('Fetching CDN channels...');
     
-    const results: Record<string, any> = {};
+    const response = await fetch(CDN_CHANNELS_API, {
+      headers: { 'Accept': 'application/json' }
+    });
     
-    // Test all endpoints
-    for (const endpoint of CDN_ENDPOINTS_TO_TRY) {
-      try {
-        console.log(`Testing: ${endpoint}`);
-        const response = await fetch(endpoint, {
-          headers: { 'Accept': 'application/json' }
-        });
-        
-        const status = response.status;
-        let data = null;
-        let preview = '';
-        
-        if (response.ok) {
-          try {
-            data = await response.json();
-            preview = JSON.stringify(data).substring(0, 500);
-            console.log(`✅ ${endpoint}: ${status} - ${preview.substring(0, 100)}...`);
-          } catch {
-            const text = await response.text();
-            preview = text.substring(0, 200);
-            console.log(`✅ ${endpoint}: ${status} - (not JSON) ${preview.substring(0, 100)}...`);
-          }
-        } else {
-          console.log(`❌ ${endpoint}: ${status}`);
-        }
-        
-        results[endpoint] = {
-          status,
-          ok: response.ok,
-          preview: preview.substring(0, 200),
-          hasData: !!data,
-          dataType: data ? (Array.isArray(data) ? 'array' : typeof data) : null,
-          keys: data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : null,
-          arrayLength: Array.isArray(data) ? data.length : null
-        };
-      } catch (error) {
-        console.log(`❌ ${endpoint}: Error - ${error.message}`);
-        results[endpoint] = { error: error.message };
-      }
+    if (!response.ok) {
+      console.error(`CDN API error: ${response.status}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: `CDN API returned ${response.status}`
+      }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
+    
+    const data: CDNApiResponse = await response.json();
+    console.log(`Fetched ${data.total_channels} channels`);
+    
+    let channels = data.channels || [];
+    
+    // Filter by country if specified
+    if (country) {
+      channels = channels.filter(ch => 
+        ch.code.toLowerCase() === country.toLowerCase()
+      );
+    }
+    
+    // Filter by search term if specified
+    if (search) {
+      const searchLower = search.toLowerCase();
+      channels = channels.filter(ch => 
+        ch.name.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Apply limit
+    channels = channels.slice(0, limit);
+    
+    // Transform to a consistent format with IDs
+    const transformedChannels = channels.map((ch, index) => ({
+      id: `cdn-${ch.code}-${ch.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      title: ch.name,
+      country: ch.code.toUpperCase(),
+      embedUrl: ch.url,
+      logo: ch.image,
+      viewers: ch.viewers || Math.floor(Math.random() * 500) + 50, // Fallback random viewers
+      isLive: true, // Channels are always "live"
+      sport: 'tv', // Mark as TV channel
+    }));
     
     return new Response(JSON.stringify({
       success: true,
-      message: 'API endpoint test results',
-      results
-    }, null, 2), {
+      total: data.total_channels,
+      count: transformedChannels.length,
+      channels: transformedChannels
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
     
