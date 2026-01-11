@@ -7,6 +7,14 @@ import {
   cdnChannelsApi,
   getFeaturedCDNChannels
 } from '../services/cdnChannelsApi';
+import { fetchAllMatches, getTeamBadgeUrl } from '@/api/sportsApi';
+import { buildEmbedUrl, getEmbedDomainSync } from '@/utils/embedDomains';
+
+// Helper to build full embed URL
+const buildFullEmbedUrl = (source: string, id: string, streamNo: number = 1): string => {
+  const domain = getEmbedDomainSync();
+  return buildEmbedUrl(domain, source, id, streamNo);
+};
 
 export interface UseChannelsResult {
   channels: CDNChannel[];
@@ -68,7 +76,7 @@ export const useCDNChannels = (): UseChannelsResult => {
   };
 };
 
-// Hook for getting a single channel
+// Hook for getting a single channel - also checks live matches
 export const useCDNChannel = (country: string | undefined, channelId: string | undefined) => {
   const [channel, setChannel] = useState<CDNChannel | null>(null);
   const [otherChannels, setOtherChannels] = useState<CDNChannel[]>([]);
@@ -86,6 +94,7 @@ export const useCDNChannel = (country: string | undefined, channelId: string | u
       setError(null);
 
       try {
+        // First try CDN channels
         const channelsByCountry = await getCDNChannelsByCountry();
         const countryChannels = channelsByCountry[country];
 
@@ -96,11 +105,49 @@ export const useCDNChannel = (country: string | undefined, channelId: string | u
           
           if (foundChannel) {
             setChannel(foundChannel);
-            // Get other channels from same country or all channels
             const sameCountry = allChannels.filter(ch => ch.country === foundChannel.country && ch.id !== channelId);
             setOtherChannels(sameCountry.length > 0 ? sameCountry : allChannels.filter(ch => ch.id !== channelId).slice(0, 20));
           } else {
-            setError('Channel not found');
+            // Not found in channels - try live matches
+            const matches = await fetchAllMatches();
+            const foundMatch = matches.find(m => m.id === channelId);
+            
+            if (foundMatch && foundMatch.sources && foundMatch.sources.length > 0) {
+              // Convert match to channel format
+              const firstSource = foundMatch.sources[0];
+              const embedUrl = buildFullEmbedUrl(firstSource.source, firstSource.id, 1);
+              
+              const matchAsChannel: CDNChannel = {
+                id: foundMatch.id,
+                title: foundMatch.title,
+                country: foundMatch.sportId || foundMatch.category || 'Sports',
+                embedUrl: embedUrl,
+                logo: foundMatch.teams?.home?.badge ? getTeamBadgeUrl(foundMatch.teams.home.badge) : foundMatch.poster,
+                source: 'cdn'
+              };
+              
+              setChannel(matchAsChannel);
+              
+              // Get other live matches as "other channels"
+              const otherMatches = matches
+                .filter(m => m.id !== channelId && m.sources && m.sources.length > 0)
+                .slice(0, 20)
+                .map(m => {
+                  const src = m.sources![0];
+                  return {
+                    id: m.id,
+                    title: m.title,
+                    country: m.sportId || m.category || 'Sports',
+                    embedUrl: buildFullEmbedUrl(src.source, src.id, 1),
+                    logo: m.teams?.home?.badge ? getTeamBadgeUrl(m.teams.home.badge) : m.poster,
+                    source: 'cdn' as const
+                  };
+                });
+              
+              setOtherChannels(otherMatches);
+            } else {
+              setError('Channel not found');
+            }
           }
         } else {
           const foundChannel = countryChannels.find(ch => ch.id === channelId);
@@ -109,7 +156,28 @@ export const useCDNChannel = (country: string | undefined, channelId: string | u
             setChannel(foundChannel);
             setOtherChannels(countryChannels.filter(ch => ch.id !== channelId));
           } else {
-            setError('Channel not found');
+            // Check in live matches as fallback
+            const matches = await fetchAllMatches();
+            const foundMatch = matches.find(m => m.id === channelId);
+            
+            if (foundMatch && foundMatch.sources && foundMatch.sources.length > 0) {
+              const firstSource = foundMatch.sources[0];
+              const embedUrl = buildFullEmbedUrl(firstSource.source, firstSource.id, 1);
+              
+              const matchAsChannel: CDNChannel = {
+                id: foundMatch.id,
+                title: foundMatch.title,
+                country: foundMatch.sportId || foundMatch.category || 'Sports',
+                embedUrl: embedUrl,
+                logo: foundMatch.teams?.home?.badge ? getTeamBadgeUrl(foundMatch.teams.home.badge) : foundMatch.poster,
+                source: 'cdn'
+              };
+              
+              setChannel(matchAsChannel);
+              setOtherChannels(countryChannels.filter(ch => ch.id !== channelId));
+            } else {
+              setError('Channel not found');
+            }
           }
         }
       } catch (err) {

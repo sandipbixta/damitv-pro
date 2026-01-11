@@ -7,23 +7,24 @@ import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { triggerPopunderAd } from '@/utils/popunderAd';
 import { getBohoImageUrl, getTeamBadgeUrl } from '@/api/sportsApi';
-import { generateMatchSlug } from '@/utils/matchSlug';
 
 const CDNEventCard: React.FC<{ match: Match }> = ({ match }) => {
   const navigate = useNavigate();
   
-  // Generate match URL
+  // Get the first source to build embed URL
+  const firstSource = match.sources?.[0];
   const sportSlug = (match.sportId || match.category || 'football').toLowerCase().replace(/\s+/g, '-');
-  const matchSlug = generateMatchSlug(match.title);
-  const matchUrl = `/match/${sportSlug}/${match.id}/${matchSlug}`;
+  
+  // Build channel-style URL for CDN events
+  const channelUrl = `/channel/${sportSlug}/${match.id}`;
 
   // Handle card click with popunder ad
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     // Trigger popunder ad on click
     triggerPopunderAd(match.id, 'cdn_event_click');
-    // Navigate to match
-    navigate(matchUrl);
+    // Navigate to channel player
+    navigate(channelUrl);
   };
 
   // Get team badges
