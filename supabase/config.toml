@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.cdn-events]
 verify_jwt = false
+
+[functions.live-matches]
+verify_jwt = false
