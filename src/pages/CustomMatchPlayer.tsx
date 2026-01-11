@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/PageLayout';
 import Hls from 'hls.js';
 import { supabase } from '@/integrations/supabase/client';
+import BannerAd from '@/components/BannerAd';
+import { triggerPopunderAd } from '@/utils/popunderAd';
 
 interface CustomMatch {
   id: string;
@@ -24,6 +26,7 @@ const CustomMatchPlayer = () => {
   const [match, setMatch] = useState<CustomMatch | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasTriggeredAd, setHasTriggeredAd] = useState(false);
 
   // Load match from Supabase
   useEffect(() => {
@@ -140,6 +143,13 @@ const CustomMatchPlayer = () => {
     }
   };
 
+  const handlePlayClick = () => {
+    if (!hasTriggeredAd && matchId) {
+      triggerPopunderAd(matchId, 'play_button');
+      setHasTriggeredAd(true);
+    }
+  };
+
   const isIframeStream = match?.streamUrl && !match.streamUrl.includes('.m3u8') && 
     !match.streamUrl.includes('.mp4') && !match.streamUrl.includes('.webm');
 
@@ -174,6 +184,9 @@ const CustomMatchPlayer = () => {
   return (
     <PageLayout>
       <div className="container mx-auto px-4 py-6">
+        {/* Banner Ad */}
+        <BannerAd className="mb-4" />
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Link to="/">
@@ -221,6 +234,8 @@ const CustomMatchPlayer = () => {
               autoPlay
               muted
               poster={match.imageUrl}
+              onClick={handlePlayClick}
+              onPlay={handlePlayClick}
             />
           )}
           
