@@ -1,5 +1,5 @@
-// Sports API Service - Using StreamedPK API
-// Re-export all functions from streamedPkApi
+// Sports API Service - Using BOHOSport API
+// Re-export all functions from bohoSportApi for backward compatibility
 
 export {
   clearStreamCache,
@@ -7,21 +7,18 @@ export {
   fetchAllMatches,
   fetchMatches,
   fetchLiveMatches,
-  fetchTodayMatches,
-  fetchPopularMatches,
   fetchMatch,
   fetchSimpleStream,
   fetchAllMatchStreams,
   fetchAllStreams,
   getBohoImageUrl,
   getTeamBadgeUrl,
-  BOHO_API_BASE,
-  STREAMED_PK_BASE
-} from '../services/streamedPkApi';
+  BOHO_API_BASE
+} from '../services/bohoSportApi';
 
 // Legacy function for backward compatibility
 export const fetchStream = async (source: string, id: string, streamNo?: number) => {
-  const { fetchSimpleStream } = await import('../services/streamedPkApi');
+  const { fetchSimpleStream } = await import('../services/bohoSportApi');
   const streams = await fetchSimpleStream(source, id);
   
   if (streamNo !== undefined) {

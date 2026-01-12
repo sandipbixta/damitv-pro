@@ -1,10 +1,10 @@
 // Embed Domain Manager - handles fallback between embed providers
-// Primary: streamed.pk | Fallback: embedsports.top
+// Primary: embed.damitv.pro | Fallback: embedsports.top (streamed.su's embed)
 
 export const EMBED_DOMAINS = {
   primary: {
-    url: 'https://streamed.pk',
-    format: 'streamedpk', // /embed/{source}/{id}/{streamNo}
+    url: 'https://embed.damitv.pro',
+    format: 'damitv', // /?id={id}&source={source}
   },
   fallback: {
     url: 'https://embedsports.top',
@@ -26,8 +26,13 @@ export const buildEmbedUrl = (
   id: string,
   streamNo: number = 1
 ): string => {
-  // All domains use the same format: /embed/{source}/{id}/{streamNo}
-  return `${domain}/embed/${source}/${id}/${streamNo}`;
+  if (domain.includes('damitv')) {
+    return `${domain}/?id=${id}&source=${source}`;
+  } else if (domain.includes('embedsports')) {
+    return `${domain}/embed/${source}/${id}/${streamNo}`;
+  }
+  // Default to damitv format
+  return `${domain}/?id=${id}&source=${source}`;
 };
 
 // Get cached working domain from localStorage
@@ -140,7 +145,7 @@ export const markDomainFailed = (domain: string): void => {
 
 // Get fallback domain (different from current)
 export const getFallbackDomain = (currentDomain: string): string | null => {
-  if (currentDomain.includes('streamed.pk')) {
+  if (currentDomain.includes('damitv')) {
     return EMBED_DOMAINS.fallback.url;
   } else if (currentDomain.includes('embedsports')) {
     return EMBED_DOMAINS.primary.url;
