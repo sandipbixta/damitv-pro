@@ -456,7 +456,10 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   }
 };
 
-// Fetch all streams for a match - uses ONLY real source IDs from API (no fabricated IDs)
+// Default number of stream mirrors to generate when API doesn't provide sources
+const DEFAULT_STREAM_COUNT = 4;
+
+// Fetch all streams for a match - generates multiple stream links
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -469,32 +472,56 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   console.log(`🎬 Building ad-free streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // ONLY use real source IDs from the API - don't fabricate any
+  // If API provides sources, use them
   if (match.sources && match.sources.length > 0) {
     let streamNumber = 1;
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source);
+        // Generate multiple stream numbers for each source (mirrors on the embed server)
+        const streamCount = src.source === 'main' ? DEFAULT_STREAM_COUNT : 1;
         
-        allStreams.push({
-          id: src.id,
-          streamNo: streamNumber,
-          language: 'EN',
-          hd: true,
-          embedUrl: adFreeUrl,
-          source: src.source,
-          timestamp: Date.now(),
-          name: `Stream ${streamNumber}`
-        } as Stream);
-        
-        sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${adFreeUrl}`);
-        streamNumber++;
+        for (let i = 1; i <= streamCount; i++) {
+          const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source, i);
+          
+          allStreams.push({
+            id: src.id,
+            streamNo: streamNumber,
+            language: 'EN',
+            hd: true,
+            embedUrl: adFreeUrl,
+            source: src.source,
+            timestamp: Date.now(),
+            name: `Stream ${streamNumber}`
+          } as Stream);
+          
+          sourcesWithStreams.add(src.source);
+          console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id}/${i} → ${adFreeUrl}`);
+          streamNumber++;
+        }
       }
     }
   } else {
-    console.warn(`⚠️ No sources available for match: ${match.title}`);
+    // Fallback: generate multiple streams using match ID
+    console.log(`📡 No API sources, generating ${DEFAULT_STREAM_COUNT} stream mirrors for: ${match.id}`);
+    
+    for (let i = 1; i <= DEFAULT_STREAM_COUNT; i++) {
+      const adFreeUrl = buildAdFreeEmbedUrl(match.id, 'main', i);
+      
+      allStreams.push({
+        id: match.id,
+        streamNo: i,
+        language: 'EN',
+        hd: true,
+        embedUrl: adFreeUrl,
+        source: 'main',
+        timestamp: Date.now(),
+        name: `Stream ${i}`
+      } as Stream);
+      
+      console.log(`✅ Stream ${i}: main/${match.id}/${i} → ${adFreeUrl}`);
+    }
+    sourcesWithStreams.add('main');
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
