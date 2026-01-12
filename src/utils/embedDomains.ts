@@ -4,11 +4,11 @@
 export const EMBED_DOMAINS = {
   primary: {
     url: 'https://embed.damitv.pro',
-    format: 'damitv', // /?id={id}&source={source}&streamNo={streamNo}
+    format: 'damitv', // /?id={id}&source={source}
   },
   fallback: {
-    url: 'https://embed.damitv.pro', // Use same domain as primary
-    format: 'damitv',
+    url: 'https://embedsports.top',
+    format: 'embedsports', // /embed/{source}/{id}/{streamNo}
   }
 };
 
@@ -27,13 +27,12 @@ export const buildEmbedUrl = (
   streamNo: number = 1
 ): string => {
   if (domain.includes('damitv')) {
-    // Include streamNo in damitv format for multiple stream support
-    return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
+    return `${domain}/?id=${id}&source=${source}`;
   } else if (domain.includes('embedsports')) {
     return `${domain}/embed/${source}/${id}/${streamNo}`;
   }
-  // Default to damitv format with streamNo
-  return `${domain}/?id=${id}&source=${source}&streamNo=${streamNo}`;
+  // Default to damitv format
+  return `${domain}/?id=${id}&source=${source}`;
 };
 
 // Get cached working domain from localStorage

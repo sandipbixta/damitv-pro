@@ -311,6 +311,7 @@ const StreamSources = ({
             const actualStreamNo = stream.streamNo !== undefined ? stream.streamNo : index + 1;
             const streamKey = `${stream.source}/${stream.id}/${actualStreamNo}`;
             const isActive = activeSource === streamKey;
+            const viewerCount = stream.viewers || 0;
             
             // Use API-provided names with streamNo priority
             let streamName = stream.name || 
@@ -322,7 +323,7 @@ const StreamSources = ({
               <Button
                 key={streamKey}
                 variant={isActive ? "default" : "outline"}
-                className={`rounded-full px-5 py-2.5 min-w-[120px] ${
+                className={`rounded-full px-5 py-2.5 min-w-[120px] flex-col h-auto gap-1 ${
                   isActive 
                     ? 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary' 
                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
@@ -337,6 +338,12 @@ const StreamSources = ({
                   <span>{streamName}</span>
                   {stream.hd && <span className="text-xs bg-red-600 px-1 rounded">HD</span>}
                 </div>
+                {viewerCount > 0 && (
+                  <div className="flex items-center gap-1 text-xs font-semibold">
+                    <Users className="w-3 h-3 text-primary" />
+                    <span>{formatViewerCount(viewerCount, false)}</span>
+                  </div>
+                )}
               </Button>
             );
           })}
