@@ -1,8 +1,11 @@
 // Adstrim API Service - fetches events from beta.adstrim.ru
+// Uses Adstrim's embed player for streams
 import { Sport, Match, Stream } from '../types/sports';
-import { getEmbedDomainSync } from '../utils/embedDomains';
 
 const API_BASE = 'https://beta.adstrim.ru/api';
+
+// Adstrim embed player domain
+const ADSTRIM_EMBED = 'https://adstrim.ru/embed';
 
 // CORS proxies for fallback
 const CORS_PROXIES = [
@@ -129,11 +132,10 @@ export const parseChannelLink = (link: string): { source: string; id: string } =
   return { source: 'channel', id: link };
 };
 
-// Build embed URL for a channel
+// Build embed URL for a channel using Adstrim's player
 export const buildChannelEmbedUrl = (channelLink: string): string => {
-  const domain = getEmbedDomainSync();
-  // For Adstrim channels, use direct channel format
-  return `${domain}/?channel=${channelLink}`;
+  // Use Adstrim's embed player with channel parameter
+  return `${ADSTRIM_EMBED}/?channel=${channelLink}`;
 };
 
 // Interface for Adstrim event
