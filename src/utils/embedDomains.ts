@@ -1,10 +1,10 @@
 // Embed Domain Manager - handles fallback between embed providers
-// Primary: stream.pk | Fallback: embedsports.top
+// Primary: streamed.pk | Fallback: embedsports.top
 
 export const EMBED_DOMAINS = {
   primary: {
-    url: 'https://stream.pk',
-    format: 'streampk', // /embed/{source}/{id}/{streamNo}
+    url: 'https://streamed.pk',
+    format: 'streamedpk', // /embed/{source}/{id}/{streamNo}
   },
   fallback: {
     url: 'https://embedsports.top',
@@ -26,12 +26,7 @@ export const buildEmbedUrl = (
   id: string,
   streamNo: number = 1
 ): string => {
-  if (domain.includes('stream.pk')) {
-    return `${domain}/embed/${source}/${id}/${streamNo}`;
-  } else if (domain.includes('embedsports')) {
-    return `${domain}/embed/${source}/${id}/${streamNo}`;
-  }
-  // Default to stream.pk format
+  // All domains use the same format: /embed/{source}/{id}/{streamNo}
   return `${domain}/embed/${source}/${id}/${streamNo}`;
 };
 
@@ -145,7 +140,7 @@ export const markDomainFailed = (domain: string): void => {
 
 // Get fallback domain (different from current)
 export const getFallbackDomain = (currentDomain: string): string | null => {
-  if (currentDomain.includes('stream.pk')) {
+  if (currentDomain.includes('streamed.pk')) {
     return EMBED_DOMAINS.fallback.url;
   } else if (currentDomain.includes('embedsports')) {
     return EMBED_DOMAINS.primary.url;
