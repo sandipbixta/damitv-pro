@@ -1,11 +1,15 @@
 // Adstrim API Service - fetches events from beta.adstrim.ru
-// Uses Adstrim's embed player for streams
+// Uses embed.damitv.pro for reliable iframe playback
 import { Sport, Match, Stream } from '../types/sports';
 
 const API_BASE = 'https://beta.adstrim.ru/api';
 
-// Adstrim embed player domain
-const ADSTRIM_EMBED = 'https://adstrim.ru/embed';
+// Working embed player domains (damitv.pro works reliably)
+const EMBED_DOMAINS = [
+  'https://embed.damitv.pro',
+  'https://1stream.damitv.pro',
+  'https://embedlive.me'
+];
 
 // CORS proxies for fallback
 const CORS_PROXIES = [
@@ -132,10 +136,11 @@ export const parseChannelLink = (link: string): { source: string; id: string } =
   return { source: 'channel', id: link };
 };
 
-// Build embed URL for a channel using Adstrim's player
-export const buildChannelEmbedUrl = (channelLink: string): string => {
-  // Use Adstrim's embed player with channel parameter
-  return `${ADSTRIM_EMBED}/?channel=${channelLink}`;
+// Build embed URL for a channel using working embed player
+export const buildChannelEmbedUrl = (channelLink: string, domainIndex: number = 0): string => {
+  const domain = EMBED_DOMAINS[domainIndex % EMBED_DOMAINS.length];
+  // Use damitv.pro format: /?channel={channelLink}
+  return `${domain}/?channel=${channelLink}`;
 };
 
 // Interface for Adstrim event
