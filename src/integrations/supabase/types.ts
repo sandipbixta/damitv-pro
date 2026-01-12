@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      custom_matches: {
+        Row: {
+          away_team: string
+          category: string | null
+          created_at: string
+          home_team: string
+          id: string
+          image_url: string | null
+          match_date: string
+          stream_url: string
+          updated_at: string
+          visible: boolean | null
+        }
+        Insert: {
+          away_team: string
+          category?: string | null
+          created_at?: string
+          home_team: string
+          id: string
+          image_url?: string | null
+          match_date: string
+          stream_url: string
+          updated_at?: string
+          visible?: boolean | null
+        }
+        Update: {
+          away_team?: string
+          category?: string | null
+          created_at?: string
+          home_team?: string
+          id?: string
+          image_url?: string | null
+          match_date?: string
+          stream_url?: string
+          updated_at?: string
+          visible?: boolean | null
+        }
+        Relationships: []
+      }
       league_teams: {
         Row: {
           country: string | null
