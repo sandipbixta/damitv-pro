@@ -17,26 +17,25 @@ export const useStreamPlayer = () => {
     sourceNames: string[];
   }>({ sourcesChecked: 0, sourcesWithStreams: 0, sourceNames: [] });
 
-  // Simple function to build ALL streams from ALL sources (instant, no API calls)
+  // Simple function to build ALL streams from ALL sources
   const fetchAllStreamsForMatch = useCallback(async (match: Match) => {
-    // Don't show loading state - streams are built instantly
-    
     try {
-      console.log(`🎯 Building ad-free streams for: ${match.title}`);
+      console.log(`🎯 Building streams for: ${match.title}`);
       
-      // Build ad-free streams instantly (no API calls needed)
-      const result = await fetchAllMatchStreams(match);
+      // Fetch streams (returns Stream[])
+      const streams = await fetchAllMatchStreams(match);
       
-      // Store discovery metadata
+      // Build discovery metadata from streams
+      const uniqueSources = [...new Set(streams.map(s => s.source))];
       setStreamDiscovery({
-        sourcesChecked: result.sourcesChecked,
-        sourcesWithStreams: result.sourcesWithStreams,
-        sourceNames: result.sourceNames
+        sourcesChecked: match.sources?.length || 0,
+        sourcesWithStreams: uniqueSources.length,
+        sourceNames: uniqueSources
       });
       
       // Convert to Record format for compatibility
       const streamsData: Record<string, Stream[]> = {};
-      result.streams.forEach(stream => {
+      streams.forEach(stream => {
         const sourceKey = `${stream.source}/${stream.id}`;
         if (!streamsData[sourceKey]) {
           streamsData[sourceKey] = [];
@@ -47,17 +46,17 @@ export const useStreamPlayer = () => {
       setAllStreams(streamsData);
       
       // Auto-select first stream immediately
-      if (result.streams.length > 0) {
-        const firstStream = result.streams[0];
+      if (streams.length > 0) {
+        const firstStream = streams[0];
         setCurrentStream({
           ...firstStream,
           timestamp: Date.now()
         });
         setActiveSource(`${firstStream.source}/${firstStream.id}/${firstStream.streamNo || 1}`);
-        console.log(`✅ Instant stream ready: ${firstStream.source}`);
+        console.log(`✅ Stream ready: ${firstStream.source}`);
       }
       
-      console.log(`🎬 ${result.streams.length} streams ready instantly`);
+      console.log(`🎬 ${streams.length} streams ready`);
       
     } catch (error) {
       console.error('❌ Error building streams:', error);
