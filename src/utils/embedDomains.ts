@@ -26,13 +26,8 @@ export const buildEmbedUrl = (
   id: string,
   streamNo: number = 1
 ): string => {
-  if (domain.includes('damitv')) {
-    return `${domain}/?id=${id}&source=${source}`;
-  } else if (domain.includes('embedsports')) {
-    return `${domain}/embed/${source}/${id}/${streamNo}`;
-  }
-  // Default to damitv format
-  return `${domain}/?id=${id}&source=${source}`;
+  // All domains now use the same path-based format: /embed/{source}/{id}/{streamNo}
+  return `${domain}/embed/${source}/${id}/${streamNo}`;
 };
 
 // Get cached working domain from localStorage
