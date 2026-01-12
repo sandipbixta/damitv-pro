@@ -1,17 +1,21 @@
 // Adstrim API Service - fetches events from beta.adstrim.ru
-// Uses embed.damitv.pro for reliable iframe playback
+// Uses direct HLS streams for playback
 import { Sport, Match, Stream } from '../types/sports';
 
 const API_BASE = 'https://beta.adstrim.ru/api';
 
-// Working embed player domains (damitv.pro works reliably)
-const EMBED_DOMAINS = [
-  'https://embed.damitv.pro',
-  'https://1stream.damitv.pro',
-  'https://embedlive.me'
-];
+// HLS CDN patterns for different channel sources
+// Format: { source_prefix: 'hls_cdn_url_pattern' }
+const HLS_CDN_PATTERNS: Record<string, string> = {
+  'eplayer': 'https://rfrm.me/eplayer/{channel}/mono.m3u8',
+  'alpha': 'https://rfrm.me/alpha/{channel}/mono.m3u8',
+  'ftk': 'https://rfrm.me/ftk/{channel}/mono.m3u8',
+  'premium': 'https://rfrm.me/premium/{channel}/mono.m3u8',
+  'dazn': 'https://rfrm.me/dazn/{channel}/mono.m3u8',
+  'default': 'https://rfrm.me/live/{channel}/mono.m3u8'
+};
 
-// CORS proxies for fallback
+// CORS proxies for API fallback
 const CORS_PROXIES = [
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?'
@@ -110,37 +114,46 @@ const mapSportToId = (sport: string): string => {
   return sportMap[sport] || sport?.toLowerCase().replace(/\s+/g, '-') || 'other';
 };
 
-// Parse channel link to source and id for embed
-// e.g., "eplayerSPORTTV1" -> { source: "eplayer", id: "SPORTTV1" }
-export const parseChannelLink = (link: string): { source: string; id: string } => {
-  // Common prefixes
+// Parse channel link to get HLS stream info
+// e.g., "eplayerSPORTTV1" -> { source: "eplayer", channel: "SPORTTV1" }
+export const parseChannelLink = (link: string): { source: string; channel: string; id: string } => {
+  // Common prefixes that map to HLS CDN patterns
   const prefixes = [
     { prefix: 'eplayer', source: 'eplayer' },
+    { prefix: 'alpha', source: 'alpha' },
     { prefix: 'ftk', source: 'ftk' },
     { prefix: 'premium', source: 'premium' },
-    { prefix: 'arg', source: 'arg' },
-    { prefix: 'mex', source: 'mex' },
-    { prefix: 'prima', source: 'prima' },
-    { prefix: 'alpha', source: 'alpha' },
     { prefix: 'dazn', source: 'dazn' },
+    { prefix: 'arg', source: 'default' },
+    { prefix: 'mex', source: 'default' },
+    { prefix: 'prima', source: 'default' },
   ];
 
   for (const { prefix, source } of prefixes) {
     if (link.toLowerCase().startsWith(prefix)) {
-      const id = link.substring(prefix.length);
-      return { source, id: id || link };
+      const channel = link.substring(prefix.length) || link;
+      return { source, channel, id: link };
     }
   }
 
-  // Default: use the whole link as id
-  return { source: 'channel', id: link };
+  // Default: use the full link as channel name
+  return { source: 'default', channel: link, id: link };
 };
 
-// Build embed URL for a channel using working embed player
-export const buildChannelEmbedUrl = (channelLink: string, domainIndex: number = 0): string => {
-  const domain = EMBED_DOMAINS[domainIndex % EMBED_DOMAINS.length];
-  // Use damitv.pro format: /?channel={channelLink}
-  return `${domain}/?channel=${channelLink}`;
+// Build HLS m3u8 URL for a channel
+export const buildHLSUrl = (channelLink: string): string => {
+  const { source, channel } = parseChannelLink(channelLink);
+  const pattern = HLS_CDN_PATTERNS[source] || HLS_CDN_PATTERNS['default'];
+  
+  // Replace {channel} placeholder with actual channel name
+  const hlsUrl = pattern.replace('{channel}', channel.toLowerCase());
+  console.log(`🎬 Built HLS URL for ${channelLink}: ${hlsUrl}`);
+  return hlsUrl;
+};
+
+// Legacy function for backwards compatibility (now returns HLS URL)
+export const buildChannelEmbedUrl = (channelLink: string): string => {
+  return buildHLSUrl(channelLink);
 };
 
 // Interface for Adstrim event
