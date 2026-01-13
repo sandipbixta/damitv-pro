@@ -107,16 +107,18 @@ const AdBlockingVideoPlayer = ({
         />
       )}
 
-      {/* Iframe - no sandbox/referrerPolicy to avoid stream provider blocks */}
+      {/* Iframe with ad-blocking attributes */}
       <iframe
         ref={iframeRef}
         src={url}
         className="w-full h-full"
         allowFullScreen
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         onLoad={handleLoad}
         style={{ border: 'none' }}
-        loading="eager"
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
       />
 
       {/* Global styles to block common ad patterns */}

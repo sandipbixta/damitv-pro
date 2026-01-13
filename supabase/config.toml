@@ -29,6 +29,3 @@ verify_jwt = false
 
 [functions.sync-matches]
 verify_jwt = false
-
-[functions.extract-stream]
-verify_jwt = false

@@ -509,39 +509,7 @@ const extractStreamUrl = (item: any): { url: string; isHls: boolean } => {
   return { url: '', isHls: false };
 };
 
-// Edge function URL for HLS extraction
-const HLS_EXTRACTION_URL = 'https://wxvsteaayxgygihpshoz.supabase.co/functions/v1/extract-stream';
-
-// Attempt HLS extraction from embed URL via edge function
-const attemptHlsExtraction = async (embedUrl: string): Promise<string | null> => {
-  // Skip if already HLS
-  if (embedUrl.includes('.m3u8')) {
-    return embedUrl;
-  }
-  
-  try {
-    console.log(`🔍 Attempting HLS extraction for: ${embedUrl}`);
-    const response = await fetch(HLS_EXTRACTION_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ embedUrl }),
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.hlsUrl) {
-        console.log(`✅ Extracted HLS URL: ${data.hlsUrl}`);
-        return data.hlsUrl;
-      }
-    }
-  } catch (error) {
-    console.warn('⚠️ HLS extraction failed:', error);
-  }
-  
-  return null;
-};
-
-// Fetch stream details from API endpoint with CORS proxy + HLS extraction
+// Fetch stream details from API endpoint with CORS proxy
 const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]> => {
   const cacheKey = `stream_${source}_${id}`;
   const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
@@ -556,18 +524,8 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
     console.log(`📦 Stream API response for ${source}/${id}:`, data);
     
     if (Array.isArray(data) && data.length > 0) {
-      // Process streams and attempt HLS extraction for non-HLS streams
-      const streamPromises = data.map(async (item: any, index: number) => {
-        let { url, isHls } = extractStreamUrl(item);
-        
-        // If not HLS, try to extract from embed URL
-        if (!isHls && url && !url.includes('.m3u8')) {
-          const extractedHls = await attemptHlsExtraction(url);
-          if (extractedHls) {
-            url = extractedHls;
-            isHls = true;
-          }
-        }
+      const streams = data.map((item: any, index: number) => {
+        const { url, isHls } = extractStreamUrl(item);
         
         return {
           id: item.id || id,
@@ -577,12 +535,10 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
           embedUrl: url,
           source: item.source || source,
           timestamp: Date.now(),
-          name: isHls ? `HD Stream ${item.streamNo || index + 1}` : `Stream ${item.streamNo || index + 1}`,
+          name: `Stream ${item.streamNo || index + 1}`,
           isHls: isHls
         } as Stream;
       });
-      
-      const streams = await Promise.all(streamPromises);
       
       setCachedData(cacheKey, streams);
       return streams;
@@ -600,121 +556,102 @@ const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number):
   return `https://embedsports.top/embed/${source}/${id}/${streamNo}`;
 };
 
-// Fetch all streams for a match - uses multi-source aggregator with IPTV priority
+// Fetch all streams for a match - fetches real embed URLs from API with fallback
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
   sourcesWithStreams: number;
   sourceNames: string[];
-  hasHls?: boolean;
-  hasIptv?: boolean;
 }> => {
-  // Import multi-source aggregator dynamically to avoid circular deps
-  const { fetchMultiSourceStreams, sortStreamsByQuality } = await import('./multiSourceStreamApi');
+  const allStreams: Stream[] = [];
+  const sourcesWithStreams = new Set<string>();
   
   console.log(`🎬 Fetching streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  try {
-    // Use multi-source fetcher which checks IPTV + all API sources
-    const result = await fetchMultiSourceStreams(match);
+  // Fetch real embed URLs from the stream API
+  if (match.sources && match.sources.length > 0) {
+    let streamNumber = 1;
     
-    // Sort streams: HLS/IPTV first, then by source
-    const sortedStreams = sortStreamsByQuality(result.streams);
+    // Fetch all sources in parallel
+    const streamPromises = match.sources.map(src => 
+      src.source && src.id ? fetchStreamFromApi(src.source, src.id) : Promise.resolve([])
+    );
     
-    const hlsCount = sortedStreams.filter(s => s.isHls).length;
-    console.log(`✅ Multi-source: ${sortedStreams.length} streams (${hlsCount} HLS, IPTV: ${result.hasIptv})`);
+    const results = await Promise.all(streamPromises);
     
-    return {
-      streams: sortedStreams,
-      sourcesChecked: result.sourcesChecked,
-      sourcesWithStreams: result.sourcesWithStreams,
-      sourceNames: result.sourceNames,
-      hasHls: result.hasHls,
-      hasIptv: result.hasIptv,
-    };
-  } catch (error) {
-    console.warn('Multi-source fetch failed, using fallback:', error);
-    
-    // Fallback to legacy logic
-    const allStreams: Stream[] = [];
-    const sourcesWithStreams = new Set<string>();
-    
-    if (match.sources && match.sources.length > 0) {
-      let streamNumber = 1;
+    for (let i = 0; i < results.length; i++) {
+      const streams = results[i];
+      const src = match.sources[i];
       
-      const streamPromises = match.sources.map(src => 
-        src.source && src.id ? fetchStreamFromApi(src.source, src.id) : Promise.resolve([])
-      );
-      
-      const results = await Promise.all(streamPromises);
-      
-      for (let i = 0; i < results.length; i++) {
-        const streams = results[i];
-        const src = match.sources[i];
-        
-        if (streams.length > 0) {
-          for (const stream of streams) {
-            if (stream.embedUrl) {
-              allStreams.push({
-                ...stream,
-                streamNo: streamNumber,
-                name: stream.isHls ? `HD Stream ${streamNumber}` : `Stream ${streamNumber}`
-              });
-              sourcesWithStreams.add(src.source);
-              streamNumber++;
-            }
+      if (streams.length > 0) {
+        // API returned stream data
+        for (const stream of streams) {
+          if (stream.embedUrl) {
+            allStreams.push({
+              ...stream,
+              streamNo: streamNumber,
+              name: stream.isHls ? `HD Stream ${streamNumber}` : `Stream ${streamNumber}`
+            });
+            sourcesWithStreams.add(src.source);
+            console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${stream.embedUrl} (HLS: ${stream.isHls || false})`);
+            streamNumber++;
           }
-        } else if (src.source && src.id) {
-          const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
-          
-          allStreams.push({
-            id: src.id,
-            streamNo: streamNumber,
-            language: 'EN',
-            hd: true,
-            embedUrl: fallbackUrl,
-            source: src.source,
-            timestamp: Date.now(),
-            name: `Stream ${streamNumber}`,
-            isHls: false
-          } as Stream);
-          
-          sourcesWithStreams.add(src.source);
-          streamNumber++;
         }
+      } else if (src.source && src.id) {
+        // API failed - generate fallback embed URL
+        const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
+        console.log(`⚠️ Using fallback for ${src.source}/${src.id}: ${fallbackUrl}`);
+        
+        allStreams.push({
+          id: src.id,
+          streamNo: streamNumber,
+          language: 'EN',
+          hd: true,
+          embedUrl: fallbackUrl,
+          source: src.source,
+          timestamp: Date.now(),
+          name: `Stream ${streamNumber}`,
+          isHls: false
+        } as Stream);
+        
+        sourcesWithStreams.add(src.source);
+        streamNumber++;
       }
     }
-    
-    if (allStreams.length === 0 && match.id) {
-      const fallbackUrl = `https://embedsports.top/embed/alpha/${match.id}/1`;
-      
-      allStreams.push({
-        id: match.id,
-        streamNo: 1,
-        language: 'EN',
-        hd: true,
-        embedUrl: fallbackUrl,
-        source: 'alpha',
-        timestamp: Date.now(),
-        name: 'Stream 1',
-        isHls: false
-      } as Stream);
-      
-      sourcesWithStreams.add('alpha');
-    }
-    
-    const sourceNames = Array.from(sourcesWithStreams);
-    
-    return {
-      streams: allStreams,
-      sourcesChecked: match.sources?.length || 0,
-      sourcesWithStreams: sourceNames.length,
-      sourceNames,
-      hasHls: false,
-      hasIptv: false,
-    };
   }
+  
+  // If still no streams, create fallback using match ID with proper embed format
+  if (allStreams.length === 0 && match.id) {
+    console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
+    // Use embedsports.top embed format
+    const fallbackUrl = `https://embedsports.top/embed/alpha/${match.id}/1`;
+    
+    allStreams.push({
+      id: match.id,
+      streamNo: 1,
+      language: 'EN',
+      hd: true,
+      embedUrl: fallbackUrl,
+      source: 'alpha',
+      timestamp: Date.now(),
+      name: 'Stream 1',
+      isHls: false
+    } as Stream);
+    
+    sourcesWithStreams.add('alpha');
+  }
+
+  const sourceNames = Array.from(sourcesWithStreams);
+  const hlsCount = allStreams.filter(s => s.isHls).length;
+  console.log(`✅ Fetched ${allStreams.length} streams (${hlsCount} HLS direct streams)`);
+
+  return {
+    streams: allStreams,
+    sourcesChecked: match.sources?.length || 0,
+    sourcesWithStreams: sourceNames.length,
+    sourceNames
+  };
 };
 
 // Fetch all streams (legacy compatibility)
