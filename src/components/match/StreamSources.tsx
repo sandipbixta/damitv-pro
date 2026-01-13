@@ -1,11 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Source, Stream, Match } from '@/types/sports';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchStream } from '@/api/sportsApi';
 import { Loader, Play, Users } from 'lucide-react';
 import { getConnectionInfo } from '@/utils/connectionOptimizer';
 import { formatViewerCount } from '@/services/viewerCountService';
 import { LiveViewerCount } from '@/components/LiveViewerCount';
+import { triggerPopunderAd } from '@/utils/popunderAd';
 
 interface StreamSourcesProps {
   sources: Source[];
@@ -146,8 +147,13 @@ const StreamSources = ({
     }
   };
 
-  // Handle source button click - lazy load streams
+  // Handle source button click - lazy load streams and trigger ad
   const handleSourceClick = async (source: Source, streamNo?: number) => {
+    // Trigger popunder ad on stream click
+    if (match?.id) {
+      triggerPopunderAd(match.id, 'stream_source_click');
+    }
+    
     const sourceKey = `${source.source}/${source.id}`;
     const existingStreams = effectiveStreams[sourceKey];
     
@@ -329,6 +335,10 @@ const StreamSources = ({
                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
                 }`}
                 onClick={() => {
+                  // Trigger popunder ad on stream link click
+                  if (match?.id) {
+                    triggerPopunderAd(match.id, 'stream_link_click');
+                  }
                   onSourceChange(stream.source, stream.id, actualStreamNo);
                 }}
               >
