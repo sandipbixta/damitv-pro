@@ -1,10 +1,10 @@
 // Embed Domain Manager - handles fallback between embed providers
-// Primary: topembed.pw | Fallback: embed.damitv.pro
+// Primary: embedsports.top (from API) | Fallback: embed.damitv.pro
 
 export const EMBED_DOMAINS = {
   primary: {
-    url: 'https://topembed.pw',
-    format: 'topembed', // /event/{slug}_{timestamp}
+    url: 'https://embedsports.top',
+    format: 'embedsports', // /embed/{source}/{id}/{streamNo}
   },
   fallback: {
     url: 'https://embed.damitv.pro',
@@ -20,8 +20,7 @@ const DOMAIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const failedDomains = new Set<string>();
 
 // Build embed URL based on domain format
-// For topembed: /event/{slug}_{timestamp}
-// For damitv: /embed/{source}/{id}/{streamNo}
+// Standard format: /embed/{source}/{id}/{streamNo}
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -30,11 +29,7 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  if (domain.includes('topembed.pw') && matchSlug && matchTimestamp) {
-    // topembed format: /event/{slug}_{timestamp}
-    return `${domain}/event/${matchSlug}_${matchTimestamp}`;
-  }
-  // Fallback format: /embed/{source}/{id}/{streamNo}
+  // Standard embed format for all domains
   return `${domain}/embed/${source}/${id}/${streamNo}`;
 };
 
@@ -148,9 +143,9 @@ export const markDomainFailed = (domain: string): void => {
 
 // Get fallback domain (different from current)
 export const getFallbackDomain = (currentDomain: string): string | null => {
-  if (currentDomain.includes('damitv')) {
+  if (currentDomain.includes('embedsports')) {
     return EMBED_DOMAINS.fallback.url;
-  } else if (currentDomain.includes('embedsports')) {
+  } else if (currentDomain.includes('damitv')) {
     return EMBED_DOMAINS.primary.url;
   }
   return EMBED_DOMAINS.fallback.url;
