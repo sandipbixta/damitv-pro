@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Sport, Match } from '../types/sports';
-import { fetchSports, fetchAllMatches, fetchMatches } from '../api/sportsApi';
-import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
+import { Sport, Match } from '@/types/sports';
+import { fetchSports, fetchAllMatches, fetchMatches } from '@/api/sportsApi';
+import { consolidateMatches, filterCleanMatches } from '@/utils/matchUtils';
 
 interface SportsDataContextType {
   sports: Sport[];
