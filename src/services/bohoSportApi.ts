@@ -600,102 +600,121 @@ const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number):
   return `https://embedsports.top/embed/${source}/${id}/${streamNo}`;
 };
 
-// Fetch all streams for a match - fetches real embed URLs from API with fallback
+// Fetch all streams for a match - uses multi-source aggregator with IPTV priority
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
   sourcesWithStreams: number;
   sourceNames: string[];
+  hasHls?: boolean;
+  hasIptv?: boolean;
 }> => {
-  const allStreams: Stream[] = [];
-  const sourcesWithStreams = new Set<string>();
+  // Import multi-source aggregator dynamically to avoid circular deps
+  const { fetchMultiSourceStreams, sortStreamsByQuality } = await import('./multiSourceStreamApi');
   
   console.log(`🎬 Fetching streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // Fetch real embed URLs from the stream API
-  if (match.sources && match.sources.length > 0) {
-    let streamNumber = 1;
+  try {
+    // Use multi-source fetcher which checks IPTV + all API sources
+    const result = await fetchMultiSourceStreams(match);
     
-    // Fetch all sources in parallel
-    const streamPromises = match.sources.map(src => 
-      src.source && src.id ? fetchStreamFromApi(src.source, src.id) : Promise.resolve([])
-    );
+    // Sort streams: HLS/IPTV first, then by source
+    const sortedStreams = sortStreamsByQuality(result.streams);
     
-    const results = await Promise.all(streamPromises);
+    const hlsCount = sortedStreams.filter(s => s.isHls).length;
+    console.log(`✅ Multi-source: ${sortedStreams.length} streams (${hlsCount} HLS, IPTV: ${result.hasIptv})`);
     
-    for (let i = 0; i < results.length; i++) {
-      const streams = results[i];
-      const src = match.sources[i];
+    return {
+      streams: sortedStreams,
+      sourcesChecked: result.sourcesChecked,
+      sourcesWithStreams: result.sourcesWithStreams,
+      sourceNames: result.sourceNames,
+      hasHls: result.hasHls,
+      hasIptv: result.hasIptv,
+    };
+  } catch (error) {
+    console.warn('Multi-source fetch failed, using fallback:', error);
+    
+    // Fallback to legacy logic
+    const allStreams: Stream[] = [];
+    const sourcesWithStreams = new Set<string>();
+    
+    if (match.sources && match.sources.length > 0) {
+      let streamNumber = 1;
       
-      if (streams.length > 0) {
-        // API returned stream data
-        for (const stream of streams) {
-          if (stream.embedUrl) {
-            allStreams.push({
-              ...stream,
-              streamNo: streamNumber,
-              name: stream.isHls ? `HD Stream ${streamNumber}` : `Stream ${streamNumber}`
-            });
-            sourcesWithStreams.add(src.source);
-            console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${stream.embedUrl} (HLS: ${stream.isHls || false})`);
-            streamNumber++;
+      const streamPromises = match.sources.map(src => 
+        src.source && src.id ? fetchStreamFromApi(src.source, src.id) : Promise.resolve([])
+      );
+      
+      const results = await Promise.all(streamPromises);
+      
+      for (let i = 0; i < results.length; i++) {
+        const streams = results[i];
+        const src = match.sources[i];
+        
+        if (streams.length > 0) {
+          for (const stream of streams) {
+            if (stream.embedUrl) {
+              allStreams.push({
+                ...stream,
+                streamNo: streamNumber,
+                name: stream.isHls ? `HD Stream ${streamNumber}` : `Stream ${streamNumber}`
+              });
+              sourcesWithStreams.add(src.source);
+              streamNumber++;
+            }
           }
+        } else if (src.source && src.id) {
+          const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
+          
+          allStreams.push({
+            id: src.id,
+            streamNo: streamNumber,
+            language: 'EN',
+            hd: true,
+            embedUrl: fallbackUrl,
+            source: src.source,
+            timestamp: Date.now(),
+            name: `Stream ${streamNumber}`,
+            isHls: false
+          } as Stream);
+          
+          sourcesWithStreams.add(src.source);
+          streamNumber++;
         }
-      } else if (src.source && src.id) {
-        // API failed - generate fallback embed URL
-        const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
-        console.log(`⚠️ Using fallback for ${src.source}/${src.id}: ${fallbackUrl}`);
-        
-        allStreams.push({
-          id: src.id,
-          streamNo: streamNumber,
-          language: 'EN',
-          hd: true,
-          embedUrl: fallbackUrl,
-          source: src.source,
-          timestamp: Date.now(),
-          name: `Stream ${streamNumber}`,
-          isHls: false
-        } as Stream);
-        
-        sourcesWithStreams.add(src.source);
-        streamNumber++;
       }
     }
-  }
-  
-  // If still no streams, create fallback using match ID with proper embed format
-  if (allStreams.length === 0 && match.id) {
-    console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
-    // Use embedsports.top embed format
-    const fallbackUrl = `https://embedsports.top/embed/alpha/${match.id}/1`;
     
-    allStreams.push({
-      id: match.id,
-      streamNo: 1,
-      language: 'EN',
-      hd: true,
-      embedUrl: fallbackUrl,
-      source: 'alpha',
-      timestamp: Date.now(),
-      name: 'Stream 1',
-      isHls: false
-    } as Stream);
+    if (allStreams.length === 0 && match.id) {
+      const fallbackUrl = `https://embedsports.top/embed/alpha/${match.id}/1`;
+      
+      allStreams.push({
+        id: match.id,
+        streamNo: 1,
+        language: 'EN',
+        hd: true,
+        embedUrl: fallbackUrl,
+        source: 'alpha',
+        timestamp: Date.now(),
+        name: 'Stream 1',
+        isHls: false
+      } as Stream);
+      
+      sourcesWithStreams.add('alpha');
+    }
     
-    sourcesWithStreams.add('alpha');
+    const sourceNames = Array.from(sourcesWithStreams);
+    
+    return {
+      streams: allStreams,
+      sourcesChecked: match.sources?.length || 0,
+      sourcesWithStreams: sourceNames.length,
+      sourceNames,
+      hasHls: false,
+      hasIptv: false,
+    };
   }
-
-  const sourceNames = Array.from(sourcesWithStreams);
-  const hlsCount = allStreams.filter(s => s.isHls).length;
-  console.log(`✅ Fetched ${allStreams.length} streams (${hlsCount} HLS direct streams)`);
-
-  return {
-    streams: allStreams,
-    sourcesChecked: match.sources?.length || 0,
-    sourcesWithStreams: sourceNames.length,
-    sourceNames
-  };
 };
 
 // Fetch all streams (legacy compatibility)
