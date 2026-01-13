@@ -498,69 +498,50 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   console.log(`🎬 Building ad-free streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // Build the primary topembed URL using match title and date
-  const primaryUrl = buildAdFreeEmbedUrl(match.id, 'main', 1, match.title, match.date);
-  
-  // Add primary stream (topembed format)
-  allStreams.push({
-    id: match.id,
-    streamNo: 1,
-    language: 'EN',
-    hd: true,
-    embedUrl: primaryUrl,
-    source: 'topembed',
-    timestamp: Date.now(),
-    name: 'Stream 1'
-  } as Stream);
-  sourcesWithStreams.add('topembed');
-  console.log(`✅ Stream 1 (topembed): ${primaryUrl}`);
-  
-  // Add fallback streams using damitv format if API provides sources
+  // Use API-provided sources with damitv embed format
   if (match.sources && match.sources.length > 0) {
-    let streamNumber = 2;
+    let streamNumber = 1;
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        // Use damitv fallback format for additional streams
-        const fallbackDomain = 'https://embed.damitv.pro';
-        const fallbackUrl = `${fallbackDomain}/embed/${src.source}/${src.id}/1`;
+        // Use embed.damitv.pro format: /embed/{source}/{id}/{streamNo}
+        const embedUrl = `https://embed.damitv.pro/embed/${src.source}/${src.id}/1`;
         
         allStreams.push({
           id: src.id,
           streamNo: streamNumber,
           language: 'EN',
           hd: true,
-          embedUrl: fallbackUrl,
+          embedUrl: embedUrl,
           source: src.source,
           timestamp: Date.now(),
           name: `Stream ${streamNumber}`
         } as Stream);
         
         sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${fallbackUrl}`);
+        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${embedUrl}`);
         streamNumber++;
       }
     }
   } else {
-    // Add additional fallback streams using damitv
-    console.log(`📡 Adding fallback streams for: ${match.id}`);
+    // Fallback: generate streams using match ID
+    console.log(`📡 No API sources, generating ${DEFAULT_STREAM_COUNT} streams for: ${match.id}`);
     
-    for (let i = 2; i <= DEFAULT_STREAM_COUNT; i++) {
-      const fallbackDomain = 'https://embed.damitv.pro';
-      const fallbackUrl = `${fallbackDomain}/embed/main/${match.id}/${i}`;
+    for (let i = 1; i <= DEFAULT_STREAM_COUNT; i++) {
+      const embedUrl = `https://embed.damitv.pro/embed/main/${match.id}/${i}`;
       
       allStreams.push({
         id: match.id,
         streamNo: i,
         language: 'EN',
         hd: true,
-        embedUrl: fallbackUrl,
+        embedUrl: embedUrl,
         source: 'main',
         timestamp: Date.now(),
         name: `Stream ${i}`
       } as Stream);
       
-      console.log(`✅ Stream ${i}: main/${match.id}/${i} → ${fallbackUrl}`);
+      console.log(`✅ Stream ${i}: main/${match.id}/${i} → ${embedUrl}`);
     }
     sourcesWithStreams.add('main');
   }
