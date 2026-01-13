@@ -495,17 +495,17 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
   
-  console.log(`🎬 Building ad-free streams for: ${match.title}`);
+  console.log(`🎬 Building streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // Use API-provided sources with damitv embed format
+  // Use streamed.pk embed format: /watch/{source}/{id}
   if (match.sources && match.sources.length > 0) {
     let streamNumber = 1;
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        // Use embed.damitv.pro format: /embed/{source}/{id}/{streamNo}
-        const embedUrl = `https://embed.damitv.pro/embed/${src.source}/${src.id}/1`;
+        // Use streamed.su embed format: /watch/{source}/{id}
+        const embedUrl = `https://streamed.su/watch/${src.source}/${src.id}`;
         
         allStreams.push({
           id: src.id,
@@ -524,25 +524,23 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
       }
     }
   } else {
-    // Fallback: generate streams using match ID
-    console.log(`📡 No API sources, generating ${DEFAULT_STREAM_COUNT} streams for: ${match.id}`);
+    // Fallback: use match ID directly
+    console.log(`📡 No API sources, using match ID: ${match.id}`);
     
-    for (let i = 1; i <= DEFAULT_STREAM_COUNT; i++) {
-      const embedUrl = `https://embed.damitv.pro/embed/main/${match.id}/${i}`;
-      
-      allStreams.push({
-        id: match.id,
-        streamNo: i,
-        language: 'EN',
-        hd: true,
-        embedUrl: embedUrl,
-        source: 'main',
-        timestamp: Date.now(),
-        name: `Stream ${i}`
-      } as Stream);
-      
-      console.log(`✅ Stream ${i}: main/${match.id}/${i} → ${embedUrl}`);
-    }
+    const embedUrl = `https://streamed.su/watch/main/${match.id}`;
+    
+    allStreams.push({
+      id: match.id,
+      streamNo: 1,
+      language: 'EN',
+      hd: true,
+      embedUrl: embedUrl,
+      source: 'main',
+      timestamp: Date.now(),
+      name: `Stream 1`
+    } as Stream);
+    
+    console.log(`✅ Stream 1: main/${match.id} → ${embedUrl}`);
     sourcesWithStreams.add('main');
   }
 
