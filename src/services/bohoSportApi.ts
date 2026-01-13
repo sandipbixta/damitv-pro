@@ -550,10 +550,10 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Generate fallback embed URL when API fails
+// Generate fallback embed URL when API fails - uses proper embed format
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
-  // Primary: streamed.su watch page
-  return `https://streamed.su/watch/${source}/${id}`;
+  // Use embedsports.top embed format (same as API returns)
+  return `https://embedsports.top/embed/${source}/${id}/${streamNo}`;
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
@@ -621,10 +621,11 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
     }
   }
   
-  // If still no streams, create fallback using match ID
+  // If still no streams, create fallback using match ID with proper embed format
   if (allStreams.length === 0 && match.id) {
     console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
-    const fallbackUrl = `https://streamed.su/watch/alpha/${match.id}`;
+    // Use embedsports.top embed format
+    const fallbackUrl = `https://embedsports.top/embed/alpha/${match.id}/1`;
     
     allStreams.push({
       id: match.id,
