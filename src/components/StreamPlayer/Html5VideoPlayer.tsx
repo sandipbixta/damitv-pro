@@ -4,6 +4,7 @@ import { useIsMobile } from '../../hooks/use-mobile';
 import { Play, Pause, Volume2, VolumeX, Home, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
+import { triggerPopunderAd } from '../../utils/popunderAd';
 
 interface Html5VideoPlayerProps {
   src: string;
@@ -261,6 +262,8 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
               if (isPlaying) {
                 actualVideoRef.current.pause();
               } else {
+                // Trigger popunder ad on play
+                triggerPopunderAd(src || 'html5-player', 'play_button');
                 actualVideoRef.current.play();
               }
             }
@@ -285,6 +288,8 @@ const Html5VideoPlayer: React.FC<Html5VideoPlayerProps> = ({ src, onLoad, onErro
                   if (isPlaying) {
                     actualVideoRef.current.pause();
                   } else {
+                    // Trigger popunder ad on play
+                    triggerPopunderAd(src || 'html5-player', 'play_button');
                     actualVideoRef.current.play();
                   }
                 }
