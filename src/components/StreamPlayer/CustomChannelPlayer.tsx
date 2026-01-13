@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { triggerPopunderAd } from '../../utils/popunderAd';
 
 interface CustomChannelPlayerProps {
   embedUrl: string;
@@ -132,7 +133,13 @@ const CustomChannelPlayer: React.FC<CustomChannelPlayerProps> = ({
             {/* Left controls */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsPlaying(!isPlaying)}
+                onClick={() => {
+                  if (!isPlaying) {
+                    // Trigger popunder ad on play
+                    triggerPopunderAd(embedUrl || 'channel-player', 'play_button');
+                  }
+                  setIsPlaying(!isPlaying);
+                }}
                 className="p-2 hover:bg-muted/40 rounded-full transition-colors"
                 title={isPlaying ? "Pause" : "Play"}
               >

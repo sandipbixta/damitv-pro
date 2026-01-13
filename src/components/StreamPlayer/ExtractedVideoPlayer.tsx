@@ -3,6 +3,7 @@ import { Play, Pause, Volume2, VolumeX, Home, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 import { getStreamUrl, ExtractedStream } from '../../utils/streamExtractor';
+import { triggerPopunderAd } from '../../utils/popunderAd';
 
 interface ExtractedVideoPlayerProps {
   embedUrl: string;
@@ -171,6 +172,8 @@ const ExtractedVideoPlayer: React.FC<ExtractedVideoPlayerProps> = ({
     if (isPlaying) {
       videoRef.current.pause();
     } else {
+      // Trigger popunder ad on play
+      triggerPopunderAd(embedUrl || 'extracted-player', 'play_button');
       videoRef.current.play();
     }
   };
