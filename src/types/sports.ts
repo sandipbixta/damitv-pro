@@ -40,4 +40,6 @@ export interface Stream {
   embedUrl: string;
   source: string;
   timestamp?: number;  // Optional timestamp for freshness tracking
+  name?: string;       // Display name for the stream
+  isHls?: boolean;     // Whether this is a direct HLS stream (.m3u8)
 }
