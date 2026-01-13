@@ -485,7 +485,40 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
 // Default number of stream mirrors to generate when API doesn't provide sources
 const DEFAULT_STREAM_COUNT = 4;
 
-// Fetch all streams for a match - generates multiple stream links
+// Fetch stream details from API endpoint
+const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]> => {
+  const cacheKey = `stream_${source}_${id}`;
+  const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
+  if (cached) return cached;
+
+  try {
+    // Try fetching from the stream API endpoint
+    const endpoint = `/stream/${source}/${id}`;
+    const data = await fetchFromApi(endpoint);
+    
+    if (Array.isArray(data) && data.length > 0) {
+      const streams = data.map((item: any, index: number) => ({
+        id: item.id || id,
+        streamNo: item.streamNo || index + 1,
+        language: item.language || 'EN',
+        hd: item.hd !== false,
+        embedUrl: item.embedUrl,
+        source: item.source || source,
+        timestamp: Date.now(),
+        name: `Stream ${item.streamNo || index + 1}`
+      } as Stream));
+      
+      setCachedData(cacheKey, streams);
+      return streams;
+    }
+    return [];
+  } catch (error) {
+    console.warn(`Failed to fetch stream ${source}/${id}:`, error);
+    return [];
+  }
+};
+
+// Fetch all streams for a match - fetches real embed URLs from API
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -495,57 +528,48 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   const allStreams: Stream[] = [];
   const sourcesWithStreams = new Set<string>();
   
-  console.log(`🎬 Building streams for: ${match.title}`);
+  console.log(`🎬 Fetching streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // Use streamed.pk embed format: /watch/{source}/{id}
+  // Fetch real embed URLs from the stream API
   if (match.sources && match.sources.length > 0) {
     let streamNumber = 1;
     
-    for (const src of match.sources) {
-      if (src.source && src.id) {
-        // Use streamed.su embed format: /watch/{source}/{id}
-        const embedUrl = `https://streamed.su/watch/${src.source}/${src.id}`;
-        
-        allStreams.push({
-          id: src.id,
-          streamNo: streamNumber,
-          language: 'EN',
-          hd: true,
-          embedUrl: embedUrl,
-          source: src.source,
-          timestamp: Date.now(),
-          name: `Stream ${streamNumber}`
-        } as Stream);
-        
-        sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${embedUrl}`);
-        streamNumber++;
+    // Fetch all sources in parallel
+    const streamPromises = match.sources.map(src => 
+      src.source && src.id ? fetchStreamFromApi(src.source, src.id) : Promise.resolve([])
+    );
+    
+    const results = await Promise.all(streamPromises);
+    
+    for (let i = 0; i < results.length; i++) {
+      const streams = results[i];
+      const src = match.sources[i];
+      
+      if (streams.length > 0) {
+        for (const stream of streams) {
+          if (stream.embedUrl) {
+            allStreams.push({
+              ...stream,
+              streamNo: streamNumber,
+              name: `Stream ${streamNumber}`
+            });
+            sourcesWithStreams.add(src.source);
+            console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${stream.embedUrl}`);
+            streamNumber++;
+          }
+        }
       }
     }
-  } else {
-    // Fallback: use match ID directly
-    console.log(`📡 No API sources, using match ID: ${match.id}`);
-    
-    const embedUrl = `https://streamed.su/watch/main/${match.id}`;
-    
-    allStreams.push({
-      id: match.id,
-      streamNo: 1,
-      language: 'EN',
-      hd: true,
-      embedUrl: embedUrl,
-      source: 'main',
-      timestamp: Date.now(),
-      name: `Stream 1`
-    } as Stream);
-    
-    console.log(`✅ Stream 1: main/${match.id} → ${embedUrl}`);
-    sourcesWithStreams.add('main');
+  }
+  
+  // If no streams found, log warning
+  if (allStreams.length === 0) {
+    console.warn(`⚠️ No streams found for match: ${match.title}`);
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`✅ Created ${allStreams.length} ad-free streams from real API sources`);
+  console.log(`✅ Fetched ${allStreams.length} streams from API`);
 
   return {
     streams: allStreams,
