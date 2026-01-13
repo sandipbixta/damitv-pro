@@ -17,10 +17,36 @@ const CORS_PROXIES = [
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
+// Generate match slug for topembed format (e.g., "new-york-rangers_seattle-kraken")
+const generateMatchSlug = (title: string): string => {
+  // Split by " vs " or " - " to get team names
+  const parts = title.split(/\s+(?:vs\.?|v\.?|-)\s+/i);
+  if (parts.length >= 2) {
+    const team1 = parts[0].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const team2 = parts[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return `${team1}_${team2}`;
+  }
+  // Fallback: just convert title to slug
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+};
+
 // Build ad-free embed URL using domain manager
-const buildAdFreeEmbedUrl = (matchId: string, source: string, streamNo: number = 1): string => {
+const buildAdFreeEmbedUrl = (
+  matchId: string, 
+  source: string, 
+  streamNo: number = 1,
+  matchTitle?: string,
+  matchDate?: number | string
+): string => {
   const domain = getEmbedDomainSync();
-  return buildEmbedUrl(domain, source, matchId, streamNo);
+  
+  // Generate slug and timestamp for topembed format
+  const matchSlug = matchTitle ? generateMatchSlug(matchTitle) : undefined;
+  const matchTimestamp = matchDate 
+    ? Math.floor((typeof matchDate === 'number' ? matchDate : new Date(matchDate).getTime()) / 1000)
+    : undefined;
+  
+  return buildEmbedUrl(domain, source, matchId, streamNo, matchSlug, matchTimestamp);
 };
 
 // In-memory cache with TTL
@@ -472,54 +498,69 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   console.log(`🎬 Building ad-free streams for: ${match.title}`);
   console.log(`📡 Match sources from API:`, match.sources);
   
-  // If API provides sources, use them
+  // Build the primary topembed URL using match title and date
+  const primaryUrl = buildAdFreeEmbedUrl(match.id, 'main', 1, match.title, match.date);
+  
+  // Add primary stream (topembed format)
+  allStreams.push({
+    id: match.id,
+    streamNo: 1,
+    language: 'EN',
+    hd: true,
+    embedUrl: primaryUrl,
+    source: 'topembed',
+    timestamp: Date.now(),
+    name: 'Stream 1'
+  } as Stream);
+  sourcesWithStreams.add('topembed');
+  console.log(`✅ Stream 1 (topembed): ${primaryUrl}`);
+  
+  // Add fallback streams using damitv format if API provides sources
   if (match.sources && match.sources.length > 0) {
-    let streamNumber = 1;
+    let streamNumber = 2;
     
     for (const src of match.sources) {
       if (src.source && src.id) {
-        // Generate multiple stream numbers for each source (mirrors on the embed server)
-        const streamCount = src.source === 'main' ? DEFAULT_STREAM_COUNT : 1;
+        // Use damitv fallback format for additional streams
+        const fallbackDomain = 'https://embed.damitv.pro';
+        const fallbackUrl = `${fallbackDomain}/embed/${src.source}/${src.id}/1`;
         
-        for (let i = 1; i <= streamCount; i++) {
-          const adFreeUrl = buildAdFreeEmbedUrl(src.id, src.source, i);
-          
-          allStreams.push({
-            id: src.id,
-            streamNo: streamNumber,
-            language: 'EN',
-            hd: true,
-            embedUrl: adFreeUrl,
-            source: src.source,
-            timestamp: Date.now(),
-            name: `Stream ${streamNumber}`
-          } as Stream);
-          
-          sourcesWithStreams.add(src.source);
-          console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id}/${i} → ${adFreeUrl}`);
-          streamNumber++;
-        }
+        allStreams.push({
+          id: src.id,
+          streamNo: streamNumber,
+          language: 'EN',
+          hd: true,
+          embedUrl: fallbackUrl,
+          source: src.source,
+          timestamp: Date.now(),
+          name: `Stream ${streamNumber}`
+        } as Stream);
+        
+        sourcesWithStreams.add(src.source);
+        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${fallbackUrl}`);
+        streamNumber++;
       }
     }
   } else {
-    // Fallback: generate multiple streams using match ID
-    console.log(`📡 No API sources, generating ${DEFAULT_STREAM_COUNT} stream mirrors for: ${match.id}`);
+    // Add additional fallback streams using damitv
+    console.log(`📡 Adding fallback streams for: ${match.id}`);
     
-    for (let i = 1; i <= DEFAULT_STREAM_COUNT; i++) {
-      const adFreeUrl = buildAdFreeEmbedUrl(match.id, 'main', i);
+    for (let i = 2; i <= DEFAULT_STREAM_COUNT; i++) {
+      const fallbackDomain = 'https://embed.damitv.pro';
+      const fallbackUrl = `${fallbackDomain}/embed/main/${match.id}/${i}`;
       
       allStreams.push({
         id: match.id,
         streamNo: i,
         language: 'EN',
         hd: true,
-        embedUrl: adFreeUrl,
+        embedUrl: fallbackUrl,
         source: 'main',
         timestamp: Date.now(),
         name: `Stream ${i}`
       } as Stream);
       
-      console.log(`✅ Stream ${i}: main/${match.id}/${i} → ${adFreeUrl}`);
+      console.log(`✅ Stream ${i}: main/${match.id}/${i} → ${fallbackUrl}`);
     }
     sourcesWithStreams.add('main');
   }

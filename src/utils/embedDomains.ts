@@ -1,14 +1,14 @@
 // Embed Domain Manager - handles fallback between embed providers
-// Primary: embed.damitv.pro | Fallback: embedsports.top (streamed.su's embed)
+// Primary: topembed.pw | Fallback: embed.damitv.pro
 
 export const EMBED_DOMAINS = {
   primary: {
-    url: 'https://embed.damitv.pro',
-    format: 'damitv', // /?id={id}&source={source}
+    url: 'https://topembed.pw',
+    format: 'topembed', // /event/{slug}_{timestamp}
   },
   fallback: {
-    url: 'https://embedsports.top',
-    format: 'embedsports', // /embed/{source}/{id}/{streamNo}
+    url: 'https://embed.damitv.pro',
+    format: 'damitv', // /embed/{source}/{id}/{streamNo}
   }
 };
 
@@ -20,13 +20,21 @@ const DOMAIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const failedDomains = new Set<string>();
 
 // Build embed URL based on domain format
+// For topembed: /event/{slug}_{timestamp}
+// For damitv: /embed/{source}/{id}/{streamNo}
 export const buildEmbedUrl = (
   domain: string,
   source: string,
   id: string,
-  streamNo: number = 1
+  streamNo: number = 1,
+  matchSlug?: string,
+  matchTimestamp?: number
 ): string => {
-  // All domains now use the same path-based format: /embed/{source}/{id}/{streamNo}
+  if (domain.includes('topembed.pw') && matchSlug && matchTimestamp) {
+    // topembed format: /event/{slug}_{timestamp}
+    return `${domain}/event/${matchSlug}_${matchTimestamp}`;
+  }
+  // Fallback format: /embed/{source}/{id}/{streamNo}
   return `${domain}/embed/${source}/${id}/${streamNo}`;
 };
 
