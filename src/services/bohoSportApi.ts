@@ -485,28 +485,60 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
 // Default number of stream mirrors to generate when API doesn't provide sources
 const DEFAULT_STREAM_COUNT = 4;
 
-// Fetch stream details from API endpoint
+// Extract HLS URL from various API response fields
+const extractStreamUrl = (item: any): { url: string; isHls: boolean } => {
+  // Priority order: direct HLS > streamUrl > hlsUrl > url > embedUrl
+  const possibleFields = ['streamUrl', 'hlsUrl', 'url', 'stream', 'file', 'embedUrl'];
+  
+  for (const field of possibleFields) {
+    const value = item[field];
+    if (value && typeof value === 'string') {
+      const isHls = /\.m3u8(\?|$)/i.test(value);
+      if (isHls) {
+        console.log(`🎯 Found HLS URL in field "${field}": ${value}`);
+        return { url: value, isHls: true };
+      }
+    }
+  }
+  
+  // Fallback to embedUrl if no HLS found
+  if (item.embedUrl) {
+    return { url: item.embedUrl, isHls: false };
+  }
+  
+  return { url: '', isHls: false };
+};
+
+// Fetch stream details from API endpoint with CORS proxy
 const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]> => {
   const cacheKey = `stream_${source}_${id}`;
   const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
   if (cached) return cached;
 
   try {
-    // Try fetching from the stream API endpoint
+    // Force use of CORS proxy for stream endpoint
     const endpoint = `/stream/${source}/${id}`;
+    console.log(`📡 Fetching stream data: ${endpoint}`);
     const data = await fetchFromApi(endpoint);
     
+    console.log(`📦 Stream API response for ${source}/${id}:`, data);
+    
     if (Array.isArray(data) && data.length > 0) {
-      const streams = data.map((item: any, index: number) => ({
-        id: item.id || id,
-        streamNo: item.streamNo || index + 1,
-        language: item.language || 'EN',
-        hd: item.hd !== false,
-        embedUrl: item.embedUrl,
-        source: item.source || source,
-        timestamp: Date.now(),
-        name: `Stream ${item.streamNo || index + 1}`
-      } as Stream));
+      const streams = data.map((item: any, index: number) => {
+        const { url, isHls } = extractStreamUrl(item);
+        
+        return {
+          id: item.id || id,
+          streamNo: item.streamNo || index + 1,
+          language: item.language || 'EN',
+          hd: item.hd !== false,
+          embedUrl: url,
+          source: item.source || source,
+          timestamp: Date.now(),
+          name: `Stream ${item.streamNo || index + 1}`,
+          isHls: isHls
+        } as Stream;
+      });
       
       setCachedData(cacheKey, streams);
       return streams;
@@ -518,7 +550,13 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Fetch all streams for a match - fetches real embed URLs from API
+// Generate fallback embed URL when API fails
+const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
+  // Primary: streamed.su watch page
+  return `https://streamed.su/watch/${source}/${id}`;
+};
+
+// Fetch all streams for a match - fetches real embed URLs from API with fallback
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -547,29 +585,65 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
       const src = match.sources[i];
       
       if (streams.length > 0) {
+        // API returned stream data
         for (const stream of streams) {
           if (stream.embedUrl) {
             allStreams.push({
               ...stream,
               streamNo: streamNumber,
-              name: `Stream ${streamNumber}`
+              name: stream.isHls ? `HD Stream ${streamNumber}` : `Stream ${streamNumber}`
             });
             sourcesWithStreams.add(src.source);
-            console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${stream.embedUrl}`);
+            console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id} → ${stream.embedUrl} (HLS: ${stream.isHls || false})`);
             streamNumber++;
           }
         }
+      } else if (src.source && src.id) {
+        // API failed - generate fallback embed URL
+        const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
+        console.log(`⚠️ Using fallback for ${src.source}/${src.id}: ${fallbackUrl}`);
+        
+        allStreams.push({
+          id: src.id,
+          streamNo: streamNumber,
+          language: 'EN',
+          hd: true,
+          embedUrl: fallbackUrl,
+          source: src.source,
+          timestamp: Date.now(),
+          name: `Stream ${streamNumber}`,
+          isHls: false
+        } as Stream);
+        
+        sourcesWithStreams.add(src.source);
+        streamNumber++;
       }
     }
   }
   
-  // If no streams found, log warning
-  if (allStreams.length === 0) {
-    console.warn(`⚠️ No streams found for match: ${match.title}`);
+  // If still no streams, create fallback using match ID
+  if (allStreams.length === 0 && match.id) {
+    console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
+    const fallbackUrl = `https://streamed.su/watch/alpha/${match.id}`;
+    
+    allStreams.push({
+      id: match.id,
+      streamNo: 1,
+      language: 'EN',
+      hd: true,
+      embedUrl: fallbackUrl,
+      source: 'alpha',
+      timestamp: Date.now(),
+      name: 'Stream 1',
+      isHls: false
+    } as Stream);
+    
+    sourcesWithStreams.add('alpha');
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
-  console.log(`✅ Fetched ${allStreams.length} streams from API`);
+  const hlsCount = allStreams.filter(s => s.isHls).length;
+  console.log(`✅ Fetched ${allStreams.length} streams (${hlsCount} HLS direct streams)`);
 
   return {
     streams: allStreams,
