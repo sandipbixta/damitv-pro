@@ -346,7 +346,14 @@ const StreamSources = ({
                   <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
                   <Play className="w-4 h-4" />
                   <span>{streamName}</span>
-                  {stream.hd && <span className="text-xs bg-red-600 px-1 rounded">HD</span>}
+                  {/* Stream type badge - HLS gets green "HD" badge, embed gets orange indicator */}
+                  {stream.isHls ? (
+                    <span className="text-xs bg-green-600 px-1.5 py-0.5 rounded font-medium" title="Direct HLS stream - Ad-free, better quality">
+                      HD
+                    </span>
+                  ) : stream.hd ? (
+                    <span className="text-xs bg-red-600 px-1 rounded">HD</span>
+                  ) : null}
                 </div>
                 {viewerCount > 0 && (
                   <div className="flex items-center gap-1 text-xs font-semibold">

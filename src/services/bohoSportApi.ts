@@ -509,7 +509,39 @@ const extractStreamUrl = (item: any): { url: string; isHls: boolean } => {
   return { url: '', isHls: false };
 };
 
-// Fetch stream details from API endpoint with CORS proxy
+// Edge function URL for HLS extraction
+const HLS_EXTRACTION_URL = 'https://wxvsteaayxgygihpshoz.supabase.co/functions/v1/extract-stream';
+
+// Attempt HLS extraction from embed URL via edge function
+const attemptHlsExtraction = async (embedUrl: string): Promise<string | null> => {
+  // Skip if already HLS
+  if (embedUrl.includes('.m3u8')) {
+    return embedUrl;
+  }
+  
+  try {
+    console.log(`🔍 Attempting HLS extraction for: ${embedUrl}`);
+    const response = await fetch(HLS_EXTRACTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embedUrl }),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.hlsUrl) {
+        console.log(`✅ Extracted HLS URL: ${data.hlsUrl}`);
+        return data.hlsUrl;
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ HLS extraction failed:', error);
+  }
+  
+  return null;
+};
+
+// Fetch stream details from API endpoint with CORS proxy + HLS extraction
 const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]> => {
   const cacheKey = `stream_${source}_${id}`;
   const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
@@ -524,8 +556,18 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
     console.log(`📦 Stream API response for ${source}/${id}:`, data);
     
     if (Array.isArray(data) && data.length > 0) {
-      const streams = data.map((item: any, index: number) => {
-        const { url, isHls } = extractStreamUrl(item);
+      // Process streams and attempt HLS extraction for non-HLS streams
+      const streamPromises = data.map(async (item: any, index: number) => {
+        let { url, isHls } = extractStreamUrl(item);
+        
+        // If not HLS, try to extract from embed URL
+        if (!isHls && url && !url.includes('.m3u8')) {
+          const extractedHls = await attemptHlsExtraction(url);
+          if (extractedHls) {
+            url = extractedHls;
+            isHls = true;
+          }
+        }
         
         return {
           id: item.id || id,
@@ -535,10 +577,12 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
           embedUrl: url,
           source: item.source || source,
           timestamp: Date.now(),
-          name: `Stream ${item.streamNo || index + 1}`,
+          name: isHls ? `HD Stream ${item.streamNo || index + 1}` : `Stream ${item.streamNo || index + 1}`,
           isHls: isHls
         } as Stream;
       });
+      
+      const streams = await Promise.all(streamPromises);
       
       setCachedData(cacheKey, streams);
       return streams;
