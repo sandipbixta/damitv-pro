@@ -25,6 +25,7 @@ import MatchAnalysis from '@/components/match/MatchAnalysis';
 import { ViewerStats } from '@/components/match/ViewerStats';
 import AdsterraSocialBar from '@/components/AdsterraSocialBar';
 import BannerAd from '@/components/BannerAd';
+import NativeAd from '@/components/NativeAd';
 
 
 const Match = () => {
@@ -253,10 +254,10 @@ const Match = () => {
           </div>
         </div>
         
-        {/* Video Player and Ad Sidebar Layout */}
+        {/* Video Player and Native Ad Sidebar Layout */}
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Video Player Section */}
-          <div className="flex-1 min-w-0" id="stream-container" data-stream-container>
+          <div className="flex-1 min-w-0 lg:w-3/4" id="stream-container" data-stream-container>
             <StreamTab
               match={match}
               stream={stream}
@@ -276,6 +277,12 @@ const Match = () => {
             </div>
           </div>
 
+          {/* Native Ad Sidebar - Desktop Only */}
+          <div className="hidden lg:block lg:w-1/4 flex-shrink-0">
+            <div className="sticky top-4">
+              <NativeAd className="w-full h-full min-h-[400px]" />
+            </div>
+          </div>
         </div>
 
         {/* Match Analysis and Preview Content */}
@@ -294,6 +301,10 @@ const Match = () => {
             </div>
           </div>
         )}
+        {/* Native Ad - Mobile Only (at bottom) */}
+        <div className="lg:hidden mt-8">
+          <NativeAd className="w-full" />
+        </div>
       </div>
       
       <footer className="bg-sports-darker text-gray-400 py-6 mt-10">
