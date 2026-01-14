@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Match as MatchType } from '@/types/sports';
-import { fetchMatch, fetchMatches, getBohoImageUrl } from '@/api/sportsApi';
+import { fetchMatch, getBohoImageUrl } from '@/api/sportsApi';
 import { useStreamPlayer } from '@/hooks/useStreamPlayer';
 import { useViewerTracking } from '@/hooks/useViewerTracking';
 import { Helmet } from 'react-helmet-async';
 import { isTrendingMatch } from '@/utils/popularLeagues';
 import { generateMatchSlug } from '@/utils/matchSlug';
+import { useSportsData } from '@/contexts/SportsDataContext';
 
 import { teamLogoService } from '@/services/teamLogoService';
 import SEOMetaTags from '@/components/SEOMetaTags';
@@ -34,9 +35,8 @@ const Match = () => {
   const [match, setMatch] = useState<MatchType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [allMatches, setAllMatches] = useState<MatchType[]>([]);
-  const [recommendedMatches, setRecommendedMatches] = useState<MatchType[]>([]);
-  const [trendingMatches, setTrendingMatches] = useState<MatchType[]>([]);
+  // Use shared sports data context for recommended matches (already cached!)
+  const { allMatches: cachedMatches, liveMatches } = useSportsData();
 
   // Track viewer count for this match
   useViewerTracking(matchId);
@@ -60,7 +60,23 @@ const Match = () => {
     handleRefreshStreams
   } = useStreamPlayer();
 
-  // Load match data and streams
+  // Compute recommended matches from cached data (no API call!)
+  const recommendedMatches = useMemo(() => {
+    if (!match || cachedMatches.length === 0) return [];
+    return cachedMatches
+      .filter(m => m.category === match.category && m.id !== match.id)
+      .slice(0, 6);
+  }, [match, cachedMatches]);
+
+  // Compute trending matches from cached data (no API call!)
+  const trendingMatches = useMemo(() => {
+    if (cachedMatches.length === 0) return [];
+    return cachedMatches
+      .filter(m => isTrendingMatch(m.title).isTrending && m.id !== match?.id)
+      .slice(0, 6);
+  }, [match, cachedMatches]);
+
+  // Load match data and streams - optimized to be faster
   useEffect(() => {
     const loadMatchData = async () => {
       if (!sportId || !matchId) return;
@@ -69,8 +85,24 @@ const Match = () => {
         setIsLoading(true);
         console.log(`Loading match: ${sportId}/${matchId}`);
         
-        // Fetch the specific match
-        const matchData = await fetchMatch(sportId, matchId);
+        // First, try to find the match in cached data (instant!)
+        let matchData: MatchType | null = null;
+        
+        // Check cached matches first for instant load
+        const cachedMatch = cachedMatches.find(m => 
+          m.id === matchId || 
+          m.id.includes(matchId) ||
+          matchId.includes(m.id.replace(/[^0-9]/g, ''))
+        );
+        
+        if (cachedMatch) {
+          console.log('✅ Match found in cache - instant load!');
+          matchData = cachedMatch;
+        } else {
+          // Fall back to API fetch
+          matchData = await fetchMatch(sportId, matchId);
+        }
+        
         const enhancedMatch = teamLogoService.enhanceMatchWithLogos(matchData);
         setMatch(enhancedMatch);
 
@@ -88,25 +120,7 @@ const Match = () => {
               block: 'start' 
             });
           }
-        }, 500);
-
-        // Load all matches for recommended sections
-        const allMatches = await fetchMatches(sportId);
-        const otherMatches = allMatches.filter(m => m.id !== matchId);
-        setAllMatches(allMatches);
-        
-        // Recommended matches (similar category)
-        const recommended = otherMatches
-          .filter(m => m.category === matchData.category && m.id !== matchId)
-          .slice(0, 6);
-        
-        // Trending matches (using trending logic)
-        const trending = otherMatches
-          .filter(m => isTrendingMatch(m.title).isTrending)
-          .slice(0, 6);
-
-        setRecommendedMatches(recommended);
-        setTrendingMatches(trending);
+        }, 300);
         
       } catch (error) {
         console.error('Error loading match:', error);
@@ -122,7 +136,7 @@ const Match = () => {
     };
 
     loadMatchData();
-  }, [sportId, matchId, toast, handleMatchSelect]);
+  }, [sportId, matchId, toast, handleMatchSelect, cachedMatches]);
 
   if (isLoading) {
     return <LoadingState />;

@@ -51,8 +51,8 @@ const buildAdFreeEmbedUrl = (
 
 // In-memory cache with TTL
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for match data (increased from 1 min)
-const STREAM_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes for stream data
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes for match data
+const STREAM_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for stream data
 
 // Track working endpoints for faster future requests
 let workingApiBase: string | null = null;
@@ -103,12 +103,13 @@ const setCachedData = (key: string, data: any) => {
 
 // Direct API fetch with CORS proxy fallback + request timeout + smart endpoint caching
 const fetchFromApi = async (endpoint: string): Promise<any> => {
-  const timeout = 5000; // 5 second timeout
+  const timeout = 3000; // 3 second timeout (reduced for faster fallback)
 
   const fetchWithTimeout = async (url: string, signal: AbortSignal) => {
     const response = await fetch(url, {
       headers: { 'Accept': 'application/json' },
-      signal
+      signal,
+      cache: 'default' // Use browser cache
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
