@@ -48,6 +48,7 @@ import Highlights from "./pages/Highlights";
 import News from "./pages/News";
 import Article from "./pages/Article";
 import MatchDetail from "./pages/MatchDetail";
+import Dashboard from "./pages/Dashboard";
 
 import TelegramFAB from "./components/TelegramFAB";
 
@@ -194,6 +195,11 @@ const App: React.FC = () => {
               <Route path="/m/:matchName" element={
                 <SEOPageTracker contentType="match">
                   <MatchDetail />
+                </SEOPageTracker>
+              } />
+              <Route path="/dashboard" element={
+                <SEOPageTracker pageTitle="Melbourne Sports Dashboard" contentType="home">
+                  <Dashboard />
                 </SEOPageTracker>
               } />
               <Route path="*" element={<NotFound />} />
