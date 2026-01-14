@@ -14,23 +14,43 @@ interface SportsDataContextType {
 
 const SportsDataContext = createContext<SportsDataContextType | undefined>(undefined);
 
-// Cache duration: 5 minutes for match data
+// Cache duration: 5 minutes for refresh, 2 hours for localStorage
 const REFRESH_INTERVAL = 5 * 60 * 1000;
-const CACHE_KEY = 'damitv_matches_cache';
-const SPORTS_CACHE_KEY = 'damitv_sports_cache';
-const CACHE_EXPIRY = 60 * 60 * 1000; // 60 minutes localStorage cache
+const CACHE_KEY = 'damitv_matches_cache_v2';
+const SPORTS_CACHE_KEY = 'damitv_sports_cache_v2';
+const CACHE_EXPIRY = 2 * 60 * 60 * 1000; // 2 hours localStorage cache
+const STALE_WHILE_REVALIDATE = 30 * 60 * 1000; // Show stale data for 30 mins while fetching
 
-// Load cached data from localStorage
-const loadFromCache = () => {
+// Default sports (instant render, no API call needed)
+const DEFAULT_SPORTS: Sport[] = [
+  { id: 'football', name: 'Football' },
+  { id: 'basketball', name: 'Basketball' },
+  { id: 'american-football', name: 'American Football' },
+  { id: 'cricket', name: 'Cricket' },
+  { id: 'tennis', name: 'Tennis' },
+  { id: 'fight', name: 'Fight' },
+  { id: 'hockey', name: 'Hockey' },
+  { id: 'baseball', name: 'Baseball' },
+  { id: 'rugby', name: 'Rugby' },
+  { id: 'motorsport', name: 'Motorsport' }
+];
+
+// Load cached data from localStorage - returns data even if stale (for instant render)
+const loadFromCache = (): { matches: Match[]; sports: Sport[]; isStale: boolean } | null => {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     const sportsCached = localStorage.getItem(SPORTS_CACHE_KEY);
-    if (cached && sportsCached) {
+    
+    if (cached) {
       const { data, timestamp } = JSON.parse(cached);
-      const { data: sportsData, timestamp: sportsTimestamp } = JSON.parse(sportsCached);
-      if (Date.now() - timestamp < CACHE_EXPIRY && Date.now() - sportsTimestamp < CACHE_EXPIRY) {
-        console.log('📦 Loading from localStorage cache');
-        return { matches: data, sports: sportsData };
+      const sportsData = sportsCached ? JSON.parse(sportsCached).data : DEFAULT_SPORTS;
+      const age = Date.now() - timestamp;
+      
+      // Return cached data even if stale (up to 2 hours) for instant render
+      if (age < CACHE_EXPIRY && Array.isArray(data) && data.length > 0) {
+        const isStale = age > STALE_WHILE_REVALIDATE;
+        console.log(`📦 Loading from cache (${isStale ? 'stale' : 'fresh'}, ${Math.round(age / 60000)}min old)`);
+        return { matches: data, sports: sportsData, isStale };
       }
     }
   } catch (e) {
@@ -44,21 +64,24 @@ const saveToCache = (matches: Match[], sports: Sport[]) => {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ data: matches, timestamp: Date.now() }));
     localStorage.setItem(SPORTS_CACHE_KEY, JSON.stringify({ data: sports, timestamp: Date.now() }));
+    console.log(`💾 Saved ${matches.length} matches to cache`);
   } catch (e) {
     console.log('Cache write error:', e);
   }
 };
 
 export const SportsDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load cached data immediately
+  // Load cached data immediately on mount (synchronous, no render delay)
   const cachedData = useMemo(() => loadFromCache(), []);
+  const needsBackgroundRefresh = useMemo(() => cachedData?.isStale ?? true, []);
 
-  const [sports, setSports] = useState<Sport[]>(cachedData?.sports || []);
+  // Initialize with cached data or defaults for INSTANT render
+  const [sports, setSports] = useState<Sport[]>(cachedData?.sports || DEFAULT_SPORTS);
   const [allMatches, setAllMatches] = useState<Match[]>(cachedData?.matches || []);
-  const [loading, setLoading] = useState(!cachedData);
-  const [lastFetch, setLastFetch] = useState(cachedData ? Date.now() : 0);
+  const [loading, setLoading] = useState(!cachedData?.matches?.length);
+  const [lastFetch, setLastFetch] = useState(cachedData && !cachedData.isStale ? Date.now() : 0);
 
-  // Fetch all data once (progressive: football first, then full refresh)
+  // Fetch all data (progressive: football first, then full refresh)
   const fetchData = useCallback(
     async (force = false) => {
       // Skip if data was fetched recently (unless forced)
@@ -125,15 +148,39 @@ export const SportsDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     [lastFetch, allMatches.length, sports.length]
   );
 
-  // Initial fetch
+  // Initial fetch - use requestIdleCallback for non-blocking fetch if we have cached data
   useEffect(() => {
+    if (cachedData?.matches?.length && !needsBackgroundRefresh) {
+      // We have fresh cached data, no need to fetch immediately
+      console.log('📦 Using fresh cache, skipping initial fetch');
+      return;
+    }
+
+    // If we have stale data, show it immediately and refresh in background
+    if (cachedData?.matches?.length && needsBackgroundRefresh) {
+      console.log('🔄 Stale cache detected, refreshing in background...');
+      // Use requestIdleCallback for non-blocking background refresh
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => fetchData(true), { timeout: 2000 });
+      } else {
+        setTimeout(() => fetchData(true), 100);
+      }
+      return;
+    }
+
+    // No cached data, fetch immediately
     fetchData();
   }, []);
 
   // Background refresh every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchData(true);
+      // Use requestIdleCallback for non-blocking refresh
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => fetchData(true), { timeout: 5000 });
+      } else {
+        fetchData(true);
+      }
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(interval);

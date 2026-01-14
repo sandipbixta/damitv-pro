@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchLiveMatches } from '@/api/sportsApi';
-import { Match } from '@/types/sports';
+import { useSportsData } from '@/contexts/SportsDataContext';
 import { isMatchLive } from '@/utils/matchUtils';
 import { generateMatchSlug, extractNumericId } from '@/utils/matchSlug';
 
@@ -21,67 +20,65 @@ interface TickerItem {
 }
 
 const LiveScoreTicker: React.FC = () => {
+  const { liveMatches, loading } = useSportsData();
   const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [durationSec, setDurationSec] = useState<number>(600);
 
+  // Convert live matches to ticker items when data changes
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('📡 Fetching live matches for ticker...');
-        
-        // Directly use live matches API (no edge function)
-        const matches = await fetchLiveMatches();
-        const now = Date.now();
-        
-        // Get live matches or matches starting soon
-        const relevantMatches = matches.filter(match => {
-          const live = isMatchLive(match);
-          const isStartingSoon = match.date && match.date - now < 2 * 60 * 60 * 1000;
-          return live || isStartingSoon;
-        }).slice(0, 20);
-        
-        const items = relevantMatches.map(match => {
-          const home = match.teams?.home?.name || '';
-          const away = match.teams?.away?.name || '';
-          const matchSlug = generateMatchSlug(home, away, match.title);
-          const homeBadge = match.teams?.home?.badge?.startsWith('http') ? match.teams.home.badge : null;
-          const awayBadge = match.teams?.away?.badge?.startsWith('http') ? match.teams.away.badge : null;
-          
-          return {
-            id: match.id,
-            homeTeam: home || match.title.split(' vs ')[0] || match.title,
-            awayTeam: away || match.title.split(' vs ')[1] || '',
-            homeScore: null,
-            awayScore: null,
-            status: isMatchLive(match) ? 'LIVE' : getTimeUntil(match.date),
-            sport: match.category?.replace(/-/g, ' ') || 'Sports',
-            league: match.category?.replace(/-/g, ' ') || '',
-            homeBadge,
-            awayBadge,
-            isLive: isMatchLive(match),
-            matchUrl: `/match/${match.category}/${extractNumericId(match.id)}/${matchSlug}`,
-          };
-        });
-        
-        setTickerItems(items);
-        console.log(`✅ Ticker loaded ${items.length} matches`);
-      } catch (error) {
-        console.error('Error fetching ticker data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!liveMatches.length) return;
 
-    fetchData();
+    const now = Date.now();
     
-    // Refresh every 60 seconds (reduced from 30s)
-    const interval = setInterval(fetchData, 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    // Get live matches or matches starting soon
+    const relevantMatches = liveMatches.filter(match => {
+      const live = isMatchLive(match);
+      const isStartingSoon = match.date && match.date - now < 2 * 60 * 60 * 1000;
+      return live || isStartingSoon;
+    }).slice(0, 20);
+    
+    const items = relevantMatches.map(match => {
+      const home = match.teams?.home?.name || '';
+      const away = match.teams?.away?.name || '';
+      const matchSlug = generateMatchSlug(home, away, match.title);
+      const homeBadge = match.teams?.home?.badge?.startsWith('http') ? match.teams.home.badge : null;
+      const awayBadge = match.teams?.away?.badge?.startsWith('http') ? match.teams.away.badge : null;
+      
+      return {
+        id: match.id,
+        homeTeam: home || match.title.split(' vs ')[0] || match.title,
+        awayTeam: away || match.title.split(' vs ')[1] || '',
+        homeScore: null,
+        awayScore: null,
+        status: isMatchLive(match) ? 'LIVE' : getTimeUntil(match.date),
+        sport: match.category?.replace(/-/g, ' ') || 'Sports',
+        league: match.category?.replace(/-/g, ' ') || '',
+        homeBadge,
+        awayBadge,
+        isLive: isMatchLive(match),
+        matchUrl: `/match/${match.category}/${extractNumericId(match.id)}/${matchSlug}`,
+      };
+    });
+    
+    setTickerItems(items);
+    console.log(`✅ Ticker processed ${items.length} matches from context`);
+  }, [liveMatches]);
+
+  const getTimeUntil = (date: number | undefined): string => {
+    if (!date) return '';
+    const now = Date.now();
+    const diff = date - now;
+    if (diff <= 0) return 'LIVE';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
 
   useEffect(() => {
     const el = trackRef.current;
@@ -110,20 +107,7 @@ const LiveScoreTicker: React.FC = () => {
     };
   }, [tickerItems.length]);
 
-  const getTimeUntil = (date: number | undefined): string => {
-    if (!date) return '';
-    const now = Date.now();
-    const diff = date - now;
-    if (diff <= 0) return 'LIVE';
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
-  };
-
-  if (isLoading || tickerItems.length === 0) {
+  if (loading || tickerItems.length === 0) {
     return null;
   }
 

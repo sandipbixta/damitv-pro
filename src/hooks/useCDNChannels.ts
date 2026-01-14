@@ -157,17 +157,73 @@ export const useChannelSearch = (query: string) => {
   return { results, isSearching };
 };
 
+// Cache key for featured channels localStorage
+const FEATURED_CACHE_KEY = 'damitv_featured_channels_v1';
+const FEATURED_CACHE_EXPIRY = 60 * 60 * 1000; // 1 hour
+
+// Load featured channels from localStorage
+const loadFeaturedFromCache = (): CDNChannel[] | null => {
+  try {
+    const cached = localStorage.getItem(FEATURED_CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < FEATURED_CACHE_EXPIRY && Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.log('Featured cache read error:', e);
+  }
+  return null;
+};
+
+// Save featured channels to localStorage
+const saveFeaturedToCache = (channels: CDNChannel[]) => {
+  try {
+    localStorage.setItem(FEATURED_CACHE_KEY, JSON.stringify({ data: channels, timestamp: Date.now() }));
+  } catch (e) {
+    console.log('Featured cache write error:', e);
+  }
+};
+
 // Hook for featured channels
 export const useFeaturedChannels = (limit: number = 12) => {
-  const [channels, setChannels] = useState<CDNChannel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Load from cache immediately (synchronous)
+  const cachedChannels = loadFeaturedFromCache();
+  const [channels, setChannels] = useState<CDNChannel[]>(cachedChannels || []);
+  const [isLoading, setIsLoading] = useState(!cachedChannels);
 
   useEffect(() => {
+    // If we already have cached data, refresh in background
+    if (cachedChannels && cachedChannels.length > 0) {
+      // Use requestIdleCallback for non-blocking background refresh
+      const refreshInBackground = async () => {
+        try {
+          const featured = await getFeaturedCDNChannels(limit);
+          if (featured.length > 0) {
+            setChannels(featured);
+            saveFeaturedToCache(featured);
+          }
+        } catch (err) {
+          console.error('📺 Background refresh error:', err);
+        }
+      };
+
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => refreshInBackground(), { timeout: 5000 });
+      } else {
+        setTimeout(refreshInBackground, 1000);
+      }
+      return;
+    }
+
+    // No cached data, fetch immediately
     const loadFeatured = async () => {
       setIsLoading(true);
       try {
         const featured = await getFeaturedCDNChannels(limit);
         setChannels(featured);
+        saveFeaturedToCache(featured);
       } catch (err) {
         console.error('📺 Error loading featured channels:', err);
         setChannels([]);
