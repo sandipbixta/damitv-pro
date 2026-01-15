@@ -553,8 +553,8 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
 
 // Generate fallback embed URL when API fails - uses proper embed format
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
-  // Use embedsports.top embed format (same as API returns)
-  return `https://embedsports.top/embed/${source}/${id}/${streamNo}`;
+  // Use embed.damitv.pro embed format
+  return `http://embed.damitv.pro/embed/${source}/${id}/${streamNo}`;
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
@@ -625,8 +625,8 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   // If still no streams, create fallback using match ID with proper embed format
   if (allStreams.length === 0 && match.id) {
     console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
-    // Use embedsports.top embed format
-    const fallbackUrl = `https://embedsports.top/embed/alpha/${match.id}/1`;
+    // Use embed.damitv.pro embed format
+    const fallbackUrl = `http://embed.damitv.pro/embed/alpha/${match.id}/1`;
     
     allStreams.push({
       id: match.id,
