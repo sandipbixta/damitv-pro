@@ -38,7 +38,7 @@ export const useLiveMatchNotifier = (matches: Match[]) => {
     if (match.poster && match.poster.trim() !== '') {
       posterUrl = match.poster.startsWith('http') 
         ? match.poster 
-        : `https://streamed.su/api${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
+        : `https://embed.damitv.pro/api${match.poster.startsWith('/') ? '' : '/'}${match.poster}`;
     }
 
     const payload: NotifyMatchPayload = {

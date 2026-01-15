@@ -7,8 +7,7 @@ const corsHeaders = {
 };
 
 const API_BASES = [
-  'https://streamed.su/api',
-  'https://justcast.stream/api',
+  'https://embed.damitv.pro/api',
 ];
 
 const THESPORTSDB_API_KEY = Deno.env.get('THESPORTSDB_API_KEY') || '751945';
@@ -165,11 +164,11 @@ serve(async (req) => {
           category: m.category?.toLowerCase() || 'football',
           date: m.date,
           isLive: m.date && m.date <= now,
-          poster: m.poster ? `https://streamed.su${m.poster}` : null,
+          poster: m.poster ? `https://embed.damitv.pro${m.poster}` : null,
           homeTeam: m.teams?.home?.name || null,
           awayTeam: m.teams?.away?.name || null,
-          homeBadge: m.teams?.home?.badge ? `https://streamed.su${m.teams.home.badge}` : null,
-          awayBadge: m.teams?.away?.badge ? `https://streamed.su${m.teams.away.badge}` : null,
+          homeBadge: m.teams?.home?.badge ? `https://embed.damitv.pro${m.teams.home.badge}` : null,
+          awayBadge: m.teams?.away?.badge ? `https://embed.damitv.pro${m.teams.away.badge}` : null,
           sources,
           // Primary embed URL (first source)
           embedUrl: sources[0]?.embedUrl || null,

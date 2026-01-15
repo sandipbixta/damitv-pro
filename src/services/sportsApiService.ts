@@ -1,9 +1,8 @@
 // Sports API Service - Direct API calls (no edge function)
 
-// API endpoints to try (direct calls)
+// API endpoints - use damitv proxy to avoid CORS issues
 const API_BASES = [
-  'https://streamed.su/api',
-  'https://sportsrc.org/api'
+  'https://embed.damitv.pro/api'
 ];
 
 // CORS proxy fallbacks
