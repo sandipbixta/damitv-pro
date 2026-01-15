@@ -1,6 +1,6 @@
 // BOHOSport API Service - fetches directly from API (no edge function)
 import { Sport, Match, Stream, Source } from '../types/sports';
-import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
+import { buildEmbedUrl, EMBED_DOMAINS } from '../utils/embedDomains';
 
 // API endpoints to try (direct calls)
 const API_BASES = [
@@ -38,7 +38,8 @@ const buildAdFreeEmbedUrl = (
   matchTitle?: string,
   matchDate?: number | string
 ): string => {
-  const domain = getEmbedDomainSync();
+  // Force embed.damitv.pro for all sources
+  const domain = EMBED_DOMAINS.primary.url;
   
   // Generate slug and timestamp for topembed format
   const matchSlug = matchTitle ? generateMatchSlug(matchTitle) : undefined;
@@ -526,18 +527,27 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
     
     if (Array.isArray(data) && data.length > 0) {
       const streams = data.map((item: any, index: number) => {
-        const { url, isHls } = extractStreamUrl(item);
-        
+        const extracted = extractStreamUrl(item);
+
+        // Force embed.damitv.pro for all non-HLS embeds across all sources (admin/delta/echo/golf/bravo/...)
+        const resolvedSource = item.source || source;
+        const resolvedId = item.id || id;
+        const resolvedStreamNo = item.streamNo || index + 1;
+
+        const url = extracted.isHls
+          ? extracted.url
+          : buildEmbedUrl(EMBED_DOMAINS.primary.url, resolvedSource, resolvedId, resolvedStreamNo);
+
         return {
-          id: item.id || id,
-          streamNo: item.streamNo || index + 1,
+          id: resolvedId,
+          streamNo: resolvedStreamNo,
           language: item.language || 'EN',
           hd: item.hd !== false,
           embedUrl: url,
-          source: item.source || source,
+          source: resolvedSource,
           timestamp: Date.now(),
-          name: `Stream ${item.streamNo || index + 1}`,
-          isHls: isHls
+          name: `Stream ${resolvedStreamNo}`,
+          isHls: extracted.isHls
         } as Stream;
       });
       
