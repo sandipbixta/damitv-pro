@@ -1,14 +1,14 @@
 // Embed Domain Manager - handles fallback between embed providers
-// Primary: embedsports.top (from API) | Fallback: embed.damitv.pro
+// Primary: embed.damitv.pro | Fallback: embedsports.top
 
 export const EMBED_DOMAINS = {
   primary: {
-    url: 'https://embedsports.top',
-    format: 'embedsports', // /embed/{source}/{id}/{streamNo}
+    url: 'http://embed.damitv.pro',
+    format: 'damitv', // /embed/{source}/{id}/{streamNo}
   },
   fallback: {
-    url: 'https://embed.damitv.pro',
-    format: 'damitv', // /embed/{source}/{id}/{streamNo}
+    url: 'https://embedsports.top',
+    format: 'embedsports', // /embed/{source}/{id}/{streamNo}
   }
 };
 
