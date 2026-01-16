@@ -202,7 +202,8 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     }
   };
 
-  // Auto-fallback on error - try iframe first for HLS failures
+  // Handle error - try iframe first for HLS failures, but NO auto-fallback
+  // User can manually click "Try Another Source" if needed
   const handleError = () => {
     const newErrorCount = errorCount + 1;
     setErrorCount(newErrorCount);
@@ -226,13 +227,9 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     
     setError(true);
     
-    // Trigger auto-fallback after first error (when iframe also fails)
-    if (newErrorCount === 1 && onAutoFallback) {
-      console.log('🔄 Triggering auto-fallback to next source...');
-      setTimeout(() => {
-        onAutoFallback();
-      }, 1500); // Wait 1.5s before trying next source
-    }
+    // NO automatic fallback - let user decide via "Try Another Source" button
+    // This prevents working streams from being switched away
+    console.log('⚠️ Stream error - user can manually try another source');
   };
 
   // Stream loads immediately - no play click required
