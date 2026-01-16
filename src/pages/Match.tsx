@@ -247,27 +247,29 @@ const Match = () => {
         {/* Banner Ad at top of player page */}
         <BannerAd className="mb-4" />
         
-        <div className="w-full flex justify-center mb-4">
-          <div className="text-center max-w-4xl px-4">
+        <div className="w-full mb-4">
+          <div className="text-left">
             {homeTeam && awayTeam ? (
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center gap-3 flex-wrap">
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <TeamLogoDisplay logo={homeLogo} teamName={homeTeam} size="lg" />
-                    <span className="text-2xl md:text-3xl font-bold text-white">{homeTeam}</span>
+                    <span className="text-xl md:text-2xl font-bold text-white">{homeTeam}</span>
                   </div>
-                  <span className="text-xl md:text-2xl font-medium text-gray-400">vs</span>
+                  <span className="text-lg md:text-xl font-medium text-gray-400">vs</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl md:text-3xl font-bold text-white">{awayTeam}</span>
+                    <span className="text-xl md:text-2xl font-bold text-white">{awayTeam}</span>
                     <TeamLogoDisplay logo={awayLogo} teamName={awayTeam} size="lg" />
                   </div>
                 </div>
-                <h1 className="text-lg md:text-xl text-gray-300">Live Stream</h1>
+                <p className="text-sm text-gray-400">Watch with HD quality on DamiTV</p>
               </div>
             ) : (
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{matchTitle} Live Stream</h1>
+              <div className="flex flex-col items-start gap-1">
+                <h1 className="text-xl md:text-2xl font-bold text-white">{matchTitle} Live Stream</h1>
+                <p className="text-sm text-gray-400">Watch {matchTitle} with HD quality on DamiTV</p>
+              </div>
             )}
-            <p className="text-sm md:text-base text-gray-400 mt-2">Watch {matchTitle} with HD quality on DamiTV</p>
           </div>
         </div>
         
