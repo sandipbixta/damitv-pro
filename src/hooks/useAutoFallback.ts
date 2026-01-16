@@ -49,9 +49,9 @@ export const useAutoFallback = ({ allStreams, onSourceChange, currentStream }: U
     return sources;
   }, [allStreams]);
 
-  // Try next available source
-  const tryNextSource = useCallback(() => {
-    if (isAutoRetrying) {
+  // Try next available source - only called manually, not automatically
+  const tryNextSource = useCallback((force: boolean = false) => {
+    if (isAutoRetrying && !force) {
       console.log('⏳ Already retrying, skipping...');
       return false;
     }
@@ -62,7 +62,7 @@ export const useAutoFallback = ({ allStreams, onSourceChange, currentStream }: U
     );
 
     if (unattemptedSource) {
-      console.log(`🔄 Auto-fallback: Trying ${unattemptedSource.source}/${unattemptedSource.id}`);
+      console.log(`🔄 Manual source switch: Trying ${unattemptedSource.source}/${unattemptedSource.id}`);
       setIsAutoRetrying(true);
       setAttemptedSources(prev => new Set([...prev, unattemptedSource.sourceKey]));
       
@@ -70,7 +70,7 @@ export const useAutoFallback = ({ allStreams, onSourceChange, currentStream }: U
       setTimeout(() => {
         onSourceChange(unattemptedSource.source, unattemptedSource.id);
         setIsAutoRetrying(false);
-      }, 800);
+      }, 1000);
       
       return true;
     }
