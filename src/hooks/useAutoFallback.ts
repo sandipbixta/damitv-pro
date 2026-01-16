@@ -1,11 +1,26 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Stream, Source } from '../types/sports';
 
-// Source priority: higher number = higher priority
+// Source priority for embed.damitv.pro compatibility
+// Higher number = higher priority (best working sources first)
 const SOURCE_PRIORITY: Record<string, number> = {
-  'streamed': 5,
-  'streambtw': 4,
-  'givemereddit': 3,
+  // Primary embed.damitv.pro compatible sources (military phonetic)
+  'alpha': 10,
+  'bravo': 10,
+  'charlie': 10,
+  'delta': 10,
+  'echo': 10,
+  'foxtrot': 10,
+  'golf': 10,
+  // Secondary reliable sources
+  'streamed': 8,
+  'sportsurge': 8,
+  'streameast': 7,
+  'streambtw': 6,
+  'givemereddit': 5,
+  'admin': 4,
+  'topembed': 3,
+  // Fallback sources
   'default': 1
 };
 
