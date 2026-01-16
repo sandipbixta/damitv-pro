@@ -299,7 +299,7 @@ const Match = () => {
           {/* Native Ad Sidebar - Desktop Only */}
           <div className="hidden lg:block lg:w-1/4 flex-shrink-0">
             <div className="sticky top-4">
-              <NativeAd className="w-full h-full min-h-[400px]" />
+              <NativeAd className="w-full aspect-video" />
             </div>
           </div>
         </div>
