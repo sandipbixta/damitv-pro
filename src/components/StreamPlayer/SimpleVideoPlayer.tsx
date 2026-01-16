@@ -58,7 +58,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   const [autoDowngradeAttempted, setAutoDowngradeAttempted] = useState(false);
   const bufferStallCountRef = useRef(0);
   const [countdown, setCountdown] = useState<string>('');
-  const isM3U8 = !!stream?.embedUrl && /\.m3u8(\?|$)/i.test(stream.embedUrl || '');
+  const originalIsM3U8 = !!stream?.embedUrl && /\.m3u8(\?|$)/i.test(stream.embedUrl || '');
   const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
   const isCasting = detectCasting();
   const progressTrackerRef = useRef<ReturnType<typeof createProgressTracker> | null>(null);
@@ -69,6 +69,11 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   // Embed fallback state
   const [fallbackEmbedUrl, setFallbackEmbedUrl] = useState<string | null>(null);
   const [embedFallbackAttempted, setEmbedFallbackAttempted] = useState(false);
+  // Track if HLS failed and we should use iframe instead
+  const [hlsFailedUseIframe, setHlsFailedUseIframe] = useState(false);
+  
+  // Use M3U8 player only if it's a .m3u8 URL and HLS hasn't failed
+  const isM3U8 = originalIsM3U8 && !hlsFailedUseIframe;
 
   // Calculate countdown for upcoming matches
   useEffect(() => {
@@ -125,6 +130,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       setLastStreamUrl(stream.embedUrl);
       setFallbackEmbedUrl(null);
       setEmbedFallbackAttempted(false);
+      setHlsFailedUseIframe(false); // Reset HLS failure state
       console.log('🎬 New stream loaded, resetting error state');
       
       // Track video start event
@@ -190,23 +196,37 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     setErrorCount(0);
     setFallbackEmbedUrl(null);
     setEmbedFallbackAttempted(false);
+    setHlsFailedUseIframe(false); // Reset to try HLS again
     if (onRetry) {
       onRetry();
     }
   };
 
-  // Auto-fallback on error
+  // Auto-fallback on error - try iframe first for HLS failures
   const handleError = () => {
     const newErrorCount = errorCount + 1;
     setErrorCount(newErrorCount);
-    setError(true);
     
     console.log(`❌ Stream error detected (count: ${newErrorCount})`);
     
     // Track video error in GA4
     trackVideoError('Stream failed to load', match?.id || stream?.embedUrl, 'load_error');
     
-    // Trigger auto-fallback after first error
+    // If HLS failed and we haven't tried iframe yet, switch to iframe embed
+    if (originalIsM3U8 && !hlsFailedUseIframe && stream?.source && stream?.id) {
+      console.log('🔄 HLS stream failed, falling back to iframe embed...');
+      setHlsFailedUseIframe(true);
+      
+      // Build iframe embed URL from stream source/id
+      const iframeUrl = buildEmbedUrl('http://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
+      console.log(`🔄 Iframe fallback URL: ${iframeUrl}`);
+      toast.info('Switching to embedded player...', { duration: 2000 });
+      return; // Don't show error, let iframe try
+    }
+    
+    setError(true);
+    
+    // Trigger auto-fallback after first error (when iframe also fails)
     if (newErrorCount === 1 && onAutoFallback) {
       console.log('🔄 Triggering auto-fallback to next source...');
       setTimeout(() => {
@@ -573,6 +593,11 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       ) : (
         <IframeVideoPlayer
           src={(() => {
+            // If HLS failed and we're falling back, build iframe URL from source/id
+            if (hlsFailedUseIframe && stream?.source && stream?.id) {
+              const iframeUrl = buildEmbedUrl('http://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
+              return iframeUrl.startsWith('http://') ? iframeUrl.replace(/^http:\/\//i, 'https://') : iframeUrl;
+            }
             // Use fallback URL if available, otherwise use original
             const embedUrl = fallbackEmbedUrl || stream.embedUrl;
             return embedUrl.startsWith('http://') ? embedUrl.replace(/^http:\/\//i, 'https://') : embedUrl;
