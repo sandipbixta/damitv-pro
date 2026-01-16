@@ -10,6 +10,7 @@ import { ViewerCount } from './ViewerCount';
 import { Clock, Calendar, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import coverPhoto from '@/assets/damitv-cover.jpeg';
+import { extractNumericId, generateMatchSlug } from '@/utils/matchSlug';
 import { useSportsData } from '@/contexts/SportsDataContext';
 
 export const HeroCarousel = () => {
@@ -125,7 +126,7 @@ export const HeroCarousel = () => {
             // Match slides - clickable
             <Link
               key={slide.id}
-              to={`/match/${slide.category}/${slide.id}`}
+              to={`/match/${slide.category}/${extractNumericId(slide.id)}/${generateMatchSlug(slide.teams?.home?.name, slide.teams?.away?.name, slide.title)}`}
               className="relative flex-[0_0_100%] min-w-0 cursor-pointer group"
             >
               <div className="relative min-h-[200px] sm:min-h-[280px] md:min-h-[350px] flex items-center overflow-hidden">

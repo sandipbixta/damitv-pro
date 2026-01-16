@@ -89,11 +89,14 @@ const Match = () => {
         let matchData: MatchType | null = null;
         
         // Check cached matches first for instant load
-        const cachedMatch = cachedMatches.find(m => 
-          m.id === matchId || 
-          m.id.includes(matchId) ||
-          matchId.includes(m.id.replace(/[^0-9]/g, ''))
-        );
+        // First try exact match, then match by numeric ID suffix
+        const cachedMatch = cachedMatches.find(m => {
+          if (m.id === matchId) return true;
+          // Extract trailing numeric ID from both sides and compare
+          const matchNumeric = matchId.match(/-(\d+)$/)?.[1] || matchId.match(/(\d+)/)?.[0];
+          const cachedNumeric = m.id.match(/-(\d+)$/)?.[1] || m.id.match(/(\d+)/)?.[0];
+          return matchNumeric && cachedNumeric && matchNumeric === cachedNumeric;
+        });
         
         if (cachedMatch) {
           console.log('✅ Match found in cache - instant load!');
