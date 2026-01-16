@@ -219,7 +219,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       setHlsFailedUseIframe(true);
       
       // Build iframe embed URL from stream source/id
-      const iframeUrl = buildEmbedUrl('http://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
+      const iframeUrl = buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
       console.log(`🔄 Iframe fallback URL: ${iframeUrl}`);
       toast.info('Switching to embedded player...', { duration: 2000 });
       return; // Don't show error, let iframe try
@@ -592,12 +592,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           src={(() => {
             // If HLS failed and we're falling back, build iframe URL from source/id
             if (hlsFailedUseIframe && stream?.source && stream?.id) {
-              const iframeUrl = buildEmbedUrl('http://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
-              return iframeUrl.startsWith('http://') ? iframeUrl.replace(/^http:\/\//i, 'https://') : iframeUrl;
+              return buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
             }
             // Use fallback URL if available, otherwise use original
-            const embedUrl = fallbackEmbedUrl || stream.embedUrl;
-            return embedUrl.startsWith('http://') ? embedUrl.replace(/^http:\/\//i, 'https://') : embedUrl;
+            return fallbackEmbedUrl || stream.embedUrl;
           })()}
           onLoad={() => setError(false)}
           onError={handleError}
