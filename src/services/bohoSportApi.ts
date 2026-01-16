@@ -532,7 +532,7 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
         const streamSource = item.source || source;
         
         // ALWAYS use embed.damitv.pro - override any URL from API
-        const embedUrl = isHls ? url : `http://embed.damitv.pro/embed/${streamSource}/${streamId}/${streamNo}`;
+        const embedUrl = isHls ? url : `https://embed.damitv.pro/embed/${streamSource}/${streamId}/${streamNo}`;
         
         return {
           id: streamId,
@@ -560,7 +560,7 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
 // Generate fallback embed URL when API fails - uses proper embed format
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
   // Use embed.damitv.pro embed format
-  return `http://embed.damitv.pro/embed/${source}/${id}/${streamNo}`;
+  return `https://embed.damitv.pro/embed/${source}/${id}/${streamNo}`;
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
@@ -632,7 +632,7 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   if (allStreams.length === 0 && match.id) {
     console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
     // Use embed.damitv.pro embed format
-    const fallbackUrl = `http://embed.damitv.pro/embed/alpha/${match.id}/1`;
+    const fallbackUrl = `https://embed.damitv.pro/embed/alpha/${match.id}/1`;
     
     allStreams.push({
       id: match.id,
