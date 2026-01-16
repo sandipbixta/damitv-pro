@@ -11,9 +11,10 @@ let workingEndpoint: WorkingEndpoint = null;
 let lastEndpointCheck = 0;
 const ENDPOINT_CHECK_INTERVAL = 60 * 1000; // Re-check every 60 seconds
 
-// API endpoints - use damitv proxy to avoid CORS issues
+// API endpoints to try (direct calls - no edge function)
 const API_BASES = [
-  'https://embed.damitv.pro/api'
+  'https://streamed.su/api',
+  'https://sportsrc.org/api'
 ];
 
 // CORS proxy fallbacks

@@ -22,7 +22,7 @@ const PerformanceOptimizer: React.FC = () => {
 
       // Preload critical API endpoints
       const criticalEndpoints = [
-        'https://embed.damitv.pro/api'
+        'https://streamed.su/api'
       ];
 
       criticalEndpoints.forEach(url => {

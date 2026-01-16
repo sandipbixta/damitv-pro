@@ -141,22 +141,22 @@ async function cacheScore(matchId: string, homeScore: number, awayScore: number)
     }, { onConflict: 'match_id' });
 }
 
-// ========== Fetch live matches from damitv proxy ==========
+// ========== Fetch live matches from Streamed.pk ==========
 async function fetchStreamedLiveMatches(): Promise<StreamedMatch[]> {
   try {
-    const response = await fetch('https://embed.damitv.pro/api/matches/live', {
+    const response = await fetch('https://streamed.pk/api/matches/live', {
       headers: { 'Accept': 'application/json' }
     });
     
     if (!response.ok) {
-      console.error('DamiTV API error:', response.status);
+      console.error('Streamed.pk API error:', response.status);
       return [];
     }
     
     const matches = await response.json();
     
     if (!Array.isArray(matches)) {
-      console.error('Invalid API response format');
+      console.error('Invalid streamed.pk response format');
       return [];
     }
     
@@ -166,10 +166,10 @@ async function fetchStreamedLiveMatches(): Promise<StreamedMatch[]> {
       ['football', 'basketball', 'american-football', 'hockey'].includes(m.category?.toLowerCase())
     );
     
-    console.log(`📡 Fetched ${validMatches.length} live matches from damitv proxy`);
+    console.log(`📡 Fetched ${validMatches.length} live matches from streamed.pk`);
     return validMatches;
   } catch (error) {
-    console.error('Error fetching matches:', error);
+    console.error('Error fetching streamed.pk matches:', error);
     return [];
   }
 }

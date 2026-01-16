@@ -39,7 +39,7 @@ interface CDNApiResponse {
 
 // API URLs
 const CDN_API_URL = 'https://api.cdn-live.tv/api/v1/channels/?user=damitv&plan=vip';
-const SPORTSRC_API = 'https://embed.damitv.pro/api';
+const SPORTSRC_API = 'https://api.sportsrc.org';
 
 // CORS proxy fallbacks
 const CORS_PROXIES = [
@@ -161,7 +161,7 @@ class CDNChannelsApiService {
       id: `sportsrc-${match.id}`,
       title: match.title,
       country: category.charAt(0).toUpperCase() + category.slice(1),
-      embedUrl: `https://embed.damitv.pro/embed/${match.id}`,
+      embedUrl: `https://sportsrc.org/embed/${match.id}`,
       logo: match.poster || undefined,
       viewers: 0,
       isLive247: true,

@@ -1,9 +1,10 @@
 import { Match, Source } from '@/types/sports';
 import { getEmbedDomainSync, buildEmbedUrl } from '@/utils/embedDomains';
 
-// API endpoints - use damitv proxy to avoid CORS issues
+// API endpoints to try (direct calls - no edge function)
 const API_BASES = [
-  'https://embed.damitv.pro/api'
+  'https://streamed.su/api',
+  'https://sportsrc.org/api'
 ];
 
 // CORS proxy fallbacks

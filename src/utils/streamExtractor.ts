@@ -25,7 +25,8 @@ const STREAM_PATTERNS = [
 // Proxy service to bypass CORS when fetching embed pages
 const PROXY_SERVICES = [
   'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.io/?'
+  'https://corsproxy.io/?',
+  'https://cors-anywhere.herokuapp.com/',
 ];
 
 export async function extractStreamUrl(embedUrl: string): Promise<ExtractedStream | null> {

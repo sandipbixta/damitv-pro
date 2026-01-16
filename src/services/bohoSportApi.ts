@@ -2,9 +2,10 @@
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
 
-// API endpoints - use damitv proxy to avoid CORS issues
+// API endpoints to try (direct calls)
 const API_BASES = [
-  'https://embed.damitv.pro/api'
+  'https://streamed.su/api',
+  'https://sportsrc.org/api'
 ];
 
 // CORS proxy fallbacks (used if direct calls fail)
@@ -14,7 +15,7 @@ const CORS_PROXIES = [
 ];
 
 // Legacy stream base URL (fallback only)
-const STREAM_BASE = 'https://embed.damitv.pro';
+const STREAM_BASE = 'https://streamed.su';
 
 // Generate match slug for topembed format (e.g., "new-york-rangers_seattle-kraken")
 const generateMatchSlug = (title: string): string => {
