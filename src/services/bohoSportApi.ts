@@ -527,16 +527,22 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
     if (Array.isArray(data) && data.length > 0) {
       const streams = data.map((item: any, index: number) => {
         const { url, isHls } = extractStreamUrl(item);
+        const streamNo = item.streamNo || index + 1;
+        const streamId = item.id || id;
+        const streamSource = item.source || source;
+        
+        // ALWAYS use embed.damitv.pro - override any URL from API
+        const embedUrl = isHls ? url : `http://embed.damitv.pro/embed/${streamSource}/${streamId}/${streamNo}`;
         
         return {
-          id: item.id || id,
-          streamNo: item.streamNo || index + 1,
+          id: streamId,
+          streamNo: streamNo,
           language: item.language || 'EN',
           hd: item.hd !== false,
-          embedUrl: url,
-          source: item.source || source,
+          embedUrl: embedUrl,
+          source: streamSource,
           timestamp: Date.now(),
-          name: `Stream ${item.streamNo || index + 1}`,
+          name: `Stream ${streamNo}`,
           isHls: isHls
         } as Stream;
       });
