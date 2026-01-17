@@ -12,6 +12,12 @@ const MobileMatchItem: React.FC<{ match: Match; onClick: () => void }> = ({ matc
   const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
   const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
 
+  // Get scores (using any cast since Match type may have extended properties from API)
+  const matchAny = match as any;
+  const homeScore = matchAny.scores?.home ?? matchAny.homeScore ?? matchAny.home_score;
+  const awayScore = matchAny.scores?.away ?? matchAny.awayScore ?? matchAny.away_score;
+  const hasScore = homeScore !== undefined && homeScore !== null && awayScore !== undefined && awayScore !== null;
+
   // Fetch logos using hook
   const { logo: homeLogo } = useTeamLogo(homeTeam);
   const { logo: awayLogo } = useTeamLogo(awayTeam);
@@ -29,13 +35,19 @@ const MobileMatchItem: React.FC<{ match: Match; onClick: () => void }> = ({ matc
           <span className="text-[10px] font-bold text-muted-foreground">{homeTeam.charAt(0)}</span>
         )}
       </div>
-      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[80px]">{homeTeam}</span>
+      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[70px]">{homeTeam}</span>
       
-      {/* VS */}
-      <span className="text-[10px] text-muted-foreground">vs</span>
+      {/* Score or VS */}
+      {hasScore ? (
+        <span className="text-xs font-bold text-primary whitespace-nowrap">
+          {homeScore} - {awayScore}
+        </span>
+      ) : (
+        <span className="text-[10px] text-muted-foreground">vs</span>
+      )}
       
       {/* Away Team */}
-      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[80px] text-right">{awayTeam}</span>
+      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[70px] text-right">{awayTeam}</span>
       <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
         {awayLogo ? (
           <img src={awayLogo} alt={awayTeam} className="w-5 h-5 object-contain" />

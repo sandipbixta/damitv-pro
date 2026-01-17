@@ -13,6 +13,12 @@ const MatchItem: React.FC<{ match: Match; onClick: () => void }> = ({ match, onC
   const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
   const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
   const viewerCount = match.viewerCount || 0;
+  
+  // Get scores (using any cast since Match type may have extended properties from API)
+  const matchAny = match as any;
+  const homeScore = matchAny.scores?.home ?? matchAny.homeScore ?? matchAny.home_score;
+  const awayScore = matchAny.scores?.away ?? matchAny.awayScore ?? matchAny.away_score;
+  const hasScore = homeScore !== undefined && homeScore !== null && awayScore !== undefined && awayScore !== null;
 
   // Fetch logos using hook
   const { logo: homeLogo } = useTeamLogo(homeTeam);
@@ -35,7 +41,16 @@ const MatchItem: React.FC<{ match: Match; onClick: () => void }> = ({ match, onC
           </div>
           <span className="text-sm font-medium text-foreground truncate">{homeTeam}</span>
         </div>
-        <span className="text-xs text-muted-foreground px-1">vs</span>
+        
+        {/* Score or VS */}
+        {hasScore ? (
+          <span className="text-sm font-bold text-primary px-2 whitespace-nowrap">
+            {homeScore} - {awayScore}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground px-1">vs</span>
+        )}
+        
         <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
           <span className="text-sm font-medium text-foreground truncate text-right">{awayTeam}</span>
           <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
