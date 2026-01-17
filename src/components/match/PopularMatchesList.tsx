@@ -14,8 +14,10 @@ const MobileMatchItem: React.FC<{
   onClick: () => void;
   liveScore?: LiveScore | null;
 }> = ({ match, onClick, liveScore }) => {
-  const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
-  const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
+  const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || match.title || 'Event';
+  const titleParts = match.title.split(' vs ');
+  const awayTeam = match.teams?.away?.name || (titleParts.length > 1 ? titleParts[1] : '') || '';
+  const isSingleEvent = !awayTeam;
 
   // Get scores - prioritize live score from API, fallback to match data
   const homeScore = liveScore?.homeScore ?? (match as any).homeScore ?? (match as any).home_score;
@@ -41,24 +43,30 @@ const MobileMatchItem: React.FC<{
       </div>
       <span className="text-xs font-medium text-foreground flex-1">{homeTeam}</span>
       
-      {/* Score or VS */}
-      {hasScore ? (
-        <span className="text-xs font-bold text-primary whitespace-nowrap">
-          {homeScore} - {awayScore}
-        </span>
-      ) : (
-        <span className="text-[10px] text-muted-foreground">vs</span>
+      {/* Score or VS - only show if not a single event */}
+      {!isSingleEvent && (
+        hasScore ? (
+          <span className="text-xs font-bold text-primary whitespace-nowrap">
+            {homeScore} - {awayScore}
+          </span>
+        ) : (
+          <span className="text-[10px] text-muted-foreground">vs</span>
+        )
       )}
       
-      {/* Away Team */}
-      <span className="text-xs font-medium text-foreground flex-1 text-right">{awayTeam}</span>
-      <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-        {awayLogo ? (
-          <img src={awayLogo} alt={awayTeam} className="w-5 h-5 object-contain" />
-        ) : (
-          <span className="text-[10px] font-bold text-muted-foreground">{awayTeam.charAt(0)}</span>
-        )}
-      </div>
+      {/* Away Team - only show if exists */}
+      {!isSingleEvent && (
+        <>
+          <span className="text-xs font-medium text-foreground flex-1 text-right">{awayTeam}</span>
+          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+            {awayLogo ? (
+              <img src={awayLogo} alt={awayTeam} className="w-5 h-5 object-contain" />
+            ) : (
+              <span className="text-[10px] font-bold text-muted-foreground">{awayTeam.charAt(0)}</span>
+            )}
+          </div>
+        </>
+      )}
       
       {/* Live Badge */}
       <span className="flex items-center gap-1 ml-1">
