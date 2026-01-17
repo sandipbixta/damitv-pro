@@ -4,22 +4,23 @@ import { Stream, Source } from '../types/sports';
 // Source priority for embed.damitv.pro compatibility
 // Higher number = higher priority (best working sources first)
 const SOURCE_PRIORITY: Record<string, number> = {
-  // Primary embed.damitv.pro compatible sources (military phonetic)
-  'alpha': 10,
+  // Ordered priority: charlie, delta, echo, admin, alpha first
+  'charlie': 15,
+  'delta': 14,
+  'echo': 13,
+  'admin': 12,
+  'alpha': 11,
+  // Other military phonetic sources
   'bravo': 10,
-  'charlie': 10,
-  'delta': 10,
-  'echo': 10,
-  'foxtrot': 10,
-  'golf': 10,
+  'foxtrot': 9,
+  'golf': 8,
   // Secondary reliable sources
-  'streamed': 8,
-  'sportsurge': 8,
-  'streameast': 7,
-  'streambtw': 6,
-  'givemereddit': 5,
-  'admin': 4,
-  'topembed': 3,
+  'streamed': 7,
+  'sportsurge': 6,
+  'streameast': 5,
+  'streambtw': 4,
+  'givemereddit': 3,
+  'topembed': 2,
   // Fallback sources
   'default': 1
 };
