@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Match } from '@/types/sports';
 import { useSportsData } from '@/contexts/SportsDataContext';
 import { enrichMatchesWithViewers, isMatchLive } from '@/services/viewerCountService';
@@ -6,16 +6,20 @@ import { Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateMatchSlug } from '@/utils/matchSlug';
 import { useTeamLogo } from '@/hooks/useTeamLogo';
+import { fetchLiveScore, LiveScore } from '@/services/liveScoreService';
 
-// Individual match item with logo fetching
-const MobileMatchItem: React.FC<{ match: Match; onClick: () => void }> = ({ match, onClick }) => {
+// Individual match item with logo and live score fetching
+const MobileMatchItem: React.FC<{ 
+  match: Match; 
+  onClick: () => void;
+  liveScore?: LiveScore | null;
+}> = ({ match, onClick, liveScore }) => {
   const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
   const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
 
-  // Get scores (using any cast since Match type may have extended properties from API)
-  const matchAny = match as any;
-  const homeScore = matchAny.scores?.home ?? matchAny.homeScore ?? matchAny.home_score;
-  const awayScore = matchAny.scores?.away ?? matchAny.awayScore ?? matchAny.away_score;
+  // Get scores - prioritize live score from API, fallback to match data
+  const homeScore = liveScore?.homeScore ?? (match as any).homeScore ?? (match as any).home_score;
+  const awayScore = liveScore?.awayScore ?? (match as any).awayScore ?? (match as any).away_score;
   const hasScore = homeScore !== undefined && homeScore !== null && awayScore !== undefined && awayScore !== null;
 
   // Fetch logos using hook
@@ -76,7 +80,33 @@ const PopularMatchesList: React.FC<PopularMatchesListProps> = ({
   const navigate = useNavigate();
   const { allMatches } = useSportsData();
   const [popularMatches, setPopularMatches] = useState<Match[]>([]);
+  const [liveScores, setLiveScores] = useState<Map<string, LiveScore>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch live scores for all popular matches
+  const fetchScoresForMatches = useCallback(async (matches: Match[]) => {
+    const newScores = new Map<string, LiveScore>();
+    
+    // Fetch scores in parallel (max 3 at a time to avoid rate limiting)
+    for (let i = 0; i < matches.length; i += 3) {
+      const batch = matches.slice(i, i + 3);
+      const promises = batch.map(async (match) => {
+        const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || '';
+        const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || '';
+        
+        if (homeTeam && awayTeam) {
+          const score = await fetchLiveScore(homeTeam, awayTeam);
+          if (score) {
+            newScores.set(match.id, score);
+          }
+        }
+      });
+      
+      await Promise.all(promises);
+    }
+    
+    setLiveScores(newScores);
+  }, []);
 
   useEffect(() => {
     const loadPopularMatches = async () => {
@@ -101,6 +131,9 @@ const PopularMatchesList: React.FC<PopularMatchesListProps> = ({
           .slice(0, 5);
         
         setPopularMatches(sorted);
+        
+        // Fetch live scores in background
+        fetchScoresForMatches(sorted);
       } catch (error) {
         console.error('Error loading popular matches:', error);
         setPopularMatches(liveMatches.slice(0, 5));
@@ -114,7 +147,18 @@ const PopularMatchesList: React.FC<PopularMatchesListProps> = ({
     // Refresh every 2 minutes
     const interval = setInterval(loadPopularMatches, 120000);
     return () => clearInterval(interval);
-  }, [allMatches, currentMatchId]);
+  }, [allMatches, currentMatchId, fetchScoresForMatches]);
+
+  // Refresh live scores every minute
+  useEffect(() => {
+    if (popularMatches.length === 0) return;
+    
+    const scoreInterval = setInterval(() => {
+      fetchScoresForMatches(popularMatches);
+    }, 60000);
+    
+    return () => clearInterval(scoreInterval);
+  }, [popularMatches, fetchScoresForMatches]);
 
   const handleMatchClick = (match: Match) => {
     const homeTeam = match.teams?.home?.name || '';
@@ -163,6 +207,7 @@ const PopularMatchesList: React.FC<PopularMatchesListProps> = ({
             key={`list-${match.id}-${index}`}
             match={match}
             onClick={() => handleMatchClick(match)}
+            liveScore={liveScores.get(match.id)}
           />
         ))}
       </div>
