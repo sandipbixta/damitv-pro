@@ -5,7 +5,52 @@ import { enrichMatchesWithViewers, isMatchLive } from '@/services/viewerCountSer
 import { Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateMatchSlug } from '@/utils/matchSlug';
-import TeamLogoDisplay from '@/components/TeamLogoDisplay';
+import { useTeamLogo } from '@/hooks/useTeamLogo';
+
+// Individual match item with logo fetching
+const MobileMatchItem: React.FC<{ match: Match; onClick: () => void }> = ({ match, onClick }) => {
+  const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
+  const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
+
+  // Fetch logos using hook
+  const { logo: homeLogo } = useTeamLogo(homeTeam);
+  const { logo: awayLogo } = useTeamLogo(awayTeam);
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 p-2 bg-muted/30 hover:bg-muted/60 rounded-lg transition-colors text-left"
+    >
+      {/* Home Team */}
+      <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+        {homeLogo ? (
+          <img src={homeLogo} alt={homeTeam} className="w-5 h-5 object-contain" />
+        ) : (
+          <span className="text-[10px] font-bold text-muted-foreground">{homeTeam.charAt(0)}</span>
+        )}
+      </div>
+      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[80px]">{homeTeam}</span>
+      
+      {/* VS */}
+      <span className="text-[10px] text-muted-foreground">vs</span>
+      
+      {/* Away Team */}
+      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[80px] text-right">{awayTeam}</span>
+      <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+        {awayLogo ? (
+          <img src={awayLogo} alt={awayTeam} className="w-5 h-5 object-contain" />
+        ) : (
+          <span className="text-[10px] font-bold text-muted-foreground">{awayTeam.charAt(0)}</span>
+        )}
+      </div>
+      
+      {/* Live Badge */}
+      <span className="flex items-center gap-1 ml-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+      </span>
+    </button>
+  );
+};
 
 interface PopularMatchesListProps {
   currentMatchId?: string;
@@ -101,36 +146,13 @@ const PopularMatchesList: React.FC<PopularMatchesListProps> = ({
 
       {/* Compact Match List */}
       <div className="space-y-1.5">
-        {popularMatches.map((match, index) => {
-          const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
-          const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
-          const homeLogo = match.teams?.home?.badge;
-          const awayLogo = match.teams?.away?.badge;
-
-          return (
-            <button
-              key={`list-${match.id}-${index}`}
-              onClick={() => handleMatchClick(match)}
-              className="w-full flex items-center gap-2 p-2 bg-muted/30 hover:bg-muted/60 rounded-lg transition-colors text-left"
-            >
-              {/* Home Team */}
-              <TeamLogoDisplay logo={homeLogo} teamName={homeTeam} size="sm" />
-              <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[80px]">{homeTeam}</span>
-              
-              {/* VS */}
-              <span className="text-[10px] text-muted-foreground">vs</span>
-              
-              {/* Away Team */}
-              <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[80px] text-right">{awayTeam}</span>
-              <TeamLogoDisplay logo={awayLogo} teamName={awayTeam} size="sm" />
-              
-              {/* Live Badge */}
-              <span className="flex items-center gap-1 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-              </span>
-            </button>
-          );
-        })}
+        {popularMatches.map((match, index) => (
+          <MobileMatchItem
+            key={`list-${match.id}-${index}`}
+            match={match}
+            onClick={() => handleMatchClick(match)}
+          />
+        ))}
       </div>
     </div>
   );
