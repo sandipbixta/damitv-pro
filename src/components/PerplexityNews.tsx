@@ -14,22 +14,34 @@ interface NewsArticle {
 }
 
 const getSourceColor = (source: string): string => {
-  const colors: { [key: string]: string } = {
-    'ESPN': 'bg-red-600',
-    'BBC Sport': 'bg-amber-600',
-    'Sky Sports': 'bg-blue-600',
-    'Goal.com': 'bg-purple-600',
-    'The Athletic': 'bg-orange-600',
-    'Guardian': 'bg-blue-800',
-    'default': 'bg-primary'
-  };
-  return colors[source] || colors['default'];
+  const lowerSource = source.toLowerCase();
+  if (lowerSource.includes('espn')) return 'bg-red-600';
+  if (lowerSource.includes('bbc')) return 'bg-amber-600';
+  if (lowerSource.includes('sky')) return 'bg-blue-600';
+  if (lowerSource.includes('goal')) return 'bg-purple-600';
+  if (lowerSource.includes('athletic')) return 'bg-orange-600';
+  if (lowerSource.includes('guardian')) return 'bg-blue-800';
+  if (lowerSource.includes('fox')) return 'bg-sky-600';
+  if (lowerSource.includes('soccer')) return 'bg-green-600';
+  return 'bg-primary';
+};
+
+// Generate a placeholder image URL based on title keywords
+const getPlaceholderImage = (title: string, source: string): string => {
+  // Use picsum for random football-themed images based on hash
+  const hash = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return `https://picsum.photos/seed/${hash}/400/225`;
 };
 
 const NewsArticleCard: React.FC<{ article: NewsArticle; index: number }> = ({ article, index }) => {
   const encodedUrl = encodeURIComponent(article.url);
   const encodedTitle = encodeURIComponent(article.title);
   const articleLink = `/article?url=${encodedUrl}&title=${encodedTitle}`;
+  
+  // Use article image if available, otherwise generate a placeholder
+  const imageUrl = article.image && article.image.length > 0 
+    ? article.image 
+    : getPlaceholderImage(article.title, article.source);
   
   return (
     <Link 
@@ -39,9 +51,9 @@ const NewsArticleCard: React.FC<{ article: NewsArticle; index: number }> = ({ ar
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
         {/* Thumbnail Section */}
         <div className="relative aspect-video overflow-hidden flex-shrink-0">
-          {article.image ? (
+          {imageUrl ? (
             <img 
-              src={article.image} 
+              src={imageUrl} 
               alt={article.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
