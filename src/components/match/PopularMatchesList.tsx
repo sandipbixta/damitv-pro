@@ -39,7 +39,7 @@ const MobileMatchItem: React.FC<{
           <span className="text-[10px] font-bold text-muted-foreground">{homeTeam.charAt(0)}</span>
         )}
       </div>
-      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[70px]">{homeTeam}</span>
+      <span className="text-xs font-medium text-foreground flex-1">{homeTeam}</span>
       
       {/* Score or VS */}
       {hasScore ? (
@@ -51,7 +51,7 @@ const MobileMatchItem: React.FC<{
       )}
       
       {/* Away Team */}
-      <span className="text-xs font-medium text-foreground truncate flex-1 max-w-[70px] text-right">{awayTeam}</span>
+      <span className="text-xs font-medium text-foreground flex-1 text-right">{awayTeam}</span>
       <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
         {awayLogo ? (
           <img src={awayLogo} alt={awayTeam} className="w-5 h-5 object-contain" />
