@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.sync-matches]
 verify_jwt = false
+
+[functions.fetch-football-news]
+verify_jwt = false

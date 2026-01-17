@@ -11,6 +11,7 @@ interface NewsArticle {
   url: string;
   image: string;
   source: string;
+  publishedAt?: string;
 }
 
 const getSourceColor = (source: string): string => {
@@ -22,26 +23,15 @@ const getSourceColor = (source: string): string => {
   if (lowerSource.includes('athletic')) return 'bg-orange-600';
   if (lowerSource.includes('guardian')) return 'bg-blue-800';
   if (lowerSource.includes('fox')) return 'bg-sky-600';
-  if (lowerSource.includes('soccer')) return 'bg-green-600';
+  if (lowerSource.includes('reuters')) return 'bg-orange-500';
+  if (lowerSource.includes('yahoo')) return 'bg-violet-600';
   return 'bg-primary';
-};
-
-// Generate a placeholder image URL based on title keywords
-const getPlaceholderImage = (title: string, source: string): string => {
-  // Use picsum for random football-themed images based on hash
-  const hash = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return `https://picsum.photos/seed/${hash}/400/225`;
 };
 
 const NewsArticleCard: React.FC<{ article: NewsArticle; index: number }> = ({ article, index }) => {
   const encodedUrl = encodeURIComponent(article.url);
   const encodedTitle = encodeURIComponent(article.title);
   const articleLink = `/article?url=${encodedUrl}&title=${encodedTitle}`;
-  
-  // Use article image if available, otherwise generate a placeholder
-  const imageUrl = article.image && article.image.length > 0 
-    ? article.image 
-    : getPlaceholderImage(article.title, article.source);
   
   return (
     <Link 
@@ -51,9 +41,9 @@ const NewsArticleCard: React.FC<{ article: NewsArticle; index: number }> = ({ ar
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
         {/* Thumbnail Section */}
         <div className="relative aspect-video overflow-hidden flex-shrink-0">
-          {imageUrl ? (
+          {article.image ? (
             <img 
-              src={imageUrl} 
+              src={article.image} 
               alt={article.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
@@ -121,26 +111,27 @@ const PerplexityNews: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching Perplexity news articles...');
+      console.log('Fetching football news from NewsAPI...');
       
-      const { data, error: fetchError } = await supabase.functions.invoke('sports-dashboard', {
-        body: { type: 'news' }
-      });
+      // Use NewsAPI edge function for real images
+      const { data, error: fetchError } = await supabase.functions.invoke('fetch-football-news');
       
       if (fetchError) {
-        console.error('Error fetching Perplexity news:', fetchError);
+        console.error('Error fetching news:', fetchError);
         setError('Failed to load news');
         return;
       }
       
-      if (data?.data?.articles) {
-        console.log('Received Perplexity articles:', data.data.articles.length);
-        setArticles(data.data.articles);
+      if (data?.articles && data.articles.length > 0) {
+        console.log('Received articles:', data.articles.length);
+        setArticles(data.articles);
       } else if (data?.error) {
         setError(data.error);
+      } else {
+        setError('No articles available');
       }
     } catch (err) {
-      console.error('Failed to fetch Perplexity news:', err);
+      console.error('Failed to fetch news:', err);
       setError('Failed to load news');
     } finally {
       setLoading(false);
@@ -223,7 +214,7 @@ const PerplexityNews: React.FC = () => {
       {/* Footer Credit */}
       <div className="mt-4 text-center">
         <p className="text-xs text-muted-foreground">
-          Powered by Perplexity AI • Real-time football news
+          Powered by NewsAPI • Real-time football news
         </p>
       </div>
     </section>
