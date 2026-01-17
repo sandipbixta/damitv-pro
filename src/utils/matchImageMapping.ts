@@ -13,6 +13,11 @@ const matchImageMappings: MatchImageMapping[] = [
     image: '/match-images/cameroon-morocco-afcon.webp',
     competition: 'africa'
   },
+  {
+    teams: ['real madrid', 'levante'],
+    image: '/match-images/real-madrid-levante-laliga.jpeg',
+    competition: 'laliga'
+  },
   // Add more mappings here as you download images
 ];
 
