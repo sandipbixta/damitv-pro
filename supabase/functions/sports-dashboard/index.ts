@@ -114,9 +114,11 @@ const schemas = {
               properties: {
                 title: { type: "string" },
                 summary: { type: "string" },
-                url: { type: "string" }
+                url: { type: "string" },
+                image: { type: "string" },
+                source: { type: "string" }
               },
-              required: ["title", "summary", "url"],
+              required: ["title", "summary", "url", "image", "source"],
               additionalProperties: false
             }
           }
@@ -132,7 +134,7 @@ const prompts = {
   live: "Get the latest 5 live or recently completed sports matches in Australia right now, prioritizing A-League, AFL, EPL matches involving Australian interest, and cricket. Include competition name, team names (formatted as 'Team A vs Team B'), current score, match time/minute, status (LIVE/FT/HT), and venue. If no live matches, include most recent completed matches from today.",
   fixtures: "Get the next 5 upcoming sports fixtures in Australia for the next 24 hours in AEDT timezone, prioritizing A-League, AFL, EPL, and cricket. Include competition, teams (formatted as 'Team A vs Team B'), kickoff time in AEDT (format: 'HH:MM AEDT'), and status (Scheduled/Upcoming).",
   standings: "Get the current A-League Men's 2024-25 season standings table for the top 8 teams. Include position, team name, matches played, wins, draws, losses, goals for, goals against, and points.",
-  news: "Get the top 3 Australian sports news headlines from today, focusing on A-League, AFL, cricket, or EPL news relevant to Australian fans. Include headline title, brief 1-2 sentence summary, and source URL."
+  news: "Get the top 6 latest football/soccer news headlines from today, focusing on Premier League, Champions League, La Liga, Serie A, Bundesliga, and major international football. For each article, include: headline title, brief 2-sentence summary, source URL, image URL (find actual thumbnail/hero image URL from the article), and source name (e.g., ESPN, BBC Sport, Sky Sports, Goal.com). Prioritize breaking news and transfer updates."
 };
 
 serve(async (req) => {
