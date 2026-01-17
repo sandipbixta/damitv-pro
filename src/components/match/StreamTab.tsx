@@ -4,6 +4,7 @@ import { Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import StreamPlayer from '@/components/StreamPlayer';
 import StreamSources from './StreamSources';
+import PopularMatchesList from './PopularMatchesList';
 import MatchCard from '@/components/MatchCard';
 import MatchDetails from '@/components/MatchDetails';
 import { Match as MatchType, Stream } from '@/types/sports';
@@ -194,6 +195,11 @@ const StreamTab = ({
         match={match}
       />
       
+      {/* Popular Matches List - Mobile Only (below stream links) */}
+      <div className="lg:hidden">
+        <PopularMatchesList currentMatchId={match.id} />
+      </div>
+
       {!loadingStream && (
         <div className="flex items-center justify-center gap-4 mt-4">
           <div className="flex items-center gap-3">

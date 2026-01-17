@@ -26,7 +26,8 @@ import MatchAnalysis from '@/components/match/MatchAnalysis';
 import { ViewerStats } from '@/components/match/ViewerStats';
 import AdsterraSocialBar from '@/components/AdsterraSocialBar';
 import BannerAd from '@/components/BannerAd';
-import NativeAd from '@/components/NativeAd';
+import PopularMatchesSidebar from '@/components/match/PopularMatchesSidebar';
+import PopularMatchesList from '@/components/match/PopularMatchesList';
 
 
 const Match = () => {
@@ -296,10 +297,10 @@ const Match = () => {
             </div>
           </div>
 
-          {/* Native Ad Sidebar - Desktop Only */}
+          {/* Popular Matches Sidebar - Desktop Only */}
           <div className="hidden lg:block lg:w-1/4 flex-shrink-0">
             <div className="sticky top-4">
-              <NativeAd className="w-full aspect-video" />
+              <PopularMatchesSidebar currentMatchId={matchId} className="w-full" />
             </div>
           </div>
         </div>
