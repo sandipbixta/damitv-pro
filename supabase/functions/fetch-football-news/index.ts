@@ -28,12 +28,11 @@ serve(async (req) => {
 
     console.log("Fetching football news from NewsAPI...");
 
-    // Fetch football/soccer news from NewsAPI
+    // Fetch sports news from NewsAPI
     const response = await fetch(
-      `https://newsapi.org/v2/everything?` + new URLSearchParams({
-        q: "(football OR soccer) AND (Premier League OR Champions League OR La Liga OR Serie A OR Bundesliga OR transfer)",
+      `https://newsapi.org/v2/top-headlines?` + new URLSearchParams({
+        category: "sports",
         language: "en",
-        sortBy: "publishedAt",
         pageSize: "6",
         apiKey: NEWS_API_KEY
       }),

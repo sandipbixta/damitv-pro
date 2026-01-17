@@ -77,7 +77,7 @@ const NewsArticleCard: React.FC<{ article: NewsArticle; index: number }> = ({ ar
         <div className="p-3 flex flex-col flex-1 gap-2">
           {/* Category */}
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold truncate">
-            Football • News
+            Sports • News
           </p>
 
           {/* Title */}
@@ -147,10 +147,10 @@ const PerplexityNews: React.FC = () => {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Newspaper className="h-6 w-6 text-primary" />
-            <h2 className="text-2xl font-extrabold tracking-tight text-foreground uppercase">
-              Football News
-            </h2>
+          <Newspaper className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-extrabold tracking-tight text-foreground uppercase">
+            Sports News
+          </h2>
           </div>
           <Button variant="ghost" size="sm" onClick={fetchArticles}>
             <RefreshCw className="h-4 w-4 mr-2" /> Retry
@@ -171,7 +171,7 @@ const PerplexityNews: React.FC = () => {
         <div className="flex items-center gap-3">
           <Newspaper className="h-6 w-6 text-primary" />
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground uppercase">
-            Football News
+            Sports News
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -214,7 +214,7 @@ const PerplexityNews: React.FC = () => {
       {/* Footer Credit */}
       <div className="mt-4 text-center">
         <p className="text-xs text-muted-foreground">
-          Powered by NewsAPI • Real-time football news
+          Powered by NewsAPI • Real-time sports news
         </p>
       </div>
     </section>
