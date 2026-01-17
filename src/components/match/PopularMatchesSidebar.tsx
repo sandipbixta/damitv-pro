@@ -6,7 +6,64 @@ import { Flame, Users } from 'lucide-react';
 import { formatViewerCount } from '@/services/viewerCountService';
 import { useNavigate } from 'react-router-dom';
 import { generateMatchSlug } from '@/utils/matchSlug';
-import TeamLogoDisplay from '@/components/TeamLogoDisplay';
+import { useTeamLogo } from '@/hooks/useTeamLogo';
+
+// Individual match item with logo fetching
+const MatchItem: React.FC<{ match: Match; onClick: () => void }> = ({ match, onClick }) => {
+  const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
+  const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
+  const viewerCount = match.viewerCount || 0;
+
+  // Fetch logos using hook
+  const { logo: homeLogo } = useTeamLogo(homeTeam);
+  const { logo: awayLogo } = useTeamLogo(awayTeam);
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors text-left group"
+    >
+      {/* Teams Row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+            {homeLogo ? (
+              <img src={homeLogo} alt={homeTeam} className="w-5 h-5 object-contain" />
+            ) : (
+              <span className="text-[10px] font-bold text-muted-foreground">{homeTeam.charAt(0)}</span>
+            )}
+          </div>
+          <span className="text-sm font-medium text-foreground truncate">{homeTeam}</span>
+        </div>
+        <span className="text-xs text-muted-foreground px-1">vs</span>
+        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+          <span className="text-sm font-medium text-foreground truncate text-right">{awayTeam}</span>
+          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+            {awayLogo ? (
+              <img src={awayLogo} alt={awayTeam} className="w-5 h-5 object-contain" />
+            ) : (
+              <span className="text-[10px] font-bold text-muted-foreground">{awayTeam.charAt(0)}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Row */}
+      <div className="flex items-center justify-between mt-2">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+          <span className="text-xs text-destructive font-semibold">LIVE</span>
+        </span>
+        {viewerCount > 0 && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Users className="w-3 h-3" />
+            <span>{formatViewerCount(viewerCount, false)}</span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+};
 
 interface PopularMatchesSidebarProps {
   currentMatchId?: string;
@@ -102,48 +159,13 @@ const PopularMatchesSidebar: React.FC<PopularMatchesSidebarProps> = ({
 
       {/* Match List */}
       <div className="space-y-2">
-        {popularMatches.map((match, index) => {
-          const homeTeam = match.teams?.home?.name || match.title.split(' vs ')[0] || 'Home';
-          const awayTeam = match.teams?.away?.name || match.title.split(' vs ')[1] || 'Away';
-          const homeLogo = match.teams?.home?.badge;
-          const awayLogo = match.teams?.away?.badge;
-          const viewerCount = match.viewerCount || 0;
-
-          return (
-            <button
-              key={`sidebar-${match.id}-${index}`}
-              onClick={() => handleMatchClick(match)}
-              className="w-full p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors text-left group"
-            >
-              {/* Teams Row */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <TeamLogoDisplay logo={homeLogo} teamName={homeTeam} size="sm" />
-                  <span className="text-sm font-medium text-foreground truncate">{homeTeam}</span>
-                </div>
-                <span className="text-xs text-muted-foreground px-1">vs</span>
-                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                  <span className="text-sm font-medium text-foreground truncate text-right">{awayTeam}</span>
-                  <TeamLogoDisplay logo={awayLogo} teamName={awayTeam} size="sm" />
-                </div>
-              </div>
-
-              {/* Footer Row */}
-              <div className="flex items-center justify-between mt-2">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                  <span className="text-xs text-destructive font-semibold">LIVE</span>
-                </span>
-                {viewerCount > 0 && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="w-3 h-3" />
-                    <span>{formatViewerCount(viewerCount, false)}</span>
-                  </div>
-                )}
-              </div>
-            </button>
-          );
-        })}
+        {popularMatches.map((match, index) => (
+          <MatchItem
+            key={`sidebar-${match.id}-${index}`}
+            match={match}
+            onClick={() => handleMatchClick(match)}
+          />
+        ))}
       </div>
     </div>
   );
