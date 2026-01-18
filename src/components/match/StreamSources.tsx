@@ -279,84 +279,93 @@ const StreamSources = ({
 
       {/* Show source buttons to trigger lazy load */}
       {showSourceButtons && (
-        <div className="flex flex-wrap gap-3">
-          {visibleSources.map((source, idx) => {
-            const sourceKey = `${source.source}/${source.id}`;
-            const isLoading = loadingStreams[sourceKey];
-            
-            return (
-              <Button
-                key={sourceKey}
-                variant="outline"
-                className="rounded-full px-5 py-2.5 min-w-[120px] bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50"
-                onClick={() => handleSourceClick(source)}
-                disabled={isLoading}
-              >
-                <div className="flex items-center gap-2">
-                  {isLoading ? (
-                    <Loader className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
-                      <Play className="w-4 h-4" />
-                    </>
-                  )}
-                  <span>Stream {idx + 1}</span>
-                </div>
-              </Button>
-            );
-          })}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
+            {visibleSources.map((source) => {
+              const sourceKey = `${source.source}/${source.id}`;
+              const isLoading = loadingStreams[sourceKey];
+              const sourceName = source.source?.toUpperCase() || 'STREAM';
+              
+              return (
+                <Button
+                  key={sourceKey}
+                  variant="outline"
+                  className="rounded-full px-5 py-2.5 min-w-[120px] bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50"
+                  onClick={() => handleSourceClick(source)}
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center gap-2">
+                    {isLoading ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
+                        <Play className="w-4 h-4" />
+                      </>
+                    )}
+                    <span>{sourceName}</span>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            💡 Recommended: <span className="text-primary font-medium">CHARLIE</span>, <span className="text-primary font-medium">DELTA</span>, and <span className="text-primary font-medium">ECHO</span> for best quality
+          </p>
         </div>
       )}
 
       {/* Show loaded streams */}
       {allAvailableStreams.length > 0 && (
-        <div className="flex flex-wrap gap-3">
-          {allAvailableStreams.map(({ stream, sourceKey, index }) => {
-            // Use streamNo from API, fallback to index + 1
-            const actualStreamNo = stream.streamNo !== undefined ? stream.streamNo : index + 1;
-            const streamKey = `${stream.source}/${stream.id}/${actualStreamNo}`;
-            const isActive = activeSource === streamKey;
-            const viewerCount = stream.viewers || 0;
-            
-            // Use API-provided names with streamNo priority
-            let streamName = stream.name || 
-                            (stream.language && stream.language !== 'Original' ? `${stream.language} ${actualStreamNo}` : null) ||
-                            (stream.source && stream.source !== 'intel' ? `${stream.source.toUpperCase()} ${actualStreamNo}` : null) ||
-                            `Stream ${actualStreamNo}`;
-            
-            return (
-              <Button
-                key={streamKey}
-                variant={isActive ? "default" : "outline"}
-                className={`rounded-full px-5 py-2.5 min-w-[120px] flex-col h-auto gap-1 ${
-                  isActive 
-                    ? 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary' 
-                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
-                }`}
-                onClick={() => {
-                  // Trigger popunder ad on stream link click
-                  if (match?.id) {
-                    triggerPopunderAd(match.id, 'stream_link_click');
-                  }
-                  onSourceChange(stream.source, stream.id, actualStreamNo);
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
-                  <Play className="w-4 h-4" />
-                  <span>{streamName}</span>
-                  {stream.hd && <span className="text-xs bg-red-600 px-1 rounded">HD</span>}
-                </div>
-                {viewerCount > 0 && (
-                  <div className="flex items-center gap-1 text-xs font-semibold">
-                    <Users className="w-3 h-3 text-primary" />
-                    <span>{formatViewerCount(viewerCount, false)}</span>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
+            {allAvailableStreams.map(({ stream, sourceKey, index }) => {
+              // Use streamNo from API, fallback to index + 1
+              const actualStreamNo = stream.streamNo !== undefined ? stream.streamNo : index + 1;
+              const streamKey = `${stream.source}/${stream.id}/${actualStreamNo}`;
+              const isActive = activeSource === streamKey;
+              const viewerCount = stream.viewers || 0;
+              
+              // Show original source name in uppercase
+              const sourceName = stream.source?.toUpperCase() || 'STREAM';
+              const streamLabel = actualStreamNo > 1 ? `${sourceName} ${actualStreamNo}` : sourceName;
+              
+              return (
+                <Button
+                  key={streamKey}
+                  variant={isActive ? "default" : "outline"}
+                  className={`rounded-full px-5 py-2.5 min-w-[120px] flex-col h-auto gap-1 ${
+                    isActive 
+                      ? 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary' 
+                      : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600 hover:border-primary/50'
+                  }`}
+                  onClick={() => {
+                    // Trigger popunder ad on stream link click
+                    if (match?.id) {
+                      triggerPopunderAd(match.id, 'stream_link_click');
+                    }
+                    onSourceChange(stream.source, stream.id, actualStreamNo);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${getConnectionDotColor()} animate-pulse`} />
+                    <Play className="w-4 h-4" />
+                    <span>{streamLabel}</span>
+                    {stream.hd && <span className="text-xs bg-red-600 px-1 rounded">HD</span>}
                   </div>
-                )}
-              </Button>
-            );
-          })}
+                  {viewerCount > 0 && (
+                    <div className="flex items-center gap-1 text-xs font-semibold">
+                      <Users className="w-3 h-3 text-primary" />
+                      <span>{formatViewerCount(viewerCount, false)}</span>
+                    </div>
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            💡 Recommended: <span className="text-primary font-medium">CHARLIE</span>, <span className="text-primary font-medium">DELTA</span>, and <span className="text-primary font-medium">ECHO</span> for best quality
+          </p>
         </div>
       )}
 
