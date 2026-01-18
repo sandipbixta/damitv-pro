@@ -227,10 +227,21 @@ export const SportsDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   );
 };
 
+// Default fallback when context is unavailable (prevents crash during hot-reload)
+const defaultContextValue: SportsDataContextType = {
+  sports: [],
+  allMatches: [],
+  liveMatches: [],
+  popularMatches: [],
+  loading: true,
+  refresh: async () => {}
+};
+
 export const useSportsData = (): SportsDataContextType => {
   const context = useContext(SportsDataContext);
   if (context === undefined) {
-    throw new Error('useSportsData must be used within SportsDataProvider');
+    console.warn('useSportsData called outside SportsDataProvider - using default values');
+    return defaultContextValue;
   }
   return context;
 };
