@@ -38,7 +38,7 @@ export const manualMatches: ManualMatch[] = [
         quality: "HD"
       }
     ],
-    visible: true,
+    visible: false,
     image: "",
     seo: {
       keywords: "Barcelona vs Real Sociedad live stream, Barca Real Sociedad watch online, LaLiga live stream free",
