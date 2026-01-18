@@ -1,7 +1,7 @@
 // Embed Domain Manager - ONLY uses embed.damitv.pro
 // No fallback - single domain for all sources
 
-export const EMBED_DOMAIN = 'https://streamed.pk';
+export const EMBED_DOMAIN = 'https://embed.damitv.pro';
 
 // Build embed URL - always uses damitv.pro
 export const buildEmbedUrl = (
