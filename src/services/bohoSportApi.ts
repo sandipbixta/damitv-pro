@@ -1,6 +1,6 @@
 // BOHOSport API Service - fetches directly from API (no edge function)
 import { Sport, Match, Stream, Source } from '../types/sports';
-import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
+import { getEmbedDomainSync, buildEmbedUrl, EMBED_DOMAIN } from '../utils/embedDomains';
 
 // API endpoints to try (direct calls)
 const API_BASES = [
@@ -552,8 +552,8 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
         const streamId = item.id || id;
         const streamSource = item.source || source;
         
-        // ALWAYS use embed.damitv.pro - override any URL from API
-        const embedUrl = isHls ? url : `https://embed.damitv.pro/embed/${streamSource}/${streamId}/${streamNo}`;
+        // Use embedsports.top API format for streamed.pk sources
+        const embedUrl = isHls ? url : `${EMBED_DOMAIN}/api/getstream?source=${streamSource}&match=${streamId}&stream=${streamNo}`;
         
         return {
           id: streamId,
@@ -578,10 +578,10 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Generate fallback embed URL when API fails - uses proper embed format
+// Generate fallback embed URL when API fails - uses embedsports.top format
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
-  // Use embed.damitv.pro embed format
-  return `https://embed.damitv.pro/embed/${source}/${id}/${streamNo}`;
+  // Use embedsports.top API format
+  return `${EMBED_DOMAIN}/api/getstream?source=${source}&match=${id}&stream=${streamNo}`;
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
