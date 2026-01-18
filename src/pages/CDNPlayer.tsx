@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Users, Radio, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/PageLayout';
+import BannerAd from '@/components/BannerAd';
 
 interface CDNChannel {
   channel_name: string;
@@ -53,6 +54,11 @@ const CDNPlayer: React.FC = () => {
 
   return (
     <PageLayout>
+      {/* Banner Ad - Top of page (desktop) */}
+      <div className="hidden md:block pt-4">
+        <BannerAd />
+      </div>
+
       <div className="py-4">
         {/* Back Button */}
         <button 
@@ -101,6 +107,9 @@ const CDNPlayer: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Banner Ad - Below player, above channels */}
+        <BannerAd className="mb-4" />
 
         {/* Channel Selector */}
         {channels.length > 0 && (
