@@ -26,6 +26,7 @@ import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
+import CDNLiveMatches from '../components/CDNLiveMatches';
 import PerplexityNews from '../components/PerplexityNews';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 
@@ -200,7 +201,7 @@ const Index = () => {
         </div>
 
         {/* Sports Category Nav - Below hero */}
-        <div className="mb-6">
+        <div className="mb-4">
           <SportsNav 
             sports={sports}
             onSelectSport={handleSelectSport}
@@ -208,6 +209,9 @@ const Index = () => {
             isLoading={loadingSports}
           />
         </div>
+
+        {/* CDN Live Matches - Horizontal carousel */}
+        <CDNLiveMatches />
 
         <div>
           <FeaturedMatches visibleManualMatches={visibleManualMatches} />
