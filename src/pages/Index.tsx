@@ -21,19 +21,13 @@ import { generateCompetitorTitle, generateCompetitorDescription } from '../utils
 import CompetitorSEOContent from '../components/CompetitorSEOContent';
 import { Helmet } from 'react-helmet-async';
 import { manualMatches } from '../data/manualMatches';
+import { HeroCarousel } from '../components/HeroCarousel';
+import heroBackground from '../assets/hero-background.jpeg';
 import HomepageContent from '../components/HomepageContent';
 import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
 import PerplexityNews from '../components/PerplexityNews';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
-
-// New landing page components
-import HeroSection from '../components/landing/HeroSection';
-import StatsCounter from '../components/landing/StatsCounter';
-import LeagueLogosMarquee from '../components/landing/LeagueLogosMarquee';
-import FeaturesGrid from '../components/landing/FeaturesGrid';
-import TestimonialsCarousel from '../components/landing/TestimonialsCarousel';
-import CTASection from '../components/landing/CTASection';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -193,32 +187,20 @@ const Index = () => {
         </script>
       </Helmet>
       
-      <main>
+      <main className="py-4">
         {/* SEO H1 - Hidden but present for SEO */}
         <h1 className="sr-only">Top 10 Sports Streaming Site Alternatives - Free HD Streams</h1>
 
-        {/* New Landing Page Hero Section */}
-        <HeroSection />
-        
-        {/* League Logos Marquee */}
-        <LeagueLogosMarquee />
-        
-        {/* Stats Counter Section */}
-        <StatsCounter />
-        
-        {/* Features Grid */}
-        <FeaturesGrid />
-        
-        {/* Testimonials */}
-        <TestimonialsCarousel />
+        {/* Custom Match Cards - Above Hero Carousel */}
+        <CustomMatchCards />
 
-        {/* Custom Match Cards */}
-        <div className="container mx-auto px-4 py-8">
-          <CustomMatchCards />
+        {/* Hero Carousel */}
+        <div className="mb-4">
+          <HeroCarousel />
         </div>
 
-        {/* Sports Category Nav */}
-        <div className="container mx-auto px-4 mb-6">
+        {/* Sports Category Nav - Below hero */}
+        <div className="mb-6">
           <SportsNav 
             sports={sports}
             onSelectSport={handleSelectSport}
@@ -227,135 +209,153 @@ const Index = () => {
           />
         </div>
 
-        <div className="container mx-auto px-4">
+        <div>
           <FeaturedMatches visibleManualMatches={visibleManualMatches} />
         </div>
 
-        <div className="container mx-auto px-4">
-          <React.Suspense fallback={<div className="h-32 bg-muted rounded-lg animate-pulse" />}>
-            <FeaturedChannels />
-          </React.Suspense>
-        </div>
+        <React.Suspense fallback={<div className="h-32 bg-[#242836] rounded-lg animate-pulse" />}>
+          <FeaturedChannels />
+        </React.Suspense>
             
-        <Separator className="my-8 bg-border container mx-auto" />
+            <Separator className="my-8 bg-[#343a4d]" />
             
-        {/* Popular by Viewers Section - Only show on home page (no sport selected or All Sports) */}
-        {liveMatches.length > 0 && (!selectedSport || selectedSport === 'all') && (
-          <React.Suspense fallback={<div className="h-32 bg-muted rounded-lg animate-pulse" />}>
-            <div className="container mx-auto px-4 mb-8">
-              <PopularMatches 
-                popularMatches={liveMatches}
-                selectedSport={null}
-              />
-            </div>
-          </React.Suspense>
-        )}
-            
-        <div className="container mx-auto px-4 mb-8">
-          {selectedSport && (
-            <>
-              {selectedSport === 'all' ? (
-                <div>
-                  <div className="mb-6">
-                    <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
-                      Live Matches
-                    </h2>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Currently live across all sports
-                    </p>
-                  </div>
-                  <AllSportsLiveMatches searchTerm={searchTerm} />
-                </div>
-              ) : (
-                <>
-                  <div className="mb-6">
-                    <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
-                      {sports.find(s => s.id === selectedSport)?.name || 'Matches'}
-                    </h2>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {filteredMatches.length} matches available
-                    </p>
-                  </div>
-                  <MatchesList
-                    matches={filteredMatches}
-                    sportId={selectedSport}
-                    isLoading={loadingMatches}
+            {/* Popular by Viewers Section - Only show on home page (no sport selected or All Sports) */}
+            {liveMatches.length > 0 && (!selectedSport || selectedSport === 'all') && (
+              <React.Suspense fallback={<div className="h-32 bg-[#242836] rounded-lg animate-pulse" />}>
+                <div className="mb-8">
+                  <PopularMatches 
+                    popularMatches={liveMatches}
+                    selectedSport={null}
                   />
+                </div>
+              </React.Suspense>
+            )}
+            
+            <div className="mb-8">
+              {selectedSport && (
+                <>
+                  {selectedSport === 'all' ? (
+                    <div>
+                      <div className="mb-6">
+                        <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
+                          Live Matches
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Currently live across all sports
+                        </p>
+                      </div>
+                      <AllSportsLiveMatches searchTerm={searchTerm} />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-6">
+                        <h2 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-wider">
+                          {sports.find(s => s.id === selectedSport)?.name || 'Matches'}
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {filteredMatches.length} matches available
+                        </p>
+                      </div>
+                      <MatchesList
+                        matches={filteredMatches}
+                        sportId={selectedSport}
+                        isLoading={loadingMatches}
+                      />
+                    </>
+                  )}
                 </>
               )}
-            </>
-          )}
-        </div>
-            
-        <div className="container mx-auto px-4">
-          {/* Hidden SEO content for competitor targeting */}
-          <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
-          
-          {/* AI Match Previews - Internal Links for SEO */}
-          <UpcomingMatchPreviews />
-          
-          {/* Latest Highlights Section */}
-          <LatestHighlights />
-          
-          {/* Football News Section - Powered by Perplexity */}
-          <PerplexityNews />
-        </div>
-        
-        {/* Final CTA Section */}
-        <CTASection />
-
-        {/* SEO Content Section - Compact and organized */}
-        <section className="container mx-auto px-4 mb-8">
-          <div className="prose prose-invert max-w-none">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground mb-3">Popular Sports Available</h2>
-                <ul className="text-muted-foreground space-y-1 text-sm">
-                  <li>• Live Football Streaming (Premier League, Champions League, La Liga)</li>
-                  <li>• Basketball Games (NBA, EuroLeague)</li>
-                  <li>• Tennis Tournaments (ATP, WTA, Grand Slams)</li>
-                  <li>• Boxing and MMA Events</li>
-                  <li>• Motor Sports (Formula 1, MotoGP)</li>
-                </ul>
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground mb-3">Why Choose DamiTV?</h2>
-                <ul className="text-muted-foreground space-y-1 text-sm">
-                  <li>• No registration or subscription required</li>
-                  <li>• HD quality streaming on all devices</li>
-                  <li>• Multiple streaming sources for reliability</li>
-                  <li>• Live chat and match discussions</li>
-                  <li>• Regular updates and new channels</li>
-                </ul>
-              </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-3">How DamiTV Works</h3>
-                <p className="text-muted-foreground mb-3 text-sm">
-                  DamiTV provides free access to live sports streaming through our user-friendly platform. Simply browse our sports categories, select your preferred match or channel, and start watching instantly. No downloads, no registration, and no hidden fees.
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  Our streaming technology ensures reliable connections with multiple backup sources for each event. If one stream experiences issues, our system automatically switches to an alternative source to maintain uninterrupted viewing.
-                </p>
+            
+            
+            {/* Hidden SEO content for competitor targeting */}
+            <CompetitorSEOContent showFAQ={true} showCompetitorMentions={true} />
+            
+            {/* AI Match Previews - Internal Links for SEO */}
+            <UpcomingMatchPreviews />
+            
+            {/* Latest Highlights Section */}
+            <LatestHighlights />
+            
+            {/* Football News Section - Powered by Perplexity */}
+            <PerplexityNews />
+            
+            {/* Call to Action Section */}
+            <section className="mb-10 mt-10">
+              <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl p-8 md:p-10 border border-primary/30">
+                <div className="max-w-2xl">
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-foreground mb-4 uppercase tracking-wide">Start Watching Now</h2>
+                  <p className="text-muted-foreground mb-8 text-lg">
+                    Join thousands of sports fans streaming live matches in HD quality.
+                  </p>
+                  <div className="flex flex-wrap gap-4">
+                    <Link to="/live">
+                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase px-6">
+                        <Tv className="mr-2 h-4 w-4" /> Watch Live
+                      </Button>
+                    </Link>
+                    <Link to="/channels">
+                      <Button variant="outline" className="border-border hover:bg-muted font-bold uppercase px-6">
+                        <Calendar className="mr-2 h-4 w-4" /> Browse Channels
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-3">Comprehensive Sports Coverage</h3>
-                <p className="text-muted-foreground mb-3 text-sm">
-                  We cover major sports leagues worldwide including Premier League football, Champions League, NBA basketball, ATP tennis, Formula 1 racing, and boxing events. Our coverage spans European football leagues, American sports, and international tournaments.
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  DamiTV provides comprehensive sports entertainment with live matches, extensive TV channels, and complete schedules for all major sports. Looking for reliable streaming platforms? Check out our detailed guide on <Link to="/daddylivehd-alternatives" className="text-primary hover:text-primary/80 font-semibold underline">DaddyliveHD streaming site alternatives</Link>, our safety-focused review of <Link to="/batmanstream-alternatives" className="text-primary hover:text-primary/80 font-semibold underline">Batmanstream alternatives and safe links</Link>, and our comprehensive comparison of <Link to="/hesgoal-alternatives" className="text-primary hover:text-primary/80 font-semibold underline">Hesgoal live stream alternatives and legal links</Link> to discover the best secure options available today.
-                </p>
-              </div>
+            </section>
+
+            {/* SEO Content Section - Compact and organized */}
+            <section className="mb-8">
+              <div className="prose prose-invert max-w-none">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">Popular Sports Available</h2>
+                    <ul className="text-muted-foreground space-y-1 text-sm">
+                      <li>• Live Football Streaming (Premier League, Champions League, La Liga)</li>
+                      <li>• Basketball Games (NBA, EuroLeague)</li>
+                      <li>• Tennis Tournaments (ATP, WTA, Grand Slams)</li>
+                      <li>• Boxing and MMA Events</li>
+                      <li>• Motor Sports (Formula 1, MotoGP)</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-foreground mb-3">Why Choose DamiTV?</h2>
+                    <ul className="text-muted-foreground space-y-1 text-sm">
+                      <li>• No registration or subscription required</li>
+                      <li>• HD quality streaming on all devices</li>
+                      <li>• Multiple streaming sources for reliability</li>
+                      <li>• Live chat and match discussions</li>
+                      <li>• Regular updates and new channels</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3">How DamiTV Works</h3>
+                    <p className="text-muted-foreground mb-3 text-sm">
+                      DamiTV provides free access to live sports streaming through our user-friendly platform. Simply browse our sports categories, select your preferred match or channel, and start watching instantly. No downloads, no registration, and no hidden fees.
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      Our streaming technology ensures reliable connections with multiple backup sources for each event. If one stream experiences issues, our system automatically switches to an alternative source to maintain uninterrupted viewing.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3">Comprehensive Sports Coverage</h3>
+                    <p className="text-muted-foreground mb-3 text-sm">
+                      We cover major sports leagues worldwide including Premier League football, Champions League, NBA basketball, ATP tennis, Formula 1 racing, and boxing events. Our coverage spans European football leagues, American sports, and international tournaments.
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      DamiTV provides comprehensive sports entertainment with live matches, extensive TV channels, and complete schedules for all major sports. Looking for reliable streaming platforms? Check out our detailed guide on <Link to="/daddylivehd-alternatives" className="text-primary hover:text-primary/80 font-semibold underline">DaddyliveHD streaming site alternatives</Link>, our safety-focused review of <Link to="/batmanstream-alternatives" className="text-primary hover:text-primary/80 font-semibold underline">Batmanstream alternatives and safe links</Link>, and our comprehensive comparison of <Link to="/hesgoal-alternatives" className="text-primary hover:text-primary/80 font-semibold underline">Hesgoal live stream alternatives and legal links</Link> to discover the best secure options available today.
+                    </p>
+                  </div>
             </div>
           </div>
         </section>
 
         {/* Rich Homepage Content for AdSense Approval */}
-        <div className="container mx-auto px-4">
-          <HomepageContent />
-        </div>
+        
+        {/* Rich Homepage Content for AdSense Approval */}
+        <HomepageContent />
       </main>
     </PageLayout>
   );
