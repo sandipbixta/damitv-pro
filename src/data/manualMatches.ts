@@ -11,6 +11,42 @@ const getTomorrowDate = () => {
 
 export const manualMatches: ManualMatch[] = [
   {
+    id: "barcelona-vs-real-sociedad",
+    title: "Barcelona vs Real Sociedad",
+    date: new Date().toISOString(), // Live now
+    teams: {
+      home: "Barcelona",
+      away: "Real Sociedad"
+    },
+    links: [
+      {
+        id: "dazn-laliga",
+        name: "DAZN LaLiga",
+        url: "https://topembed.pw/channel/DAZNLaLiga[Spain]",
+        quality: "HD"
+      },
+      {
+        id: "espn-deportes",
+        name: "ESPN Deportes",
+        url: "https://topembed.pw/channel/ESPNDeportes[USA]",
+        quality: "HD"
+      },
+      {
+        id: "movistar-laliga",
+        name: "Movistar LaLiga",
+        url: "https://topembed.pw/channel/MovistarLaLiga[Spain]",
+        quality: "HD"
+      }
+    ],
+    visible: true,
+    image: "",
+    seo: {
+      keywords: "Barcelona vs Real Sociedad live stream, Barca Real Sociedad watch online, LaLiga live stream free",
+      description: "Watch Barcelona vs Real Sociedad live stream online for free. Stream this exciting LaLiga match with high-quality video on DamiTV.",
+      category: "Football"
+    }
+  },
+  {
     id: "Kathmandu-Gurkhas-Biratnagar-Kings",
     title: "Kathmandu Gurkhas - Biratnagar Kings",
     date: new Date().toISOString(), // Live now
