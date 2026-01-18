@@ -300,7 +300,7 @@ const StreamSources = ({
                       <Play className="w-4 h-4" />
                     </>
                   )}
-                  <span>Stream {idx + 1}</span>
+                  <span>{source.source?.toUpperCase() || `Stream ${idx + 1}`}</span>
                 </div>
               </Button>
             );
@@ -318,11 +318,9 @@ const StreamSources = ({
             const isActive = activeSource === streamKey;
             const viewerCount = stream.viewers || 0;
             
-            // Use API-provided names with streamNo priority
-            let streamName = stream.name || 
-                            (stream.language && stream.language !== 'Original' ? `${stream.language} ${actualStreamNo}` : null) ||
-                            (stream.source && stream.source !== 'intel' ? `${stream.source.toUpperCase()} ${actualStreamNo}` : null) ||
-                            `Stream ${actualStreamNo}`;
+            // Use actual source name
+            const sourceName = stream.source?.toUpperCase() || 'STREAM';
+            const streamName = actualStreamNo > 1 ? `${sourceName} ${actualStreamNo}` : sourceName;
             
             return (
               <Button
