@@ -13,7 +13,6 @@ import { Match as MatchType, Stream } from '@/types/sports';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { isTrendingMatch } from '@/utils/popularLeagues';
-import { useAutoFallback } from '@/hooks/useAutoFallback';
 
 interface StreamTabProps {
   match: MatchType;
@@ -47,13 +46,6 @@ const StreamTab = ({
   const { toast } = useToast();
   const [retryCount, setRetryCount] = useState(0);
   const [currentStreamViewers, setCurrentStreamViewers] = useState<number>(0);
-  
-  // Auto-fallback hook
-  const { tryNextSource, isAutoRetrying, attemptedSourcesCount, totalSourcesCount } = useAutoFallback({
-    allStreams,
-    onSourceChange: handleSourceChange,
-    currentStream: stream
-  });
   
   // Handle refresh with toast notification
   const handleRefresh = async () => {
@@ -121,23 +113,6 @@ const StreamTab = ({
     }
   };
   
-  // Auto-fallback handler
-  const handleAutoFallback = () => {
-    const hasNextSource = tryNextSource();
-    
-    if (hasNextSource) {
-      toast({
-        title: "Switching source automatically",
-        description: `Trying alternative source (${attemptedSourcesCount}/${totalSourcesCount})`,
-      });
-    } else {
-      toast({
-        title: "All sources attempted",
-        description: "No more stream sources available. Please try again later.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const formatMatchTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -171,9 +146,8 @@ const StreamTab = ({
     <div>
       <StreamPlayer
         stream={stream}
-        isLoading={loadingStream || isAutoRetrying}
+        isLoading={loadingStream}
         onRetry={handleRetry}
-        onAutoFallback={handleAutoFallback}
         title={match.title}
         isManualChannel={false}
         isTvChannel={false}
