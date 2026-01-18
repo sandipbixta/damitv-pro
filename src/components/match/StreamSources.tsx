@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Source, Stream, Match } from '@/types/sports';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchStream } from '@/api/sportsApi';
 import { Loader, Play, Users } from 'lucide-react';
 import { getConnectionInfo } from '@/utils/connectionOptimizer';
@@ -87,11 +87,12 @@ const StreamSources = ({
     }
   };
 
-  // Only show working sources: charlie, delta, echo
-  const WORKING_SOURCES = ['charlie', 'delta', 'echo'];
-  const visibleSources = sources.filter(s => 
-    WORKING_SOURCES.includes(s.source?.toLowerCase())
-  );
+  // Mark admin sources but don't hide them
+  const isAdminSourceName = (name: string) => name?.toLowerCase().includes('admin');
+  const visibleSources = sources.map(s => ({
+    ...s,
+    isAdmin: isAdminSourceName(s.source),
+  }));
 
   // Use pre-loaded streams if available, otherwise use local streams
   const effectiveStreams = Object.keys(allStreams).length > 0 ? allStreams : localStreams;
@@ -190,8 +191,7 @@ const StreamSources = ({
   }
 
   // Collect all available streams from all sources (only from pre-loaded or already fetched)
-  // Collect all available streams
-  const rawStreams: Array<{
+  const allAvailableStreams: Array<{
     stream: any;
     sourceKey: string;
     index: number;
@@ -202,33 +202,13 @@ const StreamSources = ({
     const streams = effectiveStreams[sourceKey] || [];
     
     streams.forEach((stream, index) => {
-      rawStreams.push({
+      allAvailableStreams.push({
         stream,
         sourceKey,
         index
       });
     });
   });
-
-  // Sort streams: those with viewers first, then shuffle the rest for load balancing
-  const allAvailableStreams = useMemo(() => {
-    // Separate streams with viewers and without
-    const withViewers = rawStreams.filter(s => (s.stream.viewers || 0) > 0);
-    const withoutViewers = rawStreams.filter(s => (s.stream.viewers || 0) === 0);
-    
-    // Sort streams with viewers by viewer count (highest first)
-    withViewers.sort((a, b) => (b.stream.viewers || 0) - (a.stream.viewers || 0));
-    
-    // Shuffle streams without viewers for load balancing
-    const shuffled = [...withoutViewers];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    
-    // Return: popular streams first, then shuffled rest
-    return [...withViewers, ...shuffled];
-  }, [rawStreams.map(s => `${s.sourceKey}-${s.index}-${s.stream.viewers}`).join(',')]);
 
   const isAnyLoading = Object.values(loadingStreams).some(Boolean);
 
@@ -321,7 +301,7 @@ const StreamSources = ({
                       <Play className="w-4 h-4" />
                     </>
                   )}
-                  <span>{source.source?.toUpperCase() || `Stream ${idx + 1}`}</span>
+                  <span>Stream {idx + 1}</span>
                 </div>
               </Button>
             );
@@ -339,9 +319,11 @@ const StreamSources = ({
             const isActive = activeSource === streamKey;
             const viewerCount = stream.viewers || 0;
             
-            // Use actual source name
-            const sourceName = stream.source?.toUpperCase() || 'STREAM';
-            const streamName = actualStreamNo > 1 ? `${sourceName} ${actualStreamNo}` : sourceName;
+            // Use API-provided names with streamNo priority
+            let streamName = stream.name || 
+                            (stream.language && stream.language !== 'Original' ? `${stream.language} ${actualStreamNo}` : null) ||
+                            (stream.source && stream.source !== 'intel' ? `${stream.source.toUpperCase()} ${actualStreamNo}` : null) ||
+                            `Stream ${actualStreamNo}`;
             
             return (
               <Button
