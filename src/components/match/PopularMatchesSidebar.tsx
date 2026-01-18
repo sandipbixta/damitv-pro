@@ -148,7 +148,7 @@ const PopularMatchesSidebar: React.FC<PopularMatchesSidebarProps> = ({
         const enriched = await enrichMatchesWithViewers(liveMatches);
         const sorted = enriched
           .sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0))
-          .slice(0, 6);
+          .slice(0, 10);
         
         setPopularMatches(sorted);
         
@@ -156,7 +156,7 @@ const PopularMatchesSidebar: React.FC<PopularMatchesSidebarProps> = ({
         fetchScoresForMatches(sorted);
       } catch (error) {
         console.error('Error loading popular matches:', error);
-        setPopularMatches(liveMatches.slice(0, 6));
+        setPopularMatches(liveMatches.slice(0, 10));
       } finally {
         setIsLoading(false);
       }
