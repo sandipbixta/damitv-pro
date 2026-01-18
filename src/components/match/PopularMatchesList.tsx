@@ -31,7 +31,7 @@ const MobileMatchItem: React.FC<{
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 p-3 bg-muted/30 hover:bg-muted/60 rounded-lg transition-colors text-left"
+      className="w-full flex items-center gap-4 p-4 bg-card hover:bg-accent border border-border rounded-xl shadow-sm hover:shadow-md transition-all text-left"
     >
       {/* Home Team */}
       <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
