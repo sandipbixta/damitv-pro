@@ -87,34 +87,29 @@ const fetchWithCorsProxy = async (url: string): Promise<any> => {
   throw new Error(`CDN API fetch failed: ${url}`);
 };
 
-// CDN API Response types
-interface CDNEvent {
-  id: string | number;
-  title: string;
-  date?: string;
-  time?: number | string;
-  category?: string;
-  sport?: string;
-  league?: string;
-  poster?: string;
-  thumbnail?: string;
-  home_team?: string;
-  away_team?: string;
-  home_badge?: string;
-  away_badge?: string;
-  sources?: Array<{
-    source: string;
-    id: string;
-    streamNo?: number;
-  }>;
-  streams?: Array<{
-    name?: string;
-    url?: string;
-    quality?: string;
-  }>;
-  popular?: boolean;
-  featured?: boolean;
+// CDN API Response types - actual structure from cdn-live.tv
+interface CDNChannel {
+  channel_name: string;
+  channel_code: string;
+  url: string;
+  image?: string;
   viewers?: number;
+}
+
+interface CDNEvent {
+  gameID: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeTeamIMG?: string;
+  awayTeamIMG?: string;
+  time?: string;
+  tournament?: string;
+  country?: string;
+  countryIMG?: string;
+  status?: string;
+  start?: string;
+  end?: string;
+  channels?: CDNChannel[];
 }
 
 // Map sport category to our format
@@ -147,77 +142,91 @@ const mapSportCategory = (category?: string): string => {
 // Parse CDN event to our Match format
 const parseCDNEvent = (event: CDNEvent, sportCategory?: string): Match | null => {
   try {
-    if (!event || !event.id) return null;
+    if (!event || !event.gameID) return null;
 
-    // Parse title for teams
-    let homeTeam = event.home_team || '';
-    let awayTeam = event.away_team || '';
-    const title = event.title || '';
+    const homeTeam = event.homeTeam || '';
+    const awayTeam = event.awayTeam || '';
+    const title = `${homeTeam} vs ${awayTeam}`;
 
-    if (!homeTeam && !awayTeam && title) {
-      if (title.includes(' vs ')) {
-        const parts = title.split(' vs ');
-        homeTeam = parts[0]?.trim() || '';
-        awayTeam = parts[1]?.trim() || '';
-      } else if (title.includes(' v ')) {
-        const parts = title.split(' v ');
-        homeTeam = parts[0]?.trim() || '';
-        awayTeam = parts[1]?.trim() || '';
-      }
+    // Parse date from start field
+    let matchDate = Date.now();
+    if (event.start) {
+      matchDate = new Date(event.start).getTime();
     }
 
-    // Parse date
-    let matchDate = 0;
-    if (event.date) {
-      matchDate = new Date(event.date).getTime();
-    } else if (event.time) {
-      matchDate = typeof event.time === 'number' 
-        ? event.time * 1000 // Unix timestamp
-        : new Date(event.time).getTime();
-    }
-
-    // Build sources
+    // Build sources from channels
     const sources: Source[] = [];
-    if (event.sources && Array.isArray(event.sources)) {
-      event.sources.forEach(src => {
-        if (src.source && src.id) {
-          sources.push({ source: src.source, id: src.id });
+    if (event.channels && Array.isArray(event.channels)) {
+      event.channels.forEach((channel, index) => {
+        if (channel.url) {
+          sources.push({ 
+            source: channel.channel_name || `Stream ${index + 1}`, 
+            id: channel.url 
+          });
         }
       });
     }
 
     // If no sources, create default
     if (sources.length === 0) {
-      sources.push({ source: 'cdn', id: String(event.id) });
+      sources.push({ source: 'cdn', id: event.gameID });
     }
 
-    const category = mapSportCategory(sportCategory || event.category || event.sport);
+    const category = mapSportCategory(sportCategory || 'soccer');
+
+    // Calculate total viewers from channels
+    const totalViewers = event.channels?.reduce((sum, ch) => sum + (ch.viewers || 0), 0) || 0;
 
     return {
-      id: String(event.id),
-      title: title || `${homeTeam} vs ${awayTeam}`,
+      id: `cdn-${event.gameID}`,
+      title: title,
       category: category,
       sportId: category,
-      date: matchDate || Date.now(),
-      poster: event.poster || event.thumbnail || '',
-      popular: event.popular || event.featured || false,
+      date: matchDate,
+      poster: event.homeTeamIMG || '',
+      popular: totalViewers > 50,
       teams: {
         home: {
           name: homeTeam,
-          badge: event.home_badge || ''
+          badge: event.homeTeamIMG || ''
         },
         away: {
           name: awayTeam,
-          badge: event.away_badge || ''
+          badge: event.awayTeamIMG || ''
         }
       },
       sources: sources,
-      viewerCount: event.viewers || 0
+      viewerCount: totalViewers
     };
   } catch (error) {
     console.error('Error parsing CDN event:', error);
     return null;
   }
+};
+
+// Parse the nested API response structure
+const parseAPIResponse = (data: any): CDNEvent[] => {
+  const events: CDNEvent[] = [];
+  
+  // Structure is {"cdn-live-tv": {"Soccer": [...], "Basketball": [...], ...}}
+  const cdnData = data?.['cdn-live-tv'];
+  if (!cdnData) {
+    // Try if it's already an array
+    if (Array.isArray(data)) return data;
+    return [];
+  }
+
+  // Iterate through all sport categories
+  Object.keys(cdnData).forEach(sportKey => {
+    const sportEvents = cdnData[sportKey];
+    if (Array.isArray(sportEvents)) {
+      sportEvents.forEach(event => {
+        events.push({ ...event, _sportCategory: sportKey });
+      });
+    }
+  });
+
+  return events;
 };
 
 // Fetch all sports events
@@ -231,11 +240,12 @@ export const fetchCDNAllSports = async (): Promise<Match[]> => {
     const url = buildApiUrl('events/sports');
     const data = await fetchWithCorsProxy(url);
 
-    let matches: Match[] = [];
-    const events = Array.isArray(data) ? data : data?.events || data?.data || [];
+    // Parse the nested API response
+    const events = parseAPIResponse(data);
+    console.log(`📦 CDN: Parsed ${events.length} raw events`);
     
-    matches = events
-      .map((e: CDNEvent) => parseCDNEvent(e))
+    const matches = events
+      .map((e: any) => parseCDNEvent(e, e._sportCategory))
       .filter((m: Match | null): m is Match => m !== null);
 
     setCachedData(cacheKey, matches);
