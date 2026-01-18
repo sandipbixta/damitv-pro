@@ -333,31 +333,52 @@ export const fetchSports = async (): Promise<Sport[]> => {
 };
 
 // Fetch all matches from API directly (no edge function)
+// Now also includes CDN Live TV API as additional source
 export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'boho-matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log('🔄 Fetching matches directly from API...');
+    console.log('🔄 Fetching matches from multiple APIs...');
     
-    const data = await fetchFromApi('matches/all');
+    // Import CDN API dynamically to avoid circular dependencies
+    const { fetchCDNMatches } = await import('./cdnSportsApi');
+    
+    // Fetch from both APIs in parallel
+    const [bohoData, cdnMatches] = await Promise.all([
+      fetchFromApi('matches/all').catch(() => null),
+      fetchCDNMatches().catch(() => [])
+    ]);
 
     let matches: Match[] = [];
 
-    // Handle different response formats
-    if (Array.isArray(data)) {
-      matches = data.map(parseMatchData).filter((m): m is Match => m !== null);
-    } else if (data.matches && Array.isArray(data.matches)) {
-      matches = data.matches.map(parseMatchData).filter((m): m is Match => m !== null);
-    } else if (data.data && Array.isArray(data.data)) {
-      matches = data.data.map(parseMatchData).filter((m): m is Match => m !== null);
-    } else if (data.events && Array.isArray(data.events)) {
-      matches = data.events.map(parseMatchData).filter((m): m is Match => m !== null);
+    // Parse BOHO API data
+    if (bohoData) {
+      if (Array.isArray(bohoData)) {
+        matches = bohoData.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (bohoData.matches && Array.isArray(bohoData.matches)) {
+        matches = bohoData.matches.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (bohoData.data && Array.isArray(bohoData.data)) {
+        matches = bohoData.data.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (bohoData.events && Array.isArray(bohoData.events)) {
+        matches = bohoData.events.map(parseMatchData).filter((m): m is Match => m !== null);
+      }
     }
 
+    // Merge CDN matches (dedupe by ID, prefer BOHO data if duplicate)
+    const matchMap = new Map<string, Match>();
+    matches.forEach(m => matchMap.set(m.id, m));
+    cdnMatches.forEach(m => {
+      if (!matchMap.has(m.id)) {
+        matchMap.set(m.id, m);
+      }
+    });
+    
+    matches = Array.from(matchMap.values());
+
     setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} matches`);
+    console.log(`✅ Fetched ${matches.length} total matches (BOHO + CDN)`);
     return matches;
   } catch (error) {
     console.error('❌ Error fetching matches:', error);
