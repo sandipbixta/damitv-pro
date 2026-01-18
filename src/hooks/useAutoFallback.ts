@@ -1,91 +1,44 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Stream, Source } from '../types/sports';
+import { Stream } from '../types/sports';
 
 // Source priority for embed.damitv.pro compatibility
-// Higher number = higher priority (best working sources first)
 // ONLY working sources: charlie, delta, echo
-const SOURCE_PRIORITY: Record<string, number> = {
-  // Primary working sources (verified)
+export const SOURCE_PRIORITY: Record<string, number> = {
   'charlie': 15,  // Best reliability
   'delta': 12,
   'echo': 12,
-  // All other sources are deprioritized (not working or blocked)
   'default': 0
 };
 
-interface UseAutoFallbackProps {
-  allStreams: Record<string, Stream[]>;
-  onSourceChange: (source: string, id: string) => void;
-  currentStream: Stream | null;
-}
+// Get priority for a source
+export const getSourcePriority = (source: string): number => {
+  return SOURCE_PRIORITY[source?.toLowerCase()] || SOURCE_PRIORITY['default'];
+};
 
-export const useAutoFallback = ({ allStreams, onSourceChange, currentStream }: UseAutoFallbackProps) => {
-  const [attemptedSources, setAttemptedSources] = useState<Set<string>>(new Set());
-  const [isAutoRetrying, setIsAutoRetrying] = useState(false);
+// Check if source is working
+export const isWorkingSource = (source: string): boolean => {
+  const lowerSource = source?.toLowerCase();
+  return ['charlie', 'delta', 'echo'].includes(lowerSource);
+};
 
-  // Get prioritized sources
-  const getPrioritizedSources = useCallback(() => {
-    const sources = Object.keys(allStreams)
-      .filter(sourceKey => allStreams[sourceKey]?.length > 0)
-      .map(sourceKey => {
-        const [source, id] = sourceKey.split('/');
-        const priority = SOURCE_PRIORITY[source] || SOURCE_PRIORITY['default'];
-        return { sourceKey, source, id, priority };
-      })
-      .sort((a, b) => b.priority - a.priority); // Higher priority first
-
-    console.log('📊 Prioritized sources:', sources.map(s => `${s.source} (priority: ${s.priority})`));
-    return sources;
-  }, [allStreams]);
-
-  // Try next available source - only called manually, not automatically
-  const tryNextSource = useCallback((force: boolean = false) => {
-    if (isAutoRetrying && !force) {
-      console.log('⏳ Already retrying, skipping...');
-      return false;
+// Filter to only working sources
+export const filterWorkingSources = (streams: Record<string, Stream[]>): Record<string, Stream[]> => {
+  const filtered: Record<string, Stream[]> = {};
+  
+  Object.entries(streams).forEach(([key, value]) => {
+    const [source] = key.split('/');
+    if (isWorkingSource(source)) {
+      filtered[key] = value;
     }
+  });
+  
+  return filtered;
+};
 
-    const prioritizedSources = getPrioritizedSources();
-    const unattemptedSource = prioritizedSources.find(
-      s => !attemptedSources.has(s.sourceKey)
-    );
-
-    if (unattemptedSource) {
-      console.log(`🔄 Manual source switch: Trying ${unattemptedSource.source}/${unattemptedSource.id}`);
-      setIsAutoRetrying(true);
-      setAttemptedSources(prev => new Set([...prev, unattemptedSource.sourceKey]));
-      
-      // Delay slightly to avoid rapid switching
-      setTimeout(() => {
-        onSourceChange(unattemptedSource.source, unattemptedSource.id);
-        setIsAutoRetrying(false);
-      }, 1000);
-      
-      return true;
-    }
-
-    console.log('❌ No more sources to try');
-    return false;
-  }, [attemptedSources, getPrioritizedSources, onSourceChange, isAutoRetrying]);
-
-  // Reset when streams change
-  useEffect(() => {
-    setAttemptedSources(new Set());
-    setIsAutoRetrying(false);
-  }, [Object.keys(allStreams).join(',')]);
-
-  // Mark current source as attempted
-  useEffect(() => {
-    if (currentStream) {
-      const sourceKey = `${currentStream.source}/${currentStream.source}`;
-      setAttemptedSources(prev => new Set([...prev, sourceKey]));
-    }
-  }, [currentStream?.source]);
-
-  return {
-    tryNextSource,
-    isAutoRetrying,
-    attemptedSourcesCount: attemptedSources.size,
-    totalSourcesCount: Object.keys(allStreams).length
-  };
+// Sort sources by priority
+export const sortSourcesByPriority = (sourceKeys: string[]): string[] => {
+  return sourceKeys.sort((a, b) => {
+    const [sourceA] = a.split('/');
+    const [sourceB] = b.split('/');
+    return getSourcePriority(sourceB) - getSourcePriority(sourceA);
+  });
 };

@@ -29,7 +29,6 @@ interface SimpleVideoPlayerProps {
   onRetry?: () => void;
   isTheaterMode?: boolean;
   onTheaterModeToggle?: () => void;
-  onAutoFallback?: () => void;
   match?: Match | ManualMatch | null;
 }
 
@@ -39,7 +38,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   onRetry,
   isTheaterMode = false,
   onTheaterModeToggle,
-  onAutoFallback,
   match = null
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);

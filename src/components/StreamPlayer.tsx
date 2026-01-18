@@ -19,7 +19,6 @@ interface StreamPlayerProps {
   onTheaterModeToggle?: () => void;
   match?: Match | ManualMatch | null;
   showMatchDetails?: boolean;
-  onAutoFallback?: () => void;
   allStreams?: Record<string, Stream[]>;
 }
 
@@ -34,7 +33,6 @@ const StreamPlayer: React.FC<StreamPlayerProps> = ({
   onTheaterModeToggle,
   match = null,
   showMatchDetails = true,
-  onAutoFallback,
   allStreams = {}
 }) => {
   // Track viewer for this match
@@ -55,7 +53,6 @@ const StreamPlayer: React.FC<StreamPlayerProps> = ({
         onRetry={onRetry}
         isTheaterMode={isTheaterMode}
         onTheaterModeToggle={onTheaterModeToggle}
-        onAutoFallback={onAutoFallback}
         match={match}
       />
       
