@@ -7,6 +7,11 @@ const corsHeaders = {
 
 const NEWS_API_KEY = Deno.env.get("NEWS_API_KEY");
 
+// In-memory cache to avoid rate limiting
+let cachedArticles: any[] = [];
+let cacheTimestamp = 0;
+const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes cache
+
 interface NewsArticle {
   title: string;
   description: string;
@@ -22,11 +27,25 @@ serve(async (req) => {
   }
 
   try {
+    const now = Date.now();
+    
+    // Return cached data if still valid
+    if (cachedArticles.length > 0 && (now - cacheTimestamp) < CACHE_DURATION_MS) {
+      console.log("Returning cached articles (cache valid for", Math.round((CACHE_DURATION_MS - (now - cacheTimestamp)) / 60000), "more minutes)");
+      return new Response(JSON.stringify({ 
+        articles: cachedArticles,
+        cached: true,
+        totalResults: cachedArticles.length
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!NEWS_API_KEY) {
       throw new Error("NEWS_API_KEY is not configured");
     }
 
-    console.log("Fetching football news from NewsAPI...");
+    console.log("Fetching fresh sports news from NewsAPI...");
 
     // Fetch sports news from NewsAPI
     const response = await fetch(
@@ -46,6 +65,19 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("NewsAPI error:", response.status, errorText);
+      
+      // If rate limited but we have cached data, return it
+      if (response.status === 429 && cachedArticles.length > 0) {
+        console.log("Rate limited - returning stale cached articles");
+        return new Response(JSON.stringify({ 
+          articles: cachedArticles,
+          cached: true,
+          stale: true,
+          totalResults: cachedArticles.length
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -80,10 +112,15 @@ serve(async (req) => {
         publishedAt: article.publishedAt
       }));
 
-    console.log(`Returning ${articles.length} formatted articles`);
+    // Update cache
+    cachedArticles = articles;
+    cacheTimestamp = now;
+    
+    console.log(`Cached ${articles.length} articles for 30 minutes`);
 
     return new Response(JSON.stringify({ 
       articles,
+      cached: false,
       totalResults: data.totalResults || 0
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -91,6 +128,20 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Football news fetch error:", error);
+    
+    // Return cached articles on error if available
+    if (cachedArticles.length > 0) {
+      console.log("Error occurred - returning stale cached articles");
+      return new Response(JSON.stringify({ 
+        articles: cachedArticles,
+        cached: true,
+        stale: true,
+        totalResults: cachedArticles.length
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : "Unknown error",
       articles: []
