@@ -49,6 +49,7 @@ import News from "./pages/News";
 import Article from "./pages/Article";
 import MatchDetail from "./pages/MatchDetail";
 import Dashboard from "./pages/Dashboard";
+import CDNPlayer from "./pages/CDNPlayer";
 
 import TelegramFAB from "./components/TelegramFAB";
 
@@ -95,6 +96,11 @@ const App: React.FC = () => {
               <Route path="/custom-match/:matchId" element={
                 <SEOPageTracker contentType="match">
                   <CustomMatchPlayer />
+                </SEOPageTracker>
+              } />
+              <Route path="/cdn-player/:gameId" element={
+                <SEOPageTracker contentType="match">
+                  <CDNPlayer />
                 </SEOPageTracker>
               } />
               <Route path="/schedule" element={
