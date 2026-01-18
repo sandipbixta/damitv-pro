@@ -1,9 +1,9 @@
-// Embed Domain Manager - ONLY uses embed.damitv.pro
+// Embed Domain Manager - Uses stream.streamapi.cc for BOHOSport API
 // No fallback - single domain for all sources
 
-export const EMBED_DOMAIN = 'https://embed.damitv.pro';
+export const EMBED_DOMAIN = 'https://stream.streamapi.cc';
 
-// Build embed URL - always uses damitv.pro
+// Build embed URL - uses stream.streamapi.cc
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -12,7 +12,7 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Always use embed.damitv.pro regardless of domain param
+  // Always use stream.streamapi.cc regardless of domain param
   return `${EMBED_DOMAIN}/embed/${source}/${id}/${streamNo}`;
 };
 
