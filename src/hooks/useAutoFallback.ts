@@ -3,26 +3,14 @@ import { Stream, Source } from '../types/sports';
 
 // Source priority for embed.damitv.pro compatibility
 // Higher number = higher priority (best working sources first)
+// ONLY working sources: charlie, delta, echo
 const SOURCE_PRIORITY: Record<string, number> = {
-  // Primary embed.damitv.pro compatible sources (military phonetic)
-  // Charlie is prioritized first for best reliability
-  'charlie': 15,
-  'alpha': 10,
-  'bravo': 10,
-  'delta': 10,
-  'echo': 10,
-  'foxtrot': 10,
-  'golf': 10,
-  // Secondary reliable sources
-  'streamed': 8,
-  'sportsurge': 8,
-  'streameast': 7,
-  'streambtw': 6,
-  'givemereddit': 5,
-  'admin': 4,
-  'topembed': 3,
-  // Fallback sources
-  'default': 1
+  // Primary working sources (verified)
+  'charlie': 15,  // Best reliability
+  'delta': 12,
+  'echo': 12,
+  // All other sources are deprioritized (not working or blocked)
+  'default': 0
 };
 
 interface UseAutoFallbackProps {
