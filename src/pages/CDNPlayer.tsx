@@ -90,7 +90,7 @@ const CDNPlayer: React.FC = () => {
         </div>
 
         {/* Video Player */}
-        <div className="mb-6">
+        <div className="mb-6 md:max-w-4xl md:mx-auto">
           {currentChannel?.url ? (
             <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
               <iframe
