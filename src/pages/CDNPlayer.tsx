@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Users, Radio, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/PageLayout';
+
+// Embed domain for streams
+const EMBED_DOMAIN = 'https://stream.streamapi.cc';
 
 interface CDNChannel {
   channel_name: string;
@@ -26,6 +29,14 @@ interface CDNMatch {
   start?: string;
   channels?: CDNChannel[];
 }
+
+// Build embed URL from channel info
+const buildEmbedUrl = (channel: CDNChannel): string => {
+  // Extract channel name and code to build embed URL
+  const channelName = encodeURIComponent(channel.channel_name.toLowerCase().replace(/\s+/g, '-'));
+  const channelCode = channel.channel_code || 'us';
+  return `${EMBED_DOMAIN}/embed/channel/${channelCode}/${channelName}`;
+};
 
 const CDNPlayer: React.FC = () => {
   const { gameId } = useParams();
@@ -85,13 +96,14 @@ const CDNPlayer: React.FC = () => {
 
         {/* Video Player */}
         <div className="mb-6">
-          {currentChannel?.url ? (
+          {currentChannel ? (
             <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
               <iframe
-                src={currentChannel.url}
+                key={selectedChannel}
+                src={buildEmbedUrl(currentChannel)}
                 className="w-full h-full"
                 allowFullScreen
-                allow="autoplay; encrypted-media; picture-in-picture"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                 referrerPolicy="origin"
               />
             </div>
