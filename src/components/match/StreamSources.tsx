@@ -87,12 +87,11 @@ const StreamSources = ({
     }
   };
 
-  // Mark admin sources but don't hide them
-  const isAdminSourceName = (name: string) => name?.toLowerCase().includes('admin');
-  const visibleSources = sources.map(s => ({
-    ...s,
-    isAdmin: isAdminSourceName(s.source),
-  }));
+  // Only show working sources: charlie, delta, echo
+  const WORKING_SOURCES = ['charlie', 'delta', 'echo'];
+  const visibleSources = sources.filter(s => 
+    WORKING_SOURCES.includes(s.source?.toLowerCase())
+  );
 
   // Use pre-loaded streams if available, otherwise use local streams
   const effectiveStreams = Object.keys(allStreams).length > 0 ? allStreams : localStreams;
