@@ -12,6 +12,42 @@ let cachedArticles: any[] = [];
 let cacheTimestamp = 0;
 const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes cache
 
+// Fallback articles when API is rate limited and no cache exists
+const fallbackArticles = [
+  {
+    title: "Top Sports Headlines - Live Updates",
+    summary: "Stay tuned for the latest sports news and match updates from around the world.",
+    url: "https://damitv-pro.lovable.app/news",
+    image: "https://picsum.photos/seed/sports1/800/450",
+    source: "DamiTV Sports",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Football Transfer News & Rumors",
+    summary: "Latest transfer updates, rumors, and confirmed signings from top European leagues.",
+    url: "https://damitv-pro.lovable.app/news",
+    image: "https://picsum.photos/seed/football1/800/450",
+    source: "DamiTV Sports",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Premier League Match Day Preview",
+    summary: "Get ready for this weekend's Premier League action with our comprehensive match previews.",
+    url: "https://damitv-pro.lovable.app/news",
+    image: "https://picsum.photos/seed/premier1/800/450",
+    source: "DamiTV Sports",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Champions League Latest Updates",
+    summary: "UEFA Champions League news, results, and upcoming fixtures from Europe's elite competition.",
+    url: "https://damitv-pro.lovable.app/news",
+    image: "https://picsum.photos/seed/ucl1/800/450",
+    source: "DamiTV Sports",
+    publishedAt: new Date().toISOString()
+  }
+];
+
 interface NewsArticle {
   title: string;
   description: string;
@@ -66,28 +102,22 @@ serve(async (req) => {
       const errorText = await response.text();
       console.error("NewsAPI error:", response.status, errorText);
       
-      // If rate limited but we have cached data, return it
-      if (response.status === 429 && cachedArticles.length > 0) {
-        console.log("Rate limited - returning stale cached articles");
+      // If rate limited, return cached or fallback articles
+      if (response.status === 429) {
+        const articlesToReturn = cachedArticles.length > 0 ? cachedArticles : fallbackArticles;
+        console.log(`Rate limited - returning ${cachedArticles.length > 0 ? 'cached' : 'fallback'} articles`);
         return new Response(JSON.stringify({ 
-          articles: cachedArticles,
+          articles: articlesToReturn,
           cached: true,
           stale: true,
-          totalResults: cachedArticles.length
+          fallback: cachedArticles.length === 0,
+          totalResults: articlesToReturn.length
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
       }
       
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: "Rate limited. Please try again later.",
-          articles: []
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       
       throw new Error(`NewsAPI error: ${response.status}`);
     }
@@ -129,24 +159,17 @@ serve(async (req) => {
   } catch (error) {
     console.error("Football news fetch error:", error);
     
-    // Return cached articles on error if available
-    if (cachedArticles.length > 0) {
-      console.log("Error occurred - returning stale cached articles");
-      return new Response(JSON.stringify({ 
-        articles: cachedArticles,
-        cached: true,
-        stale: true,
-        totalResults: cachedArticles.length
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Return cached or fallback articles on error
+    const articlesToReturn = cachedArticles.length > 0 ? cachedArticles : fallbackArticles;
+    console.log(`Error occurred - returning ${cachedArticles.length > 0 ? 'cached' : 'fallback'} articles`);
     
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error",
-      articles: []
+      articles: articlesToReturn,
+      cached: true,
+      stale: true,
+      fallback: cachedArticles.length === 0,
+      totalResults: articlesToReturn.length
     }), {
-      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
