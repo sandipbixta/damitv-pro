@@ -1,11 +1,14 @@
 import { Stream } from '../types/sports';
 
 // Source priority for embed.damitv.pro compatibility
-// ONLY working sources: charlie, delta, echo
+// Order: charlie, delta, echo, golf, alpha, admin
 export const SOURCE_PRIORITY: Record<string, number> = {
-  'charlie': 15,  // Best reliability
-  'delta': 12,
-  'echo': 12,
+  'charlie': 60,
+  'delta': 50,
+  'echo': 40,
+  'golf': 30,
+  'alpha': 20,
+  'admin': 10,
   'default': 0
 };
 
@@ -17,7 +20,7 @@ export const getSourcePriority = (source: string): number => {
 // Check if source is working
 export const isWorkingSource = (source: string): boolean => {
   const lowerSource = source?.toLowerCase();
-  return ['charlie', 'delta', 'echo'].includes(lowerSource);
+  return ['charlie', 'delta', 'echo', 'golf', 'alpha', 'admin'].includes(lowerSource);
 };
 
 // Filter to only working sources
