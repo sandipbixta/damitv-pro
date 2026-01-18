@@ -5,9 +5,10 @@ import { Stream, Source } from '../types/sports';
 // Higher number = higher priority (best working sources first)
 const SOURCE_PRIORITY: Record<string, number> = {
   // Primary embed.damitv.pro compatible sources (military phonetic)
+  // Charlie is prioritized first for best reliability
+  'charlie': 15,
   'alpha': 10,
   'bravo': 10,
-  'charlie': 10,
   'delta': 10,
   'echo': 10,
   'foxtrot': 10,
