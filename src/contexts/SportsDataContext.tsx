@@ -12,7 +12,11 @@ interface SportsDataContextType {
   refresh: () => Promise<void>;
 }
 
-// SportsDataContext is defined below (after DEFAULT_SPORTS) so the context can have a safe default value.
+const GLOBAL_SPORTS_DATA_CONTEXT_KEY = '__damitvSportsDataContext';
+const SportsDataContext: React.Context<SportsDataContextType | undefined> =
+  (globalThis as any)[GLOBAL_SPORTS_DATA_CONTEXT_KEY] ||
+  ((globalThis as any)[GLOBAL_SPORTS_DATA_CONTEXT_KEY] =
+    createContext<SportsDataContextType | undefined>(undefined));
 
 // Cache duration: 5 minutes for refresh, 2 hours for localStorage
 const REFRESH_INTERVAL = 5 * 60 * 1000;
