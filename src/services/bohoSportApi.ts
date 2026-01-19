@@ -533,7 +533,8 @@ const extractStreamUrl = (item: any): { url: string; isHls: boolean } => {
 
 // Fetch stream details from API endpoint with CORS proxy
 const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]> => {
-  const cacheKey = `stream_${source}_${id}`;
+  // Include EMBED_DOMAIN in the cache key to avoid serving stale embed URLs after domain switches
+  const cacheKey = `stream_${EMBED_DOMAIN}_${source}_${id}`;
   const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
   if (cached) return cached;
 
@@ -552,9 +553,8 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
         const streamId = item.id || id;
         const streamSource = item.source || source;
         
-        // Use embedsports.top API format for streamed.pk sources
-        const embedUrl = isHls ? url : `${EMBED_DOMAIN}/api/getstream?source=${streamSource}&match=${streamId}&stream=${streamNo}`;
-        
+        // Use our primary embed domain path format
+        const embedUrl = isHls ? url : buildEmbedUrl(EMBED_DOMAIN, streamSource, streamId, streamNo);
         return {
           id: streamId,
           streamNo: streamNo,
@@ -578,10 +578,9 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Generate fallback embed URL when API fails - uses embedsports.top format
+// Generate fallback embed URL when API fails
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
-  // Use embedsports.top API format
-  return `${EMBED_DOMAIN}/api/getstream?source=${source}&match=${id}&stream=${streamNo}`;
+  return buildEmbedUrl(EMBED_DOMAIN, source, id, streamNo);
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
