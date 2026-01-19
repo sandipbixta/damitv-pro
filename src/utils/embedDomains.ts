@@ -1,9 +1,9 @@
-// Embed Domain Manager - Uses embedsports.top for streamed.pk API
+// Embed Domain Manager - Uses embed.damitv.pro for streaming
 // No fallback - single domain for all sources
 
-export const EMBED_DOMAIN = 'https://embedsports.top';
+export const EMBED_DOMAIN = 'https://embed.damitv.pro';
 
-// Build embed URL - uses embedsports.top with query params
+// Build embed URL - uses embed.damitv.pro with path format
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -12,8 +12,8 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Format: https://embedsports.top/api/getstream?source=SOURCE&match=MATCHID&stream=1
-  return `${EMBED_DOMAIN}/api/getstream?source=${source}&match=${id}&stream=${streamNo}`;
+  // Format: https://embed.damitv.pro/embed/SOURCE/MATCHID/STREAMNO
+  return `${EMBED_DOMAIN}/embed/${source}/${id}/${streamNo}`;
 };
 
 // Get the embed domain - always returns damitv.pro
