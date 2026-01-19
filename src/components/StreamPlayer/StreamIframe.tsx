@@ -60,25 +60,14 @@ const StreamIframe: React.FC<StreamIframeProps> = ({ src, onLoad, onError, video
         onLoad={handleLoad}
         onError={handleError}
         onClick={handleIframeClick}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; camera; microphone"
-        referrerPolicy="no-referrer-when-downgrade"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         loading="eager"
         frameBorder="0"
         scrolling="no"
         style={{ 
           border: 'none',
-          pointerEvents: isMobile ? 'auto' : 'auto',
           minWidth: '100%',
-          minHeight: '100%',
-          willChange: 'transform',
-          isolation: 'isolate',
-          ...(isMobile && {
-            touchAction: 'manipulation',
-            WebkitOverflowScrolling: 'touch',
-            WebkitTouchCallout: 'none',
-            WebkitUserSelect: 'none',
-            userSelect: 'none'
-          })
+          minHeight: '100%'
         }}
       />
 
