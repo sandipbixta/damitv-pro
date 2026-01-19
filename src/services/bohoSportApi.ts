@@ -608,8 +608,8 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
         const streamId = item.id || id;
         const streamSource = item.source || source;
         
-        // Use embedsports.top API format for streamed.pk sources
-        const embedUrl = isHls ? url : `${EMBED_DOMAIN}/api/getstream?source=${streamSource}&match=${streamId}&stream=${streamNo}`;
+        // Use embed.damitv.pro format
+        const embedUrl = isHls ? url : `${EMBED_DOMAIN}/embed/${streamSource}/${streamId}/${streamNo}`;
         
         return {
           id: streamId,
@@ -634,10 +634,10 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Generate fallback embed URL when API fails - uses embedsports.top format
+// Generate fallback embed URL when API fails - uses embed.damitv.pro format
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
-  // Use embedsports.top API format
-  return `${EMBED_DOMAIN}/api/getstream?source=${source}&match=${id}&stream=${streamNo}`;
+  // Use embed.damitv.pro format
+  return `${EMBED_DOMAIN}/embed/${source}/${id}/${streamNo}`;
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
