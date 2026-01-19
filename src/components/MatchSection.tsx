@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Match } from '../types/sports';
-import MatchCard from './MatchCard';
-import { useIsMobile } from '../hooks/use-mobile';
+import { Match } from '@/types/sports';
+import MatchCard from '@/components/MatchCard';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Clock } from 'lucide-react';
 
 interface MatchSectionProps {

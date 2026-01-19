@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Play } from 'lucide-react';
-import ManualMatchCard from './ManualMatchCard';
-import { Separator } from './ui/separator';
-import { ManualMatch } from '../types/manualMatch';
+import ManualMatchCard from '@/components/ManualMatchCard';
+import { Separator } from '@/components/ui/separator';
+import { ManualMatch } from '@/types/manualMatch';
 
 interface FeaturedMatchesProps {
   visibleManualMatches: ManualMatch[];

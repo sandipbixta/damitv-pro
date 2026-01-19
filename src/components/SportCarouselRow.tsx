@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Match } from '../types/sports';
-import MatchCard from './MatchCard';
+import { Match } from '@/types/sports';
+import MatchCard from '@/components/MatchCard';
 import { cn } from '@/lib/utils';
 
 interface SportCarouselRowProps {
