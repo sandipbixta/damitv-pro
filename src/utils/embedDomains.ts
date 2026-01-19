@@ -1,9 +1,9 @@
-// Embed Domain Manager - Uses stream.streamapi.cc
+// Embed Domain Manager - Uses embedsports.top for streamed.pk API
 // No fallback - single domain for all sources
 
-export const EMBED_DOMAIN = 'https://stream.streamapi.cc';
+export const EMBED_DOMAIN = 'https://embedsports.top';
 
-// Build embed URL - uses stream.streamapi.cc with query format
+// Build embed URL - uses embedsports.top with query params
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -12,8 +12,8 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Format: https://stream.streamapi.cc/?id=MATCHID&source=SOURCE&autoplay=true
-  return `${EMBED_DOMAIN}/?id=${id}&source=${source.toLowerCase()}&autoplay=true`;
+  // Format: https://embedsports.top/api/getstream?source=SOURCE&match=MATCHID&stream=1
+  return `${EMBED_DOMAIN}/api/getstream?source=${source}&match=${id}&stream=${streamNo}`;
 };
 
 // Get the embed domain - always returns damitv.pro

@@ -1,12 +1,9 @@
-// SportsRC API Service - fetches directly from api.sportsrc.org
+// BOHOSport API Service - fetches directly from API (no edge function)
 import { Sport, Match, Stream, Source } from '../types/sports';
 import { getEmbedDomainSync, buildEmbedUrl, EMBED_DOMAIN } from '../utils/embedDomains';
 
-// Primary API base URL (new sportsrc.org API)
-const API_BASE = 'https://api.sportsrc.org';
-
-// Fallback API endpoints (legacy)
-const FALLBACK_API_BASES = [
+// API endpoints to try (direct calls)
+const API_BASES = [
   'https://streamed.su/api',
   'https://sportsrc.org/api'
 ];
@@ -104,66 +101,15 @@ const setCachedData = (key: string, data: any) => {
   console.log(`💾 Cache SET: ${key}`);
 };
 
-// Fetch from sportsrc.org API with query params
-const fetchFromSportsrcApi = async (params: Record<string, string>): Promise<any> => {
-  const timeout = 5000; // 5 second timeout
+// Direct API fetch with CORS proxy fallback + request timeout + smart endpoint caching
+const fetchFromApi = async (endpoint: string): Promise<any> => {
+  const timeout = 3000; // 3 second timeout (reduced for faster fallback)
 
   const fetchWithTimeout = async (url: string, signal: AbortSignal) => {
     const response = await fetch(url, {
       headers: { 'Accept': 'application/json' },
       signal,
-      cache: 'default'
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
-  };
-
-  // Build query string
-  const queryString = new URLSearchParams(params).toString();
-  const url = `${API_BASE}/?${queryString}`;
-
-  // Try direct call first
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
-    console.log(`📡 Fetching: ${url}`);
-    const data = await fetchWithTimeout(url, controller.signal);
-    clearTimeout(timeoutId);
-    console.log(`✅ API success: ${url}`);
-    return data;
-  } catch (error) {
-    console.warn(`⚠️ Direct API failed: ${url}`);
-  }
-
-  // Fallback to CORS proxies
-  for (const proxy of CORS_PROXIES) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-      const proxyUrl = `${proxy}${encodeURIComponent(url)}`;
-      
-      const data = await fetchWithTimeout(proxyUrl, controller.signal);
-      clearTimeout(timeoutId);
-      console.log(`✅ CORS proxy success for sportsrc API`);
-      return data;
-    } catch (error) {
-      console.warn(`⚠️ CORS proxy failed`);
-    }
-  }
-
-  throw new Error(`SportsRC API failed for params: ${queryString}`);
-};
-
-// Legacy fetch for fallback endpoints (used for streams)
-const fetchFromLegacyApi = async (endpoint: string): Promise<any> => {
-  const timeout = 3000;
-
-  const fetchWithTimeout = async (url: string, signal: AbortSignal) => {
-    const response = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
-      signal,
-      cache: 'default'
+      cache: 'default' // Use browser cache
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
@@ -178,14 +124,36 @@ const fetchFromLegacyApi = async (endpoint: string): Promise<any> => {
       
       const data = await fetchWithTimeout(url, controller.signal);
       clearTimeout(timeoutId);
+      console.log(`⚡ Fast path: ${workingApiBase}`);
       return data;
     } catch {
-      workingApiBase = null;
+      workingApiBase = null; // Reset if failed
     }
   }
 
+  // Try last working proxy first
+  if (workingProxy && workingApiBase === null) {
+    for (const baseUrl of API_BASES) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        const targetUrl = `${baseUrl}/${endpoint}`;
+        const proxyUrl = `${workingProxy}${encodeURIComponent(targetUrl)}`;
+        
+        const data = await fetchWithTimeout(proxyUrl, controller.signal);
+        clearTimeout(timeoutId);
+        workingApiBase = baseUrl;
+        console.log(`⚡ Fast proxy path: ${workingProxy.split('?')[0]}`);
+        return data;
+      } catch {
+        // Continue to next
+      }
+    }
+    workingProxy = null; // Reset if all failed
+  }
+
   // Try direct calls
-  for (const baseUrl of FALLBACK_API_BASES) {
+  for (const baseUrl of API_BASES) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -193,16 +161,17 @@ const fetchFromLegacyApi = async (endpoint: string): Promise<any> => {
       
       const data = await fetchWithTimeout(url, controller.signal);
       clearTimeout(timeoutId);
-      workingApiBase = baseUrl;
+      workingApiBase = baseUrl; // Remember working endpoint
+      console.log(`✅ Direct success: ${baseUrl}`);
       return data;
     } catch (error) {
-      console.warn(`⚠️ Legacy API failed: ${baseUrl}/${endpoint}`);
+      console.warn(`⚠️ Direct failed: ${baseUrl}/${endpoint}`);
     }
   }
 
   // Fallback to CORS proxies
   for (const proxy of CORS_PROXIES) {
-    for (const baseUrl of FALLBACK_API_BASES) {
+    for (const baseUrl of API_BASES) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -212,15 +181,16 @@ const fetchFromLegacyApi = async (endpoint: string): Promise<any> => {
         const data = await fetchWithTimeout(proxyUrl, controller.signal);
         clearTimeout(timeoutId);
         workingApiBase = baseUrl;
-        workingProxy = proxy;
+        workingProxy = proxy; // Remember working proxy
+        console.log(`✅ CORS proxy success`);
         return data;
       } catch (error) {
-        // Continue
+        console.warn(`⚠️ CORS proxy failed`);
       }
     }
   }
 
-  throw new Error(`All legacy API endpoints failed for: ${endpoint}`);
+  throw new Error(`All API endpoints failed for: ${endpoint}`);
 };
 
 // Map category to our sport IDs
@@ -370,40 +340,29 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
   if (cached) return cached;
 
   try {
-    console.log('🔄 Fetching matches from SportsRC API...');
+    console.log('🔄 Fetching matches from multiple APIs...');
     
     // Import CDN API dynamically to avoid circular dependencies
     const { fetchCDNMatches } = await import('./cdnSportsApi');
     
-    // Fetch from sportsrc.org API and CDN in parallel
-    // Try multiple sport categories from sportsrc
-    const sportCategories = ['football', 'basketball', 'tennis', 'cricket', 'hockey', 'baseball', 'rugby'];
-    
-    const [sportsrcResults, cdnMatches] = await Promise.all([
-      Promise.all(
-        sportCategories.map(category => 
-          fetchFromSportsrcApi({ data: 'matches', category }).catch(() => null)
-        )
-      ),
+    // Fetch from both APIs in parallel
+    const [bohoData, cdnMatches] = await Promise.all([
+      fetchFromApi('matches/all').catch(() => null),
       fetchCDNMatches().catch(() => [])
     ]);
 
     let matches: Match[] = [];
 
-    // Parse SportsRC API data from all categories
-    for (const sportsrcData of sportsrcResults) {
-      if (sportsrcData) {
-        let categoryMatches: Match[] = [];
-        if (Array.isArray(sportsrcData)) {
-          categoryMatches = sportsrcData.map(parseMatchData).filter((m): m is Match => m !== null);
-        } else if (sportsrcData.matches && Array.isArray(sportsrcData.matches)) {
-          categoryMatches = sportsrcData.matches.map(parseMatchData).filter((m): m is Match => m !== null);
-        } else if (sportsrcData.data && Array.isArray(sportsrcData.data)) {
-          categoryMatches = sportsrcData.data.map(parseMatchData).filter((m): m is Match => m !== null);
-        } else if (sportsrcData.events && Array.isArray(sportsrcData.events)) {
-          categoryMatches = sportsrcData.events.map(parseMatchData).filter((m): m is Match => m !== null);
-        }
-        matches = [...matches, ...categoryMatches];
+    // Parse BOHO API data
+    if (bohoData) {
+      if (Array.isArray(bohoData)) {
+        matches = bohoData.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (bohoData.matches && Array.isArray(bohoData.matches)) {
+        matches = bohoData.matches.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (bohoData.data && Array.isArray(bohoData.data)) {
+        matches = bohoData.data.map(parseMatchData).filter((m): m is Match => m !== null);
+      } else if (bohoData.events && Array.isArray(bohoData.events)) {
+        matches = bohoData.events.map(parseMatchData).filter((m): m is Match => m !== null);
       }
     }
 
@@ -579,37 +538,22 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   if (cached) return cached;
 
   try {
-    // Use sportsrc.org detail endpoint for stream data
-    console.log(`📡 Fetching stream data for source: ${source}, id: ${id}`);
-    const data = await fetchFromSportsrcApi({ data: 'detail', category: source, id: id }).catch(() => null);
+    // Force use of CORS proxy for stream endpoint
+    const endpoint = `/stream/${source}/${id}`;
+    console.log(`📡 Fetching stream data: ${endpoint}`);
+    const data = await fetchFromApi(endpoint);
     
-    // If sportsrc fails, try legacy endpoint
-    const streamData = data || await fetchFromLegacyApi(`stream/${source}/${id}`).catch(() => null);
+    console.log(`📦 Stream API response for ${source}/${id}:`, data);
     
-    console.log(`📦 Stream API response for ${source}/${id}:`, streamData);
-    
-    // Handle different response formats
-    let streamArray: any[] = [];
-    if (Array.isArray(streamData)) {
-      streamArray = streamData;
-    } else if (streamData?.streams && Array.isArray(streamData.streams)) {
-      streamArray = streamData.streams;
-    } else if (streamData?.data && Array.isArray(streamData.data)) {
-      streamArray = streamData.data;
-    } else if (streamData?.embed || streamData?.embedUrl || streamData?.url) {
-      // Single stream object
-      streamArray = [streamData];
-    }
-    
-    if (streamArray.length > 0) {
-      const streams = streamArray.map((item: any, index: number) => {
+    if (Array.isArray(data) && data.length > 0) {
+      const streams = data.map((item: any, index: number) => {
         const { url, isHls } = extractStreamUrl(item);
         const streamNo = item.streamNo || index + 1;
         const streamId = item.id || id;
         const streamSource = item.source || source;
         
-        // Use embed.damitv.pro format
-        const embedUrl = isHls ? url : `${EMBED_DOMAIN}/embed/${streamSource}/${streamId}/${streamNo}`;
+        // Use embedsports.top API format for streamed.pk sources
+        const embedUrl = isHls ? url : `${EMBED_DOMAIN}/api/getstream?source=${streamSource}&match=${streamId}&stream=${streamNo}`;
         
         return {
           id: streamId,
@@ -634,10 +578,10 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Generate fallback embed URL when API fails - uses embed.damitv.pro format
+// Generate fallback embed URL when API fails - uses embedsports.top format
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
-  // Use embed.damitv.pro format
-  return `${EMBED_DOMAIN}/embed/${source}/${id}/${streamNo}`;
+  // Use embedsports.top API format
+  return `${EMBED_DOMAIN}/api/getstream?source=${source}&match=${id}&stream=${streamNo}`;
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
