@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, ChevronRight, Sparkles } from 'lucide-react';
-import { Skeleton } from './ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MatchPreview {
   id: string;
