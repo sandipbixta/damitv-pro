@@ -1,9 +1,9 @@
-// Embed Domain Manager - Uses embed.damitv.pro for streaming
+// Embed Domain Manager - Uses embedsports.top for streaming
 // No fallback - single domain for all sources
 
-export const EMBED_DOMAIN = 'https://embed.damitv.pro';
+export const EMBED_DOMAIN = 'https://embedsports.top';
 
-// Build embed URL - uses embed.damitv.pro with path format
+// Build embed URL - uses embedsports.top with path format
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -12,7 +12,7 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Format: https://embed.damitv.pro/embed/SOURCE/MATCHID/STREAMNO
+  // Format: https://embedsports.top/embed/SOURCE/MATCHID/STREAMNO
   return `${EMBED_DOMAIN}/embed/${source}/${id}/${streamNo}`;
 };
 

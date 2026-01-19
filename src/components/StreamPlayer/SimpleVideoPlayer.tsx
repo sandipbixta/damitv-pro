@@ -590,7 +590,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
           src={(() => {
             // If HLS failed and we're falling back, build iframe URL from source/id
             if (hlsFailedUseIframe && stream?.source && stream?.id) {
-              return buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
+              return buildEmbedUrl('https://embedsports.top', stream.source, stream.id, stream.streamNo || 1);
             }
             // Use fallback URL if available, otherwise use original
             return fallbackEmbedUrl || stream.embedUrl;
