@@ -1,7 +1,7 @@
-// Embed Domain Manager - Uses embed.damitv.pro
+// Embed Domain Manager - Uses embed.streamapi.cc
 // No fallback - single domain for all sources
 
-export const EMBED_DOMAIN = 'https://embed.damitv.pro';
+export const EMBED_DOMAIN = 'https://embed.streamapi.cc';
 
 // Build embed URL - uses embed.damitv.pro with path format
 export const buildEmbedUrl = (
