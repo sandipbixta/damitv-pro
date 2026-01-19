@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.fetch-football-news]
 verify_jwt = false
+
+[functions.extract-stream]
+verify_jwt = false
