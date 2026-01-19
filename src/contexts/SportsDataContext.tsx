@@ -12,7 +12,7 @@ interface SportsDataContextType {
   refresh: () => Promise<void>;
 }
 
-const SportsDataContext = createContext<SportsDataContextType | undefined>(undefined);
+// SportsDataContext is defined below (after DEFAULT_SPORTS) so the context can have a safe default value.
 
 // Cache duration: 5 minutes for refresh, 2 hours for localStorage
 const REFRESH_INTERVAL = 5 * 60 * 1000;
