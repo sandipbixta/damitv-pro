@@ -20,7 +20,6 @@ import {
   createProgressTracker 
 } from '../../utils/videoAnalytics';
 import { markDomainFailed, getFallbackDomain, buildEmbedUrl, hasFallbackAvailable } from '../../utils/embedDomains';
-import { extractStreamUrl } from '../../services/streamExtractionService';
 import { toast } from 'sonner';
 
 
@@ -71,17 +70,11 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   // Track if HLS failed and we should use iframe instead
   const [hlsFailedUseIframe, setHlsFailedUseIframe] = useState(false);
   
-  // Server-side HLS extraction state
-  const [extractedHlsUrl, setExtractedHlsUrl] = useState<string | null>(null);
-  const [extractionAttempted, setExtractionAttempted] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
+  // Use M3U8 player if it's a .m3u8 URL and HLS hasn't failed
+  const isM3U8 = originalIsM3U8 && !hlsFailedUseIframe;
   
-  // Use M3U8 player if it's a .m3u8 URL OR we extracted an HLS URL, and HLS hasn't failed
-  const hasHlsUrl = originalIsM3U8 || !!extractedHlsUrl;
-  const isM3U8 = hasHlsUrl && !hlsFailedUseIframe;
-  
-  // The actual HLS URL to use (extracted takes priority)
-  const hlsStreamUrl = extractedHlsUrl || stream?.embedUrl || '';
+  // The actual HLS URL to use
+  const hlsStreamUrl = stream?.embedUrl || '';
   // Calculate countdown for upcoming matches
   useEffect(() => {
     if (!match || !match.date) {
@@ -127,7 +120,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     return () => clearInterval(interval);
   }, [match]);
 
-  // Reset error state and track stream changes + attempt HLS extraction
+  // Reset error state and track stream changes
   useEffect(() => {
     if (stream?.embedUrl && stream.embedUrl !== lastStreamUrl) {
       setError(false);
@@ -138,8 +131,6 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       setFallbackEmbedUrl(null);
       setEmbedFallbackAttempted(false);
       setHlsFailedUseIframe(false);
-      setExtractedHlsUrl(null);
-      setExtractionAttempted(false);
       console.log('🎬 New stream loaded, resetting error state');
       
       // Track video start event
@@ -149,33 +140,8 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       
       // Initialize progress tracker
       progressTrackerRef.current = createProgressTracker(streamId);
-      
-      // Try server-side HLS extraction for non-M3U8 URLs (ad-free playback)
-      if (!originalIsM3U8 && stream.embedUrl && !stream.embedUrl.includes('.m3u8')) {
-        setIsExtracting(true);
-        console.log('🔍 Attempting server-side HLS extraction...');
-        
-        extractStreamUrl(stream.embedUrl)
-          .then((result) => {
-            setExtractionAttempted(true);
-            setIsExtracting(false);
-            
-            if (result.success && result.streamUrl && result.type === 'hls') {
-              console.log(`✅ Extracted ad-free HLS: ${result.streamUrl.substring(0, 80)}...`);
-              setExtractedHlsUrl(result.streamUrl);
-              toast.success('Ad-free stream found!', { duration: 2000 });
-            } else {
-              console.log('⚠️ HLS extraction failed, using iframe fallback');
-            }
-          })
-          .catch((err) => {
-            console.log('⚠️ HLS extraction error:', err);
-            setExtractionAttempted(true);
-            setIsExtracting(false);
-          });
-      }
     }
-  }, [stream?.embedUrl, lastStreamUrl, match, originalIsM3U8]);
+  }, [stream?.embedUrl, lastStreamUrl, match]);
 
   // Detect geographic latency on mount
   useEffect(() => {
@@ -472,12 +438,12 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     }
   };
 
-  if (isLoading || isExtracting) {
+  if (isLoading) {
     return (
       <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video bg-black rounded-2xl flex items-center justify-center`}>
         <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>{isExtracting ? 'Finding ad-free stream...' : 'Loading stream...'}</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading stream...</p>
         </div>
       </div>
     );
