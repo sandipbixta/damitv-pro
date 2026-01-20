@@ -3,7 +3,7 @@ import { ManualMatch } from "@/types/manualMatch";
 import { useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { format } from 'date-fns';
-import { ViewerCount } from '@/components/ViewerCount';
+import { ViewerCount } from './ViewerCount';
 
 interface ManualMatchCardProps {
   match: ManualMatch;

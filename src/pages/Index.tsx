@@ -1,37 +1,36 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
-import { Sport, Match } from '@/types/sports';
-import { fetchMatches } from '@/api/sportsApi';
-import { consolidateMatches, filterCleanMatches } from '@/utils/matchUtils';
-import SportsNav from '@/components/SportsNav';
-import MatchesList from '@/components/MatchesList';
-import FeaturedMatches from '@/components/FeaturedMatches';
-import AllSportsLiveMatches from '@/components/AllSportsLiveMatches';
+import { useToast } from '../hooks/use-toast';
+import { Sport, Match } from '../types/sports';
+import { fetchMatches } from '../api/sportsApi';
+import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
+import SportsNav from '../components/SportsNav';
+import MatchesList from '../components/MatchesList';
+import FeaturedMatches from '../components/FeaturedMatches';
+import AllSportsLiveMatches from '../components/AllSportsLiveMatches';
 import { useSportsData } from '@/contexts/SportsDataContext';
 
 // Lazy load more components to reduce initial bundle
-const PopularMatches = React.lazy(() => import('@/components/PopularMatches'));
-import { Separator } from '@/components/ui/separator';
+const PopularMatches = React.lazy(() => import('../components/PopularMatches'));
+import { Separator } from '../components/ui/separator';
 import { Calendar, Tv } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import PageLayout from '@/components/PageLayout';
-import { isPopularLeague } from '@/utils/popularLeagues';
-import { generateCompetitorTitle, generateCompetitorDescription } from '@/utils/competitorSEO';
-import CompetitorSEOContent from '@/components/CompetitorSEOContent';
+import { Button } from '../components/ui/button';
+import PageLayout from '../components/PageLayout';
+import { isPopularLeague } from '../utils/popularLeagues';
+import { generateCompetitorTitle, generateCompetitorDescription } from '../utils/competitorSEO';
+import CompetitorSEOContent from '../components/CompetitorSEOContent';
 import { Helmet } from 'react-helmet-async';
-import { manualMatches } from '@/data/manualMatches';
-import { HeroCarousel } from '@/components/HeroCarousel';
-import heroBackground from '@/assets/hero-background.jpeg';
-import HomepageContent from '@/components/HomepageContent';
-import CustomMatchCards from '@/components/CustomMatchCards';
-import LatestHighlights from '@/components/LatestHighlights';
-
-import PerplexityNews from '@/components/PerplexityNews';
-import UpcomingMatchPreviews from '@/components/UpcomingMatchPreviews';
+import { manualMatches } from '../data/manualMatches';
+import { HeroCarousel } from '../components/HeroCarousel';
+import heroBackground from '../assets/hero-background.jpeg';
+import HomepageContent from '../components/HomepageContent';
+import CustomMatchCards from '../components/CustomMatchCards';
+import LatestHighlights from '../components/LatestHighlights';
+import PerplexityNews from '../components/PerplexityNews';
+import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 
 // Lazy load heavy components
-const FeaturedChannels = React.lazy(() => import('@/components/FeaturedChannels'));
+const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
 
 const Index = () => {
   const { toast } = useToast();
@@ -201,7 +200,7 @@ const Index = () => {
         </div>
 
         {/* Sports Category Nav - Below hero */}
-        <div className="mb-4">
+        <div className="mb-6">
           <SportsNav 
             sports={sports}
             onSelectSport={handleSelectSport}
@@ -209,7 +208,6 @@ const Index = () => {
             isLoading={loadingSports}
           />
         </div>
-
 
         <div>
           <FeaturedMatches visibleManualMatches={visibleManualMatches} />

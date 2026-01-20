@@ -6,52 +6,51 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import SEOPageTracker from "@/components/SEOPageTracker";
-import MonetizationTracker from "@/components/MonetizationTracker";
+import SEOPageTracker from "./components/SEOPageTracker";
+import MonetizationTracker from "./components/MonetizationTracker";
 import { SportsDataProvider } from "@/contexts/SportsDataContext";
 
 // Import pages directly instead of lazy loading to avoid module import errors
-import Index from "@/pages/Index";
-import Match from "@/pages/Match";
-import Schedule from "@/pages/Schedule";
-import Live from "@/pages/Live";
-import Channels from "@/pages/Channels";
-import ChannelPlayer from "@/pages/ChannelPlayer";
-import ManualMatchPlayer from "@/pages/ManualMatchPlayer";
-import AdminCustomMatch from "@/pages/AdminCustomMatch";
-import CustomMatchPlayer from "@/pages/CustomMatchPlayer";
-import Analytics from "@/pages/Analytics";
-import DMCANotice from "@/pages/DMCANotice";
-import NotFound from "@/pages/NotFound";
-import About from "@/pages/About";
-import Contact from "@/pages/Contact";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import TermsOfService from "@/pages/TermsOfService";
-import Install from "@/pages/Install";
-import DaddylivehdAlternatives from "@/pages/DaddylivehdAlternatives";
-import BatmanstreamAlternatives from "@/pages/BatmanstreamAlternatives";
-import HesgoalAlternatives from "@/pages/HesgoalAlternatives";
-import Hesgoal from "@/pages/Hesgoal";
-import Vipleague from "@/pages/Vipleague";
-import Myp2p from "@/pages/Myp2p";
-import CrackstreamsAlternative from "@/pages/CrackstreamsAlternative";
-import FreestreamsLive1 from "@/pages/FreestreamsLive1";
-import TotalsportekFormula1 from "@/pages/TotalsportekFormula1";
-import TotalsportekTennis from "@/pages/TotalsportekTennis";
-import HesgoalLiveStream from "@/pages/HesgoalLiveStream";
-import HesgoalTV from "@/pages/HesgoalTV";
-import Sport365Live from "@/pages/Sport365Live";
-import WatchPremierLeague from "@/pages/WatchPremierLeague";
-import NbaStreaming from "@/pages/NbaStreaming";
-import UfcStreaming from "@/pages/UfcStreaming";
-import Highlights from "@/pages/Highlights";
-import News from "@/pages/News";
-import Article from "@/pages/Article";
-import MatchDetail from "@/pages/MatchDetail";
-import Dashboard from "@/pages/Dashboard";
-import CDNPlayer from "@/pages/CDNPlayer";
+import Index from "./pages/Index";
+import Match from "./pages/Match";
+import Schedule from "./pages/Schedule";
+import Live from "./pages/Live";
+import Channels from "./pages/Channels";
+import ChannelPlayer from "./pages/ChannelPlayer";
+import ManualMatchPlayer from "./pages/ManualMatchPlayer";
+import AdminCustomMatch from "./pages/AdminCustomMatch";
+import CustomMatchPlayer from "./pages/CustomMatchPlayer";
+import Analytics from "./pages/Analytics";
+import DMCANotice from "./pages/DMCANotice";
+import NotFound from "./pages/NotFound";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import Install from "./pages/Install";
+import DaddylivehdAlternatives from "./pages/DaddylivehdAlternatives";
+import BatmanstreamAlternatives from "./pages/BatmanstreamAlternatives";
+import HesgoalAlternatives from "./pages/HesgoalAlternatives";
+import Hesgoal from "./pages/Hesgoal";
+import Vipleague from "./pages/Vipleague";
+import Myp2p from "./pages/Myp2p";
+import CrackstreamsAlternative from "./pages/CrackstreamsAlternative";
+import FreestreamsLive1 from "./pages/FreestreamsLive1";
+import TotalsportekFormula1 from "./pages/TotalsportekFormula1";
+import TotalsportekTennis from "./pages/TotalsportekTennis";
+import HesgoalLiveStream from "./pages/HesgoalLiveStream";
+import HesgoalTV from "./pages/HesgoalTV";
+import Sport365Live from "./pages/Sport365Live";
+import WatchPremierLeague from "./pages/WatchPremierLeague";
+import NbaStreaming from "./pages/NbaStreaming";
+import UfcStreaming from "./pages/UfcStreaming";
+import Highlights from "./pages/Highlights";
+import News from "./pages/News";
+import Article from "./pages/Article";
+import MatchDetail from "./pages/MatchDetail";
+import Dashboard from "./pages/Dashboard";
 
-import TelegramFAB from "@/components/TelegramFAB";
+import TelegramFAB from "./components/TelegramFAB";
 
 // Optimized query client configuration
 const queryClient = new QueryClient({
@@ -96,11 +95,6 @@ const App: React.FC = () => {
               <Route path="/custom-match/:matchId" element={
                 <SEOPageTracker contentType="match">
                   <CustomMatchPlayer />
-                </SEOPageTracker>
-              } />
-              <Route path="/cdn-player/:gameId" element={
-                <SEOPageTracker contentType="match">
-                  <CDNPlayer />
                 </SEOPageTracker>
               } />
               <Route path="/schedule" element={

@@ -1,5 +1,5 @@
 import React from 'react';
-import { generateCompetitorContent } from '@/utils/competitorSEO';
+import { generateCompetitorContent } from '../utils/competitorSEO';
 
 interface CompetitorSEOContentProps {
   matchTitle?: string;

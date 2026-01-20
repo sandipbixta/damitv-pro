@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Sport } from '@/types/sports';
+import { Sport } from '../types/sports';
 
 interface SportsNavProps {
   sports: Sport[];

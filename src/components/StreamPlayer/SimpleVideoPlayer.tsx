@@ -29,6 +29,7 @@ interface SimpleVideoPlayerProps {
   onRetry?: () => void;
   isTheaterMode?: boolean;
   onTheaterModeToggle?: () => void;
+  onAutoFallback?: () => void;
   match?: Match | ManualMatch | null;
 }
 
@@ -38,6 +39,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   onRetry,
   isTheaterMode = false,
   onTheaterModeToggle,
+  onAutoFallback,
   match = null
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -70,11 +72,9 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   // Track if HLS failed and we should use iframe instead
   const [hlsFailedUseIframe, setHlsFailedUseIframe] = useState(false);
   
-  // Use M3U8 player if it's a .m3u8 URL and HLS hasn't failed
+  // Use M3U8 player only if it's a .m3u8 URL and HLS hasn't failed
   const isM3U8 = originalIsM3U8 && !hlsFailedUseIframe;
-  
-  // The actual HLS URL to use
-  const hlsStreamUrl = stream?.embedUrl || '';
+
   // Calculate countdown for upcoming matches
   useEffect(() => {
     if (!match || !match.date) {
@@ -130,7 +130,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       setLastStreamUrl(stream.embedUrl);
       setFallbackEmbedUrl(null);
       setEmbedFallbackAttempted(false);
-      setHlsFailedUseIframe(false);
+      setHlsFailedUseIframe(false); // Reset HLS failure state
       console.log('🎬 New stream loaded, resetting error state');
       
       // Track video start event
@@ -176,9 +176,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       const fallbackDomain = getFallbackDomain(failedDomain);
       
       if (fallbackDomain && stream.source && stream.id) {
-        const matchSlug = match?.title ? match.title.toLowerCase().replace(/\s+vs\.?\s+/gi, '-vs-').replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') : undefined;
-        const matchTimestamp = match?.date ? (typeof match.date === 'number' ? match.date : new Date(match.date).getTime()) : undefined;
-        const newUrl = buildEmbedUrl(fallbackDomain, stream.source, stream.id, stream.streamNo || 1, matchSlug, matchTimestamp);
+        const newUrl = buildEmbedUrl(fallbackDomain, stream.source, stream.id, stream.streamNo || 1);
         console.log(`🔄 Switching to fallback embed: ${newUrl}`);
         
         toast.info('Switching to backup stream...', { duration: 2000 });
@@ -220,10 +218,8 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       console.log('🔄 HLS stream failed, falling back to iframe embed...');
       setHlsFailedUseIframe(true);
       
-      // Build iframe embed URL from stream source/id with match info
-      const matchSlug = match?.title ? match.title.toLowerCase().replace(/\s+vs\.?\s+/gi, '-vs-').replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') : undefined;
-      const matchTimestamp = match?.date ? (typeof match.date === 'number' ? match.date : new Date(match.date).getTime()) : undefined;
-      const iframeUrl = buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1, matchSlug, matchTimestamp);
+      // Build iframe embed URL from stream source/id
+      const iframeUrl = buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
       console.log(`🔄 Iframe fallback URL: ${iframeUrl}`);
       toast.info('Switching to embedded player...', { duration: 2000 });
       return; // Don't show error, let iframe try
@@ -265,10 +261,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Set up HLS for Android/Chrome when URL is .m3u8 or extracted HLS
+  // Set up HLS for Android/Chrome when URL is .m3u8
   useEffect(() => {
-    if (!isM3U8 || !hlsStreamUrl) return;
-    const src = hlsStreamUrl.startsWith('http://') ? hlsStreamUrl.replace(/^http:\/\//i, 'https://') : hlsStreamUrl;
+    if (!isM3U8 || !stream?.embedUrl) return;
+    const src = stream.embedUrl.startsWith('http://') ? stream.embedUrl.replace(/^http:\/\//i, 'https://') : stream.embedUrl;
 
     if (videoRef.current && (videoRef.current as any).canPlayType && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
       // Native HLS support (Safari)
@@ -427,7 +423,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
         hlsRef.current = null;
       }
     };
-  }, [isM3U8, hlsStreamUrl]);
+  }, [isM3U8, stream?.embedUrl]);
 
   // Handle quality change from selector
   const handleQualityChange = (level: number) => {
@@ -446,7 +442,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
     return (
       <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video bg-black rounded-2xl flex items-center justify-center`}>
         <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p>Loading stream...</p>
         </div>
       </div>
@@ -594,11 +590,9 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       ) : (
         <IframeVideoPlayer
           src={(() => {
-            // If HLS failed and we're falling back, build iframe URL from source/id with match info
+            // If HLS failed and we're falling back, build iframe URL from source/id
             if (hlsFailedUseIframe && stream?.source && stream?.id) {
-              const matchSlug = match?.title ? match.title.toLowerCase().replace(/\s+vs\.?\s+/gi, '-vs-').replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') : undefined;
-              const matchTimestamp = match?.date ? (typeof match.date === 'number' ? match.date : new Date(match.date).getTime()) : undefined;
-              return buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1, matchSlug, matchTimestamp);
+              return buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
             }
             // Use fallback URL if available, otherwise use original
             return fallbackEmbedUrl || stream.embedUrl;

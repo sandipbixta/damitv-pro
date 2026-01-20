@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Match } from '@/types/sports';
-import MatchCard from '@/components/MatchCard';
-import { isTrendingMatch } from '@/utils/popularLeagues';
-import { consolidateMatches, filterCleanMatches } from '@/utils/matchUtils';
-import { enrichMatchesWithViewers, isMatchLive } from '@/services/viewerCountService';
+import { Match } from '../types/sports';
+import MatchCard from './MatchCard';
+import { isTrendingMatch } from '../utils/popularLeagues';
+import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
+import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 
 interface PopularMatchesProps {

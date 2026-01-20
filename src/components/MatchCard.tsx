@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Match } from '@/types/sports';
-import { isMatchLive } from '@/utils/matchUtils';
-import { useMatchTeamLogos } from '@/hooks/useTeamLogo';
-import { getBohoImageUrl } from '@/api/sportsApi';
-import { LiveViewerCount } from '@/components/LiveViewerCount';
-import { generateMatchSlug, extractNumericId } from '@/utils/matchSlug';
-import { getMatchPosterImage } from '@/utils/matchImageMapping';
+import { Match } from '../types/sports';
+import { isMatchLive } from '../utils/matchUtils';
+import { useMatchTeamLogos } from '../hooks/useTeamLogo';
+import { getBohoImageUrl } from '../api/sportsApi';
+import { LiveViewerCount } from './LiveViewerCount';
+import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
+import { getMatchPosterImage } from '../utils/matchImageMapping';
 
 interface MatchCardProps {
   match: Match;

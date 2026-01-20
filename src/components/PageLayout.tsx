@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import MainNav from '@/components/MainNav';
-import MobileBottomNav from '@/components/MobileBottomNav';
-import ScrollToTop from '@/components/ScrollToTop';
-import LiveScoreTicker from '@/components/LiveScoreTicker';
+import MainNav from './MainNav';
+import MobileBottomNav from './MobileBottomNav';
+import ScrollToTop from './ScrollToTop';
+import LiveScoreTicker from './LiveScoreTicker';
 import { useIsMobile } from '@/hooks/use-mobile';
-import SearchBar from '@/components/SearchBar';
+import SearchBar from './SearchBar';
 import damitvLogo from "@/assets/damitv-logo.png";
 
 interface PageLayoutProps {

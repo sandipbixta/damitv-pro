@@ -1,6 +1,6 @@
 // BOHOSport API Service - fetches directly from API (no edge function)
 import { Sport, Match, Stream, Source } from '../types/sports';
-import { getEmbedDomainSync, buildEmbedUrl, EMBED_DOMAIN } from '../utils/embedDomains';
+import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
 
 // API endpoints to try (direct calls)
 const API_BASES = [
@@ -17,16 +17,17 @@ const CORS_PROXIES = [
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
-// Generate match slug for embed URL (e.g., "northwestern-state-vs-houston-christian")
+// Generate match slug for topembed format (e.g., "new-york-rangers_seattle-kraken")
 const generateMatchSlug = (title: string): string => {
-  // Clean up title and create URL-friendly slug
-  return title
-    .toLowerCase()
-    .replace(/\s+vs\.?\s+/gi, '-vs-')
-    .replace(/\s+v\.?\s+/gi, '-vs-')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+  // Split by " vs " or " - " to get team names
+  const parts = title.split(/\s+(?:vs\.?|v\.?|-)\s+/i);
+  if (parts.length >= 2) {
+    const team1 = parts[0].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const team2 = parts[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return `${team1}_${team2}`;
+  }
+  // Fallback: just convert title to slug
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 };
 
 // Build ad-free embed URL using domain manager
@@ -39,13 +40,11 @@ const buildAdFreeEmbedUrl = (
 ): string => {
   const domain = getEmbedDomainSync();
   
-  // Generate slug from match title
-  const matchSlug = matchTitle ? generateMatchSlug(matchTitle) : matchId;
-  
-  // Get timestamp in milliseconds
+  // Generate slug and timestamp for topembed format
+  const matchSlug = matchTitle ? generateMatchSlug(matchTitle) : undefined;
   const matchTimestamp = matchDate 
-    ? (typeof matchDate === 'number' ? matchDate : new Date(matchDate).getTime())
-    : Date.now();
+    ? Math.floor((typeof matchDate === 'number' ? matchDate : new Date(matchDate).getTime()) / 1000)
+    : undefined;
   
   return buildEmbedUrl(domain, source, matchId, streamNo, matchSlug, matchTimestamp);
 };
@@ -334,52 +333,31 @@ export const fetchSports = async (): Promise<Sport[]> => {
 };
 
 // Fetch all matches from API directly (no edge function)
-// Now also includes CDN Live TV API as additional source
 export const fetchAllMatches = async (): Promise<Match[]> => {
   const cacheKey = 'boho-matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
   try {
-    console.log('🔄 Fetching matches from multiple APIs...');
+    console.log('🔄 Fetching matches directly from API...');
     
-    // Import CDN API dynamically to avoid circular dependencies
-    const { fetchCDNMatches } = await import('./cdnSportsApi');
-    
-    // Fetch from both APIs in parallel
-    const [bohoData, cdnMatches] = await Promise.all([
-      fetchFromApi('matches/all').catch(() => null),
-      fetchCDNMatches().catch(() => [])
-    ]);
+    const data = await fetchFromApi('matches/all');
 
     let matches: Match[] = [];
 
-    // Parse BOHO API data
-    if (bohoData) {
-      if (Array.isArray(bohoData)) {
-        matches = bohoData.map(parseMatchData).filter((m): m is Match => m !== null);
-      } else if (bohoData.matches && Array.isArray(bohoData.matches)) {
-        matches = bohoData.matches.map(parseMatchData).filter((m): m is Match => m !== null);
-      } else if (bohoData.data && Array.isArray(bohoData.data)) {
-        matches = bohoData.data.map(parseMatchData).filter((m): m is Match => m !== null);
-      } else if (bohoData.events && Array.isArray(bohoData.events)) {
-        matches = bohoData.events.map(parseMatchData).filter((m): m is Match => m !== null);
-      }
+    // Handle different response formats
+    if (Array.isArray(data)) {
+      matches = data.map(parseMatchData).filter((m): m is Match => m !== null);
+    } else if (data.matches && Array.isArray(data.matches)) {
+      matches = data.matches.map(parseMatchData).filter((m): m is Match => m !== null);
+    } else if (data.data && Array.isArray(data.data)) {
+      matches = data.data.map(parseMatchData).filter((m): m is Match => m !== null);
+    } else if (data.events && Array.isArray(data.events)) {
+      matches = data.events.map(parseMatchData).filter((m): m is Match => m !== null);
     }
 
-    // Merge CDN matches (dedupe by ID, prefer BOHO data if duplicate)
-    const matchMap = new Map<string, Match>();
-    matches.forEach(m => matchMap.set(m.id, m));
-    cdnMatches.forEach(m => {
-      if (!matchMap.has(m.id)) {
-        matchMap.set(m.id, m);
-      }
-    });
-    
-    matches = Array.from(matchMap.values());
-
     setCachedData(cacheKey, matches);
-    console.log(`✅ Fetched ${matches.length} total matches (BOHO + CDN)`);
+    console.log(`✅ Fetched ${matches.length} matches`);
     return matches;
   } catch (error) {
     console.error('❌ Error fetching matches:', error);
@@ -475,13 +453,7 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
 };
 
 // Fetch stream for a match - uses ad-free embed player
-export const fetchSimpleStream = async (
-  source: string, 
-  id: string, 
-  category?: string,
-  matchTitle?: string,
-  matchDate?: number
-): Promise<Stream[]> => {
+export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
   const cacheKey = `boho-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
@@ -489,8 +461,8 @@ export const fetchSimpleStream = async (
   try {
     console.log(`🎬 Building ad-free embed URL for source: ${source}, id: ${id}`);
 
-    // Use ad-free embed URL with proper match info
-    const adFreeUrl = buildAdFreeEmbedUrl(id, source, 1, matchTitle, matchDate);
+    // Use ad-free embed URL
+    const adFreeUrl = buildAdFreeEmbedUrl(id, source);
     
     const primaryStream: Stream = {
       id: id,
@@ -540,8 +512,7 @@ const extractStreamUrl = (item: any): { url: string; isHls: boolean } => {
 
 // Fetch stream details from API endpoint with CORS proxy
 const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]> => {
-  // Include EMBED_DOMAIN in the cache key to avoid serving stale embed URLs after domain switches
-  const cacheKey = `stream_${EMBED_DOMAIN}_${source}_${id}`;
+  const cacheKey = `stream_${source}_${id}`;
   const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
   if (cached) return cached;
 
@@ -560,8 +531,9 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
         const streamId = item.id || id;
         const streamSource = item.source || source;
         
-        // Use direct HLS URL if available, otherwise use our embed format
-        const embedUrl = isHls ? url : buildEmbedUrl(EMBED_DOMAIN, streamSource, streamId, streamNo);
+        // ALWAYS use embed.damitv.pro - override any URL from API
+        const embedUrl = isHls ? url : `https://embed.damitv.pro/embed/${streamSource}/${streamId}/${streamNo}`;
+        
         return {
           id: streamId,
           streamNo: streamNo,
@@ -585,10 +557,10 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Generate fallback embed URL when API fails - uses match info for proper slug
-const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number, matchTitle?: string, matchDate?: number): string => {
-  const slug = matchTitle ? generateMatchSlug(matchTitle) : undefined;
-  return buildEmbedUrl(EMBED_DOMAIN, source, id, streamNo, slug, matchDate);
+// Generate fallback embed URL when API fails - uses proper embed format
+const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
+  // Use embed.damitv.pro embed format
+  return `https://embed.damitv.pro/embed/${source}/${id}/${streamNo}`;
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
@@ -634,8 +606,8 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
           }
         }
       } else if (src.source && src.id) {
-        // API failed - generate fallback embed URL with match info
-        const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber, match.title, match.date);
+        // API failed - generate fallback embed URL
+        const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
         console.log(`⚠️ Using fallback for ${src.source}/${src.id}: ${fallbackUrl}`);
         
         allStreams.push({
@@ -659,9 +631,8 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   // If still no streams, create fallback using match ID with proper embed format
   if (allStreams.length === 0 && match.id) {
     console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
-    // Use proper embed format with match title
-    const matchSlug = match.title ? generateMatchSlug(match.title) : undefined;
-    const fallbackUrl = buildEmbedUrl(EMBED_DOMAIN, 'alpha', match.id, 1, matchSlug, match.date);
+    // Use embed.damitv.pro embed format
+    const fallbackUrl = `https://embed.damitv.pro/embed/alpha/${match.id}/1`;
     
     allStreams.push({
       id: match.id,

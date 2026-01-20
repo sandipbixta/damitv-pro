@@ -1,11 +1,11 @@
 
 import React from 'react';
-import { Match } from '@/types/sports';
-import { consolidateMatches, filterCleanMatches, isMatchLive, sortMatchesByViewers } from '@/utils/matchUtils';
-import { enrichMatchesWithViewerCounts } from '@/utils/viewerCount';
-import MatchSection from '@/components/MatchSection';
-import LoadingGrid from '@/components/LoadingGrid';
-import EmptyState from '@/components/EmptyState';
+import { Match } from '../types/sports';
+import { consolidateMatches, filterCleanMatches, isMatchLive, sortMatchesByViewers } from '../utils/matchUtils';
+import { enrichMatchesWithViewerCounts } from '../utils/viewerCount';
+import MatchSection from './MatchSection';
+import LoadingGrid from './LoadingGrid';
+import EmptyState from './EmptyState';
 
 interface MatchesListProps {
   matches: Match[];
