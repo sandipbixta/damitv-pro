@@ -176,7 +176,9 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       const fallbackDomain = getFallbackDomain(failedDomain);
       
       if (fallbackDomain && stream.source && stream.id) {
-        const newUrl = buildEmbedUrl(fallbackDomain, stream.source, stream.id, stream.streamNo || 1);
+        const matchSlug = match?.title ? match.title.toLowerCase().replace(/\s+vs\.?\s+/gi, '-vs-').replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') : undefined;
+        const matchTimestamp = match?.date ? (typeof match.date === 'number' ? match.date : new Date(match.date).getTime()) : undefined;
+        const newUrl = buildEmbedUrl(fallbackDomain, stream.source, stream.id, stream.streamNo || 1, matchSlug, matchTimestamp);
         console.log(`🔄 Switching to fallback embed: ${newUrl}`);
         
         toast.info('Switching to backup stream...', { duration: 2000 });
@@ -218,8 +220,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       console.log('🔄 HLS stream failed, falling back to iframe embed...');
       setHlsFailedUseIframe(true);
       
-      // Build iframe embed URL from stream source/id
-      const iframeUrl = buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1);
+      // Build iframe embed URL from stream source/id with match info
+      const matchSlug = match?.title ? match.title.toLowerCase().replace(/\s+vs\.?\s+/gi, '-vs-').replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') : undefined;
+      const matchTimestamp = match?.date ? (typeof match.date === 'number' ? match.date : new Date(match.date).getTime()) : undefined;
+      const iframeUrl = buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1, matchSlug, matchTimestamp);
       console.log(`🔄 Iframe fallback URL: ${iframeUrl}`);
       toast.info('Switching to embedded player...', { duration: 2000 });
       return; // Don't show error, let iframe try
@@ -590,9 +594,11 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
       ) : (
         <IframeVideoPlayer
           src={(() => {
-            // If HLS failed and we're falling back, build iframe URL from source/id
+            // If HLS failed and we're falling back, build iframe URL from source/id with match info
             if (hlsFailedUseIframe && stream?.source && stream?.id) {
-              return buildEmbedUrl('https://embedsports.top', stream.source, stream.id, stream.streamNo || 1);
+              const matchSlug = match?.title ? match.title.toLowerCase().replace(/\s+vs\.?\s+/gi, '-vs-').replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') : undefined;
+              const matchTimestamp = match?.date ? (typeof match.date === 'number' ? match.date : new Date(match.date).getTime()) : undefined;
+              return buildEmbedUrl('https://embed.damitv.pro', stream.source, stream.id, stream.streamNo || 1, matchSlug, matchTimestamp);
             }
             // Use fallback URL if available, otherwise use original
             return fallbackEmbedUrl || stream.embedUrl;

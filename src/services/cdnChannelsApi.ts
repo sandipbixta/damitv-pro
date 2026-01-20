@@ -157,11 +157,22 @@ class CDNChannelsApiService {
   }
 
   private transformSportSRCChannel(match: SportSRCMatch, category: string): CDNChannel {
+    // Generate slug from title
+    const slug = match.title
+      .toLowerCase()
+      .replace(/\s+vs\.?\s+/gi, '-vs-')
+      .replace(/\s+v\.?\s+/gi, '-vs-')
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    const timestamp = Date.now();
+    const fullId = `${timestamp}-${slug}`;
+    
     return {
       id: `sportsrc-${match.id}`,
       title: match.title,
       country: category.charAt(0).toUpperCase() + category.slice(1),
-      embedUrl: `https://sportsrc.org/embed/${match.id}`,
+      embedUrl: `https://embed.damitv.pro/?id=${encodeURIComponent(fullId)}&source=sportsrc&autoplay=true`,
       logo: match.poster || undefined,
       viewers: 0,
       isLive247: true,

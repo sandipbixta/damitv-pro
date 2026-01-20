@@ -21,9 +21,8 @@ const generateSlug = (title: string): string => {
     .replace(/^-|-$/g, '');
 };
 
-// Build embed URL - uses query params format for primary, path format for fallback
-// Primary format: https://embed.damitv.pro/?id=TIMESTAMP-SLUG&source=SOURCE&autoplay=true
-// Fallback format: https://embedsports.top/embed/SOURCE/MATCHID/STREAMNO
+// Build embed URL - always uses query params format for embed.damitv.pro
+// Format: https://embed.damitv.pro/?id=TIMESTAMP-SLUG&source=SOURCE&autoplay=true
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -32,16 +31,21 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Use primary domain with query params format
-  if (domain === EMBED_DOMAIN || !failedDomains.has(EMBED_DOMAIN)) {
-    const timestamp = matchTimestamp || Date.now();
-    const slug = matchSlug || id;
-    const fullId = `${timestamp}-${slug}`;
-    return `${EMBED_DOMAIN}/?id=${encodeURIComponent(fullId)}&source=${encodeURIComponent(source)}&autoplay=true`;
+  // Always use the query params format for embed.damitv.pro
+  const timestamp = matchTimestamp || Date.now();
+  const slug = matchSlug || generateSlugFromId(id);
+  const fullId = `${timestamp}-${slug}`;
+  return `${EMBED_DOMAIN}/?id=${encodeURIComponent(fullId)}&source=${encodeURIComponent(source)}&autoplay=true`;
+};
+
+// Generate slug from match ID when title not available
+const generateSlugFromId = (id: string): string => {
+  // If id already looks like a slug, use it
+  if (id.includes('-') && !id.match(/^\d+$/)) {
+    return id.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
   }
-  
-  // Fallback domain uses path format
-  return `${FALLBACK_DOMAIN}/embed/${source}/${id}/${streamNo}`;
+  // Default fallback
+  return `match-${id}`;
 };
 
 // Build URL with specific domain (for manual fallback)
@@ -53,15 +57,10 @@ export const buildEmbedUrlWithDomain = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  if (domain === EMBED_DOMAIN) {
-    const timestamp = matchTimestamp || Date.now();
-    const slug = matchSlug || id;
-    const fullId = `${timestamp}-${slug}`;
-    return `${EMBED_DOMAIN}/?id=${encodeURIComponent(fullId)}&source=${encodeURIComponent(source)}&autoplay=true`;
-  }
-  
-  // Any other domain uses path format
-  return `${domain}/embed/${source}/${id}/${streamNo}`;
+  const timestamp = matchTimestamp || Date.now();
+  const slug = matchSlug || generateSlugFromId(id);
+  const fullId = `${timestamp}-${slug}`;
+  return `${EMBED_DOMAIN}/?id=${encodeURIComponent(fullId)}&source=${encodeURIComponent(source)}&autoplay=true`;
 };
 
 // Get the embed domain - returns primary unless failed
