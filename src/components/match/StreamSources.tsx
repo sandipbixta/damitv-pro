@@ -24,6 +24,7 @@ interface StreamSourcesProps {
   };
   onRefresh?: () => Promise<void>;
   match?: Match;
+  autoSelectByViewers?: boolean;
 }
 
 const StreamSources = ({ 
@@ -37,13 +38,15 @@ const StreamSources = ({
   isLive = false,
   streamDiscovery,
   onRefresh,
-  match
+  match,
+  autoSelectByViewers = true
 }: StreamSourcesProps) => {
   const [localStreams, setLocalStreams] = useState<Record<string, Stream[]>>({});
   const [loadingStreams, setLoadingStreams] = useState<Record<string, boolean>>({});
   const [connectionQuality, setConnectionQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasFetchedStreams, setHasFetchedStreams] = useState(false);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   // Monitor connection quality
   useEffect(() => {
@@ -96,6 +99,36 @@ const StreamSources = ({
 
   // Use pre-loaded streams if available, otherwise use local streams
   const effectiveStreams = Object.keys(allStreams).length > 0 ? allStreams : localStreams;
+
+  // Auto-select stream with most viewers when streams become available
+  useEffect(() => {
+    if (!autoSelectByViewers || hasAutoSelected || activeSource) return;
+    
+    // Collect all streams
+    const allAvailable: Array<{ stream: any; source: string; id: string; viewers: number }> = [];
+    
+    Object.entries(effectiveStreams).forEach(([key, streams]) => {
+      streams.forEach((stream: any) => {
+        allAvailable.push({
+          stream,
+          source: stream.source || key.split('/')[0],
+          id: stream.id || key.split('/')[1],
+          viewers: (stream as any).viewers || 0
+        });
+      });
+    });
+    
+    if (allAvailable.length === 0) return;
+    
+    // Sort by viewer count (highest first) and auto-select
+    const sorted = [...allAvailable].sort((a, b) => b.viewers - a.viewers);
+    const bestStream = sorted[0];
+    
+    console.log(`🎯 Auto-selecting stream with ${bestStream.viewers} viewers: ${bestStream.source}/${bestStream.id}`);
+    
+    setHasAutoSelected(true);
+    onSourceChange(bestStream.source, bestStream.id, bestStream.stream.streamNo || 1);
+  }, [effectiveStreams, autoSelectByViewers, hasAutoSelected, activeSource, onSourceChange]);
 
   // LAZY LOAD: Only fetch streams when user clicks a source button (not on mount)
   const fetchStreamForSource = async (source: Source) => {
