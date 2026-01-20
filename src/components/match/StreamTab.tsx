@@ -7,7 +7,9 @@ import StreamSources from './StreamSources';
 import PopularMatchesList from './PopularMatchesList';
 import MatchCard from '@/components/MatchCard';
 import MatchDetails from '@/components/MatchDetails';
+import BannerAd from '@/components/BannerAd';
 import { Match as MatchType, Stream } from '@/types/sports';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +46,7 @@ const StreamTab = ({
   streamDiscovery,
   onRefreshStreams
 }: StreamTabProps) => {
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const [retryCount, setRetryCount] = useState(0);
   const [currentStreamViewers, setCurrentStreamViewers] = useState<number>(0);
@@ -195,8 +198,19 @@ const StreamTab = ({
         match={match}
       />
       
+      {/* Banner Ad - Desktop: below stream links, Mobile: before Popular Now */}
+      {!isMobile && (
+        <div className="hidden lg:block mt-4">
+          <BannerAd />
+        </div>
+      )}
+      
       {/* Popular Matches List - Mobile Only (below stream links) */}
       <div className="lg:hidden">
+        {/* Mobile Banner Ad - before Popular Now */}
+        <div className="mt-4 mb-4">
+          <BannerAd />
+        </div>
         <PopularMatchesList currentMatchId={match.id} />
       </div>
 
