@@ -12,9 +12,9 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Use query parameter format: ?id=matchId&source=source&autoplay=true
+  // Use query parameter format: ?id=matchId&source=source&autoplay=1
   const matchId = matchSlug || id;
-  return `${EMBED_DOMAIN}/?id=${matchId}&source=${source.toLowerCase()}&autoplay=true`;
+  return `${EMBED_DOMAIN}/?id=${matchId}&source=${source.toLowerCase()}&autoplay=1`;
 };
 
 // Get the embed domain - always returns damitv.pro
