@@ -467,11 +467,11 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rounded-full animate-pulse" />
           </div>
           <h3 className="text-xl font-bold mb-2">
-            {!stream ? 'Select a Stream Source' : 'Stream Unavailable'}
+            {!stream ? 'Select the Stream Link to Watch' : 'Stream Unavailable'}
           </h3>
           <p className="text-gray-400 mb-6 max-w-xs mx-auto">
             {!stream 
-              ? 'Choose a stream source from the options below to start watching.'
+              ? 'Choose a stream link from the options below to start watching.'
               : 'Failed to load the stream. Please try again.'
             }
           </p>
