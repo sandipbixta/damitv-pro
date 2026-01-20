@@ -39,7 +39,7 @@ const StreamSources = ({
   streamDiscovery,
   onRefresh,
   match,
-  autoSelectByViewers = true
+  autoSelectByViewers = false
 }: StreamSourcesProps) => {
   const [localStreams, setLocalStreams] = useState<Record<string, Stream[]>>({});
   const [loadingStreams, setLoadingStreams] = useState<Record<string, boolean>>({});
