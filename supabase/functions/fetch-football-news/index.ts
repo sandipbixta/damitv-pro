@@ -16,6 +16,16 @@ interface NewsArticle {
   publishedAt: string;
 }
 
+interface CachedData {
+  articles: any[];
+  totalResults: number;
+  cachedAt: number;
+}
+
+// In-memory cache with 15-minute TTL
+let cache: CachedData | null = null;
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,7 +36,20 @@ serve(async (req) => {
       throw new Error("NEWS_API_KEY is not configured");
     }
 
-    console.log("Fetching football news from NewsAPI...");
+    // Check cache first
+    const now = Date.now();
+    if (cache && (now - cache.cachedAt) < CACHE_TTL_MS) {
+      console.log("Returning cached news data (cached", Math.round((now - cache.cachedAt) / 1000), "seconds ago)");
+      return new Response(JSON.stringify({ 
+        articles: cache.articles,
+        totalResults: cache.totalResults,
+        cached: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("Cache miss or expired. Fetching fresh news from NewsAPI...");
 
     // Fetch sports news from NewsAPI
     const response = await fetch(
@@ -48,6 +71,19 @@ serve(async (req) => {
       console.error("NewsAPI error:", response.status, errorText);
       
       if (response.status === 429) {
+        // If rate limited but we have stale cache, return it
+        if (cache) {
+          console.log("Rate limited, returning stale cache");
+          return new Response(JSON.stringify({ 
+            articles: cache.articles,
+            totalResults: cache.totalResults,
+            cached: true,
+            stale: true
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        
         return new Response(JSON.stringify({ 
           error: "Rate limited. Please try again later.",
           articles: []
@@ -82,15 +118,37 @@ serve(async (req) => {
 
     console.log(`Returning ${articles.length} formatted articles`);
 
+    // Update cache
+    cache = {
+      articles,
+      totalResults: data.totalResults || 0,
+      cachedAt: now
+    };
+
     return new Response(JSON.stringify({ 
       articles,
-      totalResults: data.totalResults || 0
+      totalResults: data.totalResults || 0,
+      cached: false
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error) {
     console.error("Football news fetch error:", error);
+    
+    // If we have any cache, return it on error
+    if (cache) {
+      console.log("Error occurred, returning stale cache as fallback");
+      return new Response(JSON.stringify({ 
+        articles: cache.articles,
+        totalResults: cache.totalResults,
+        cached: true,
+        stale: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : "Unknown error",
       articles: []
