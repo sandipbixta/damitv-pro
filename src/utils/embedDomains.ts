@@ -3,7 +3,7 @@
 
 export const EMBED_DOMAIN = 'https://embed.damitv.pro';
 
-// Build embed URL - always uses damitv.pro
+// Build embed URL - always uses damitv.pro with query params
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -12,8 +12,9 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Always use embed.damitv.pro regardless of domain param
-  return `${EMBED_DOMAIN}/embed/${source}/${id}/${streamNo}`;
+  // Use query parameter format: ?id=matchId&source=source&autoplay=true
+  const matchId = matchSlug || id;
+  return `${EMBED_DOMAIN}/?id=${matchId}&source=${source.toLowerCase()}&autoplay=true`;
 };
 
 // Get the embed domain - always returns damitv.pro
