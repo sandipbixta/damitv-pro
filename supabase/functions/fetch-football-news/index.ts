@@ -26,6 +26,58 @@ interface CachedData {
 let cache: CachedData | null = null;
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
+// Fallback articles when rate limited and no cache available
+const FALLBACK_ARTICLES = [
+  {
+    title: "Premier League Weekend Preview: Top Teams Battle for Supremacy",
+    summary: "The Premier League returns with exciting matchups as title contenders clash in crucial fixtures.",
+    url: "https://www.bbc.com/sport/football",
+    image: "https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=800&q=80",
+    source: "Sports News",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Champions League Quarter-Finals: Draw and Key Matchups Revealed",
+    summary: "Europe's elite clubs prepare for thrilling quarter-final encounters in the Champions League.",
+    url: "https://www.uefa.com/uefachampionsleague/",
+    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80",
+    source: "UEFA",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "La Liga Title Race Heats Up as Real Madrid and Barcelona Face Off",
+    summary: "Spanish football's biggest rivalry takes center stage in an electrifying El Clasico showdown.",
+    url: "https://www.laliga.com/",
+    image: "https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=800&q=80",
+    source: "La Liga",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Serie A: Inter Milan Continue Dominant Run Towards the Scudetto",
+    summary: "Inter Milan extend their lead at the top of Serie A with another commanding victory.",
+    url: "https://www.legaseriea.it/",
+    image: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&q=80",
+    source: "Serie A",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Bundesliga Action: Bayern Munich Face Stiff Competition from Rivals",
+    summary: "The German top flight delivers excitement as Bayern Munich battle for league supremacy.",
+    url: "https://www.bundesliga.com/",
+    image: "https://images.unsplash.com/photo-1606925797300-0b35e9d1794e?w=800&q=80",
+    source: "Bundesliga",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Transfer Window: Latest Rumors and Confirmed Deals in European Football",
+    summary: "Stay updated with the latest transfer news as clubs prepare for the upcoming window.",
+    url: "https://www.transfermarkt.com/",
+    image: "https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=800&q=80",
+    source: "Transfer News",
+    publishedAt: new Date().toISOString()
+  }
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -84,11 +136,14 @@ serve(async (req) => {
           });
         }
         
+        // Return fallback articles when rate limited and no cache
+        console.log("Rate limited with no cache, returning fallback articles");
         return new Response(JSON.stringify({ 
-          error: "Rate limited. Please try again later.",
-          articles: []
+          articles: FALLBACK_ARTICLES,
+          totalResults: FALLBACK_ARTICLES.length,
+          cached: false,
+          fallback: true
         }), {
-          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -149,11 +204,14 @@ serve(async (req) => {
       });
     }
     
+    // Return fallback articles on any error when no cache
+    console.log("Error with no cache, returning fallback articles");
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error",
-      articles: []
+      articles: FALLBACK_ARTICLES,
+      totalResults: FALLBACK_ARTICLES.length,
+      cached: false,
+      fallback: true
     }), {
-      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
