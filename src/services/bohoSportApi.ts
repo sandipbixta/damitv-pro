@@ -17,17 +17,16 @@ const CORS_PROXIES = [
 // Legacy stream base URL (fallback only)
 const STREAM_BASE = 'https://streamed.su';
 
-// Generate match slug for topembed format (e.g., "new-york-rangers_seattle-kraken")
+// Generate match slug for embed URL (e.g., "northwestern-state-vs-houston-christian")
 const generateMatchSlug = (title: string): string => {
-  // Split by " vs " or " - " to get team names
-  const parts = title.split(/\s+(?:vs\.?|v\.?|-)\s+/i);
-  if (parts.length >= 2) {
-    const team1 = parts[0].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const team2 = parts[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    return `${team1}_${team2}`;
-  }
-  // Fallback: just convert title to slug
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  // Clean up title and create URL-friendly slug
+  return title
+    .toLowerCase()
+    .replace(/\s+vs\.?\s+/gi, '-vs-')
+    .replace(/\s+v\.?\s+/gi, '-vs-')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 };
 
 // Build ad-free embed URL using domain manager
@@ -40,11 +39,13 @@ const buildAdFreeEmbedUrl = (
 ): string => {
   const domain = getEmbedDomainSync();
   
-  // Generate slug and timestamp for topembed format
-  const matchSlug = matchTitle ? generateMatchSlug(matchTitle) : undefined;
+  // Generate slug from match title
+  const matchSlug = matchTitle ? generateMatchSlug(matchTitle) : matchId;
+  
+  // Get timestamp in milliseconds
   const matchTimestamp = matchDate 
-    ? Math.floor((typeof matchDate === 'number' ? matchDate : new Date(matchDate).getTime()) / 1000)
-    : undefined;
+    ? (typeof matchDate === 'number' ? matchDate : new Date(matchDate).getTime())
+    : Date.now();
   
   return buildEmbedUrl(domain, source, matchId, streamNo, matchSlug, matchTimestamp);
 };
