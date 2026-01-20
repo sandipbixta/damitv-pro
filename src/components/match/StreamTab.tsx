@@ -196,6 +196,7 @@ const StreamTab = ({
         streamDiscovery={streamDiscovery}
         onRefresh={handleRefresh}
         match={match}
+        autoSelectByViewers={true}
       />
       
       {/* Banner Ad - Desktop: below stream links, Mobile: before Popular Now */}
