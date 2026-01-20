@@ -451,17 +451,27 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({
   // Stream loads immediately - no overlay needed
 
   if (!stream || error) {
-    // No countdown overlay - show simple error/no stream state
+    // No countdown overlay - show simple error/no stream state with overlay prompt
     return (
-      <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video bg-gray-900 rounded-2xl flex items-center justify-center`}>
-        <div className="text-center text-white p-6">
-          <Play className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-semibold mb-2">
-            {!stream ? 'No Stream Available' : 'Stream Error'}
+      <div className={`w-full ${isTheaterMode ? 'max-w-none' : 'max-w-5xl'} mx-auto aspect-video bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl flex items-center justify-center relative overflow-hidden`}>
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
+        </div>
+        
+        <div className="text-center text-white p-6 z-10">
+          <div className="relative mb-6">
+            <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+              <Monitor className="w-10 h-10 text-primary" />
+            </div>
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rounded-full animate-pulse" />
+          </div>
+          <h3 className="text-xl font-bold mb-2">
+            {!stream ? 'Select a Stream Source' : 'Stream Unavailable'}
           </h3>
-          <p className="text-gray-400 mb-4">
+          <p className="text-gray-400 mb-6 max-w-xs mx-auto">
             {!stream 
-              ? 'Please select a stream source to watch.' 
+              ? 'Choose a stream source from the options below to start watching.'
               : 'Failed to load the stream. Please try again.'
             }
           </p>
