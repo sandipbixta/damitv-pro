@@ -26,7 +26,7 @@ import heroBackground from '@/assets/hero-background.jpeg';
 import HomepageContent from '@/components/HomepageContent';
 import CustomMatchCards from '@/components/CustomMatchCards';
 import LatestHighlights from '@/components/LatestHighlights';
-import CDNLiveMatches from '@/components/CDNLiveMatches';
+
 import PerplexityNews from '@/components/PerplexityNews';
 import UpcomingMatchPreviews from '@/components/UpcomingMatchPreviews';
 
@@ -210,8 +210,6 @@ const Index = () => {
           />
         </div>
 
-        {/* CDN Live Matches - Horizontal carousel */}
-        <CDNLiveMatches />
 
         <div>
           <FeaturedMatches visibleManualMatches={visibleManualMatches} />
