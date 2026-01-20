@@ -475,7 +475,13 @@ export const fetchMatch = async (sportId: string, matchId: string): Promise<Matc
 };
 
 // Fetch stream for a match - uses ad-free embed player
-export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
+export const fetchSimpleStream = async (
+  source: string, 
+  id: string, 
+  category?: string,
+  matchTitle?: string,
+  matchDate?: number
+): Promise<Stream[]> => {
   const cacheKey = `boho-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
@@ -483,8 +489,8 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   try {
     console.log(`🎬 Building ad-free embed URL for source: ${source}, id: ${id}`);
 
-    // Use ad-free embed URL
-    const adFreeUrl = buildAdFreeEmbedUrl(id, source);
+    // Use ad-free embed URL with proper match info
+    const adFreeUrl = buildAdFreeEmbedUrl(id, source, 1, matchTitle, matchDate);
     
     const primaryStream: Stream = {
       id: id,
@@ -554,7 +560,7 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
         const streamId = item.id || id;
         const streamSource = item.source || source;
         
-        // Use our primary embed domain path format
+        // Use direct HLS URL if available, otherwise use our embed format
         const embedUrl = isHls ? url : buildEmbedUrl(EMBED_DOMAIN, streamSource, streamId, streamNo);
         return {
           id: streamId,
@@ -579,9 +585,10 @@ const fetchStreamFromApi = async (source: string, id: string): Promise<Stream[]>
   }
 };
 
-// Generate fallback embed URL when API fails
-const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
-  return buildEmbedUrl(EMBED_DOMAIN, source, id, streamNo);
+// Generate fallback embed URL when API fails - uses match info for proper slug
+const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number, matchTitle?: string, matchDate?: number): string => {
+  const slug = matchTitle ? generateMatchSlug(matchTitle) : undefined;
+  return buildEmbedUrl(EMBED_DOMAIN, source, id, streamNo, slug, matchDate);
 };
 
 // Fetch all streams for a match - fetches real embed URLs from API with fallback
@@ -627,8 +634,8 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
           }
         }
       } else if (src.source && src.id) {
-        // API failed - generate fallback embed URL
-        const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
+        // API failed - generate fallback embed URL with match info
+        const fallbackUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber, match.title, match.date);
         console.log(`⚠️ Using fallback for ${src.source}/${src.id}: ${fallbackUrl}`);
         
         allStreams.push({
@@ -652,8 +659,9 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   // If still no streams, create fallback using match ID with proper embed format
   if (allStreams.length === 0 && match.id) {
     console.warn(`⚠️ No streams from API, using match ID fallback: ${match.id}`);
-    // Use embed.damitv.pro embed format
-    const fallbackUrl = `https://embed.damitv.pro/embed/alpha/${match.id}/1`;
+    // Use proper embed format with match title
+    const matchSlug = match.title ? generateMatchSlug(match.title) : undefined;
+    const fallbackUrl = buildEmbedUrl(EMBED_DOMAIN, 'alpha', match.id, 1, matchSlug, match.date);
     
     allStreams.push({
       id: match.id,

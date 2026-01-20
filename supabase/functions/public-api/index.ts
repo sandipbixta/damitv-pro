@@ -146,6 +146,20 @@ serve(async (req) => {
     const rawMatches = await fetchMatches();
     const now = Date.now();
 
+    // Helper to generate embed URL in new format
+    const generateEmbedUrl = (source: string, matchId: string, title: string, date: number) => {
+      const slug = title
+        .toLowerCase()
+        .replace(/\s+vs\.?\s+/gi, '-vs-')
+        .replace(/\s+v\.?\s+/gi, '-vs-')
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      const timestamp = date || Date.now();
+      const fullId = `${timestamp}-${slug}`;
+      return `https://embed.damitv.pro/?id=${encodeURIComponent(fullId)}&source=${encodeURIComponent(source)}&autoplay=true`;
+    };
+
     // Process matches with embed URLs
     const matches = rawMatches
       .filter((m: any) => {
@@ -156,7 +170,7 @@ serve(async (req) => {
         const sources = (m.sources || []).map((s: any, idx: number) => ({
           source: s.source,
           id: s.id,
-          embedUrl: `https://embed.damitv.pro/embed/${s.source}/${s.id}/${idx + 1}`,
+          embedUrl: generateEmbedUrl(s.source, s.id, m.title || '', m.date),
         }));
 
         return {
@@ -212,7 +226,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       timestamp: new Date().toISOString(),
-      embedBaseUrl: 'https://embed.damitv.pro/embed/{source}/{id}/{streamNo}',
+      embedBaseUrl: 'https://embed.damitv.pro/?id={timestamp}-{slug}&source={source}&autoplay=true',
       data: {
         categories,
         liveMatches,
