@@ -10,7 +10,27 @@ const NEWS_API_KEY = Deno.env.get("NEWS_API_KEY");
 // In-memory cache to avoid rate limiting
 let cachedArticles: any[] = [];
 let cacheTimestamp = 0;
-const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes cache
+const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour cache (increased from 30 min)
+
+// Fallback static articles when rate limited and no cache
+const FALLBACK_ARTICLES = [
+  {
+    title: "Live Sports Coverage Available Now",
+    summary: "Watch live matches from Premier League, La Liga, NBA, NFL and more sports.",
+    url: "#",
+    image: "https://images.unsplash.com/photo-1461896836934- voices-from-around-the-world?w=400",
+    source: "DamiTV",
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Upcoming Major Sporting Events",
+    summary: "Don't miss the biggest games happening this week across all major leagues.",
+    url: "#",
+    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400",
+    source: "DamiTV",
+    publishedAt: new Date().toISOString()
+  }
+];
 
 interface NewsArticle {
   title: string;
@@ -42,7 +62,15 @@ serve(async (req) => {
     }
 
     if (!NEWS_API_KEY) {
-      throw new Error("NEWS_API_KEY is not configured");
+      console.log("NEWS_API_KEY not configured - returning fallback articles");
+      return new Response(JSON.stringify({ 
+        articles: FALLBACK_ARTICLES,
+        cached: false,
+        fallback: true,
+        totalResults: FALLBACK_ARTICLES.length
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log("Fetching fresh sports news from NewsAPI...");
@@ -79,12 +107,15 @@ serve(async (req) => {
         });
       }
       
+      // Return fallback articles on rate limit with no cache
       if (response.status === 429) {
+        console.log("Rate limited with no cache - returning fallback articles");
         return new Response(JSON.stringify({ 
-          error: "Rate limited. Please try again later.",
-          articles: []
+          articles: FALLBACK_ARTICLES,
+          cached: false,
+          fallback: true,
+          totalResults: FALLBACK_ARTICLES.length
         }), {
-          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -116,7 +147,7 @@ serve(async (req) => {
     cachedArticles = articles;
     cacheTimestamp = now;
     
-    console.log(`Cached ${articles.length} articles for 30 minutes`);
+    console.log(`Cached ${articles.length} articles for 1 hour`);
 
     return new Response(JSON.stringify({ 
       articles,
@@ -142,11 +173,13 @@ serve(async (req) => {
       });
     }
     
+    // Return fallback articles
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error",
-      articles: []
+      articles: FALLBACK_ARTICLES,
+      cached: false,
+      fallback: true,
+      totalResults: FALLBACK_ARTICLES.length
     }), {
-      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

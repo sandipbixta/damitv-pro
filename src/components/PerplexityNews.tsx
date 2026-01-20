@@ -111,28 +111,29 @@ const PerplexityNews: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching football news from NewsAPI...');
+      console.log('Fetching sports news...');
       
-      // Use NewsAPI edge function for real images
       const { data, error: fetchError } = await supabase.functions.invoke('fetch-football-news');
       
       if (fetchError) {
         console.error('Error fetching news:', fetchError);
-        setError('Failed to load news');
+        // Don't show error to user - just hide section
+        setArticles([]);
         return;
       }
       
+      // Accept articles regardless of source (cached, fallback, or fresh)
       if (data?.articles && data.articles.length > 0) {
-        console.log('Received articles:', data.articles.length);
+        console.log('Received articles:', data.articles.length, data.cached ? '(cached)' : '', data.fallback ? '(fallback)' : '');
         setArticles(data.articles);
-      } else if (data?.error) {
-        setError(data.error);
       } else {
-        setError('No articles available');
+        // Just hide the section if no articles
+        setArticles([]);
       }
     } catch (err) {
       console.error('Failed to fetch news:', err);
-      setError('Failed to load news');
+      // Don't show error - just hide section
+      setArticles([]);
     } finally {
       setLoading(false);
     }
@@ -142,26 +143,9 @@ const PerplexityNews: React.FC = () => {
     fetchArticles();
   }, [fetchArticles]);
 
-  if (error) {
-    return (
-      <section className="mb-10">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-          <Newspaper className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-extrabold tracking-tight text-foreground uppercase">
-            Sports News
-          </h2>
-          </div>
-          <Button variant="ghost" size="sm" onClick={fetchArticles}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Retry
-          </Button>
-        </div>
-        <div className="flex items-center gap-2 text-destructive p-4 bg-destructive/10 rounded-lg">
-          <AlertCircle className="w-5 h-5" />
-          <span>{error}</span>
-        </div>
-      </section>
-    );
+  // Hide section if no articles and not loading
+  if (!loading && articles.length === 0) {
+    return null;
   }
 
   return (
