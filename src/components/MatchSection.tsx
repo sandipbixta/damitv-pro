@@ -2,7 +2,6 @@
 import React from 'react';
 import { Match } from '../types/sports';
 import MatchCard from './MatchCard';
-import { useIsMobile } from '../hooks/use-mobile';
 import { Clock } from 'lucide-react';
 
 interface MatchSectionProps {
@@ -26,8 +25,6 @@ const MatchSection: React.FC<MatchSectionProps> = ({
   onMatchSelect,
   preventNavigation = false
 }) => {
-  const isMobile = useIsMobile();
-
   if (matches.length === 0 && showEmptyMessage) {
     return (
       <div className="mb-8">
@@ -66,7 +63,7 @@ const MatchSection: React.FC<MatchSectionProps> = ({
           {matches.length} {matches.length === 1 ? 'match' : 'matches'}
         </span>
       </h2>
-      <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5'} gap-3 md:gap-4 ${isLive ? 'live-matches-grid' : 'upcoming-matches-grid'} auto-rows-fr`}>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {matches.map((match, index) => (
           <div 
             key={`${isLive ? 'live' : 'upcoming'}-${match.id}-${index}`}

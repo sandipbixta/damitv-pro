@@ -1,84 +1,93 @@
+// Team logo hook - uses TheSportsDB API for high-quality logos and images
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { teamLogoService } from '@/services/teamLogoService';
+import { fetchTeamData, TeamData } from '@/services/theSportsDbApi';
 
-interface TeamLogoCache {
-  [key: string]: string | null;
-}
+// Local cache to avoid re-fetching during component re-renders
+const localCache = new Map<string, TeamData | null>();
 
-// In-memory cache to prevent redundant API calls
-const logoCache: TeamLogoCache = {};
+// Helper to get badge URL from streamed.pk hash
+const getBadgeUrl = (badge: string | undefined): string | null => {
+  if (!badge) return null;
+  if (badge.startsWith('http')) return badge;
+  if (badge.length > 20 && !badge.includes('/')) {
+    return `https://streamed.pk/api/images/proxy/${badge}.webp`;
+  }
+  return null;
+};
 
-export const useTeamLogo = (teamName: string | undefined, existingLogo?: string, badge?: string) => {
-  const [logo, setLogo] = useState<string | null>(existingLogo || null);
+export const useTeamLogo = (
+  teamName: string | undefined,
+  existingLogo?: string,
+  badge?: string
+) => {
+  // Get fallback badge URL immediately
+  const fallbackBadge = getBadgeUrl(badge);
+
+  // Initialize with existing logo or fallback badge
+  const [logo, setLogo] = useState<string | null>(existingLogo || fallbackBadge);
+  const [fanart, setFanart] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!teamName) {
-      setLogo(null);
+      setLogo(fallbackBadge);
+      setFanart(null);
       return;
     }
 
-    // If we already have a logo from the match data, use it
-    if (existingLogo) {
+    // If we already have a valid logo URL from existing data, use it
+    if (existingLogo && existingLogo.startsWith('http')) {
       setLogo(existingLogo);
       return;
     }
 
-    // Check local service first (for badges from streamed API)
-    const localLogo = teamLogoService.getTeamLogo(teamName, badge);
-    if (localLogo) {
-      setLogo(localLogo);
-      return;
+    // Set fallback badge immediately while we fetch from TheSportsDB
+    if (fallbackBadge && !logo) {
+      setLogo(fallbackBadge);
     }
 
-    // Normalize team name for cache key
+    // Check local cache
     const cacheKey = teamName.toLowerCase().trim();
-
-    // Check cache
-    if (cacheKey in logoCache) {
-      setLogo(logoCache[cacheKey]);
+    if (localCache.has(cacheKey)) {
+      const cached = localCache.get(cacheKey);
+      if (cached) {
+        setLogo(cached.badge || cached.logo || fallbackBadge);
+        setFanart(cached.fanart || cached.banner || null);
+      }
       return;
     }
 
-    // Fetch from TheSportsDB via edge function
-    const fetchLogo = async () => {
+    // Fetch from TheSportsDB API in background
+    const fetchData = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('fetch-team-logo', {
-          body: { teamName }
-        });
+        const teamData = await fetchTeamData(teamName);
 
-        if (error) {
-          console.error('Error fetching team logo:', error);
-          logoCache[cacheKey] = null;
-          setLogo(null);
-          return;
-        }
-
-        if (data?.success && data?.logo_url) {
-          logoCache[cacheKey] = data.logo_url;
-          setLogo(data.logo_url);
+        if (teamData && (teamData.badge || teamData.logo)) {
+          localCache.set(cacheKey, teamData);
+          setLogo(teamData.badge || teamData.logo);
+          setFanart(teamData.fanart || teamData.banner || null);
         } else {
-          logoCache[cacheKey] = null;
-          setLogo(null);
+          // TheSportsDB failed or no data - keep using fallback badge
+          if (fallbackBadge) {
+            localCache.set(cacheKey, { logo: fallbackBadge, badge: fallbackBadge, fanart: null, banner: null });
+          }
         }
-      } catch (err) {
-        console.error('Failed to fetch team logo:', err);
-        logoCache[cacheKey] = null;
-        setLogo(null);
+      } catch (error) {
+        console.error('Error fetching team data:', error);
+        // Keep fallback badge on error
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchLogo();
-  }, [teamName, existingLogo, badge]);
+    fetchData();
+  }, [teamName, existingLogo, badge, fallbackBadge]);
 
-  return { logo, isLoading };
+  return { logo: logo || fallbackBadge, fanart, isLoading };
 };
 
-// Hook to get both team logos for a match
+// Hook to get both team logos and fanart for a match
 export const useMatchTeamLogos = (
   homeTeam?: string | { name: string; logo?: string; badge?: string },
   awayTeam?: string | { name: string; logo?: string; badge?: string }
@@ -100,14 +109,14 @@ export const useMatchTeamLogos = (
 
   const homeName = getTeamName(homeTeam);
   const awayName = getTeamName(awayTeam);
-  
-  const { logo: homeLogo, isLoading: homeLoading } = useTeamLogo(
+
+  const { logo: homeLogo, fanart: homeFanart, isLoading: homeLoading } = useTeamLogo(
     homeName,
     getTeamLogo(homeTeam),
     getTeamBadge(homeTeam)
   );
-  
-  const { logo: awayLogo, isLoading: awayLoading } = useTeamLogo(
+
+  const { logo: awayLogo, fanart: awayFanart, isLoading: awayLoading } = useTeamLogo(
     awayName,
     getTeamLogo(awayTeam),
     getTeamBadge(awayTeam)
@@ -116,6 +125,8 @@ export const useMatchTeamLogos = (
   return {
     homeLogo,
     awayLogo,
+    homeFanart,
+    awayFanart,
     isLoading: homeLoading || awayLoading
   };
 };

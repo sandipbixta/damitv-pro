@@ -27,6 +27,17 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
   const [isLoading, setIsLoading] = useState(true);
   const [loadAttempts, setLoadAttempts] = useState(0);
 
+  // Ensure autoplay=true is added to embed URLs
+  const embedSrc = React.useMemo(() => {
+    if (!src) return src;
+    // Add autoplay for embedsports.top and other embed domains
+    if (!src.includes('autoplay=')) {
+      const separator = src.includes('?') ? '&' : '?';
+      return `${src}${separator}autoplay=true`;
+    }
+    return src;
+  }, [src]);
+
   // Handle home navigation
   const handleHomeClick = () => {
     console.log('DAMITV home button clicked from iframe player');
@@ -38,7 +49,7 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
     console.log('✅ Iframe content loaded');
     setIsLoading(false);
     onLoad();
-    
+
     // Apply ad blocking on iframe load
     if (iframeRef.current) {
       removeAdsFromIframe(iframeRef.current);
@@ -144,9 +155,9 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         </div>
       )}
 
-      <iframe 
+      <iframe
         ref={iframeRef}
-        src={src}
+        src={embedSrc}
         className="w-full h-full absolute inset-0"
         allowFullScreen
         title={title || "Live Stream"}
@@ -154,10 +165,11 @@ const IframeVideoPlayer: React.FC<IframeVideoPlayerProps> = ({ src, onLoad, onEr
         onError={handleIframeError}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         loading="eager"
-        style={{ 
+        style={{
           border: 'none'
         }}
       />
+
     </div>
   );
 };

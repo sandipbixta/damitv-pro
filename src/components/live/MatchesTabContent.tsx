@@ -4,7 +4,6 @@ import { Match, Sport } from '../../types/sports';
 import { TabsContent } from '../ui/tabs';
 import MatchCard from '../MatchCard';
 import { Button } from '../ui/button';
-import { useIsMobile } from '../../hooks/use-mobile';
 import { Badge } from '../ui/badge';
 import { Search, Tv, Calendar, RefreshCcw, CircleDot, Dribbble } from 'lucide-react';
 
@@ -29,8 +28,6 @@ const MatchesTabContent: React.FC<MatchesTabContentProps> = ({
   onSearchClear,
   onRetryLoading
 }) => {
-  const isMobile = useIsMobile();
-
   // Helper function to group matches by sport
   const groupMatchesBySport = (matches: Match[]) => {
     const groupedMatches: Record<string, Match[]> = {};
@@ -95,7 +92,7 @@ const MatchesTabContent: React.FC<MatchesTabContentProps> = ({
           </Badge>
         </div>
         
-        <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'} gap-3 md:gap-4`}>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           {groupedMatches[sportId].map((match) => (
             <div 
               key={`${sportId}-${match.id}`} 
@@ -144,7 +141,7 @@ const MatchesTabContent: React.FC<MatchesTabContentProps> = ({
       {filteredMatches.length > 0 ? (
         activeSportFilter === "all" ? 
           renderMatchesBySport(filteredMatches) :
-          <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'} gap-3 md:gap-4`}>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             {filteredMatches.map((match) => (
               <div 
                 key={`${tabValue}-${match.id}`} 

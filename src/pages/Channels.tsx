@@ -11,6 +11,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Helmet } from 'react-helmet-async';
 import { Calendar } from 'lucide-react';
+import BannerAd from '../components/BannerAd';
+import LeaderboardAd from '../components/LeaderboardAd';
 
 
 const Channels = () => {
@@ -157,9 +159,15 @@ const Channels = () => {
             Access 70+ international sports channels streaming live in HD quality. Watch football, basketball, tennis and more. DamiTV is your trusted <a href="https://damitv.pro/" className="text-primary hover:underline font-medium">vipleague alternative with HD streams</a> for all major sports.
           </p>
         </header>
-        
+
+        {/* Banner Ad - Below Header (ATF) */}
+        <BannerAd className="mb-6" />
+
         <ChannelsGrid />
-        
+
+        {/* Leaderboard Ad - After Channels Grid (Natural Break) */}
+        <LeaderboardAd className="my-6" />
+
         {/* Cross-promotion section */}
         <section className="my-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl p-8 relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('/hero-pattern.svg')] opacity-10"></div>

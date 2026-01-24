@@ -24,6 +24,8 @@ import MatchCard from '../components/MatchCard';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 
 import PopularMatches from '../components/PopularMatches';
+import BannerAd from '../components/BannerAd';
+import LeaderboardAd from '../components/LeaderboardAd';
 
 const Live = () => {
   const { toast } = useToast();
@@ -185,7 +187,10 @@ const Live = () => {
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Live Sports Streaming</h1>
         <p className="text-muted-foreground">Watch live football, basketball, tennis and more. HD streams updated in real-time. Discover the <a href="https://damitv.pro/" className="text-primary hover:underline font-medium">best sports streaming site alternatives</a> for reliable free streaming.</p>
       </header>
-      
+
+      {/* Banner Ad - Below Header (High Visibility, ATF) */}
+      <BannerAd className="mb-6" />
+
       <div className="mb-8">
         <LiveHeader
           liveMatchesCount={liveMatches.length}
@@ -222,7 +227,10 @@ const Live = () => {
           />
         </div>
       )}
-      
+
+      {/* Leaderboard Ad - After Popular Matches (Natural Break) */}
+      <LeaderboardAd className="mb-6" />
+
       <SportFilterPills
         allMatches={allMatches}
         sports={sports}

@@ -1,6 +1,5 @@
 // CDN Channels API Service
 // Fetches live TV channels directly (no edge function)
-// Also fetches 24/7 channels from SportSRC (time === 0)
 
 export interface CDNChannel {
   id: string;
@@ -10,7 +9,7 @@ export interface CDNChannel {
   logo?: string;
   viewers?: number;
   isLive247?: boolean;
-  source?: 'cdn' | 'sportsrc';
+  source?: 'cdn';
 }
 
 // Actual API response format for CDN
@@ -22,16 +21,6 @@ interface CDNApiChannel {
   viewers: number;
 }
 
-// SportSRC match format (channels are matches with time === 0)
-interface SportSRCMatch {
-  id: string;
-  title: string;
-  time: number | string;
-  category: string;
-  poster?: string;
-  sources?: any[];
-}
-
 interface CDNApiResponse {
   total_channels: number;
   channels: CDNApiChannel[];
@@ -39,7 +28,6 @@ interface CDNApiResponse {
 
 // API URLs
 const CDN_API_URL = 'https://api.cdn-live.tv/api/v1/channels/?user=damitv&plan=vip';
-const SPORTSRC_API = 'https://api.sportsrc.org';
 
 // CORS proxy fallbacks
 const CORS_PROXIES = [
@@ -156,19 +144,6 @@ class CDNChannelsApiService {
     };
   }
 
-  private transformSportSRCChannel(match: SportSRCMatch, category: string): CDNChannel {
-    return {
-      id: `sportsrc-${match.id}`,
-      title: match.title,
-      country: category.charAt(0).toUpperCase() + category.slice(1),
-      embedUrl: `https://sportsrc.org/embed/${match.id}`,
-      logo: match.poster || undefined,
-      viewers: 0,
-      isLive247: true,
-      source: 'sportsrc'
-    };
-  }
-
   async fetchChannels(): Promise<CDNChannel[]> {
     // Return cached data if valid
     if (this.cache.data && Date.now() - this.cache.timestamp < this.cacheExpiry) {
@@ -212,15 +187,6 @@ class CDNChannelsApiService {
         console.warn('📺 CDN API failed');
       }
 
-      // Fetch SportSRC 24/7 channels directly
-      try {
-        const sportsrcChannels = await this.fetchSportSRCChannels();
-        allChannels.push(...sportsrcChannels);
-        console.log(`📺 SportSRC returned ${sportsrcChannels.length} 24/7 channels`);
-      } catch (error) {
-        console.warn('📺 SportSRC API failed');
-      }
-
       // Update cache
       this.cache = {
         data: allChannels,
@@ -234,43 +200,6 @@ class CDNChannelsApiService {
       // Return cached data if available, otherwise empty array
       return this.cache.data || [];
     }
-  }
-
-  private async fetchSportSRCChannels(): Promise<CDNChannel[]> {
-    const categories = ['football', 'basketball', 'cricket', 'tennis', 'fight', 'hockey', 'motorsport'];
-    const allChannels: CDNChannel[] = [];
-
-    for (const category of categories) {
-      try {
-        const matchesUrl = `${SPORTSRC_API}/?data=matches&category=${category}`;
-        const matchesData = await fetchWithCorsProxy(matchesUrl);
-
-        if (!matchesData) continue;
-
-        let matches: SportSRCMatch[] = [];
-        if (Array.isArray(matchesData)) {
-          matches = matchesData;
-        } else if (matchesData.matches && Array.isArray(matchesData.matches)) {
-          matches = matchesData.matches;
-        } else if (matchesData.data && Array.isArray(matchesData.data)) {
-          matches = matchesData.data;
-        }
-
-        // Filter for 24/7 channels (time === 0)
-        const channels = matches.filter((m: SportSRCMatch) => {
-          const time = typeof m.time === 'string' ? parseInt(m.time, 10) : m.time;
-          return time === 0;
-        });
-
-        for (const channel of channels) {
-          allChannels.push(this.transformSportSRCChannel(channel, category));
-        }
-      } catch (error) {
-        // Silent fail for individual category
-      }
-    }
-
-    return allChannels;
   }
 
   async getChannelsByCountry(): Promise<Record<string, CDNChannel[]>> {

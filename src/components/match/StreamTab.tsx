@@ -49,7 +49,6 @@ const StreamTab = ({
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [retryCount, setRetryCount] = useState(0);
-  const [currentStreamViewers, setCurrentStreamViewers] = useState<number>(0);
   
   // Auto-fallback hook
   const { tryNextSource, isAutoRetrying, attemptedSourcesCount, totalSourcesCount } = useAutoFallback({
@@ -184,17 +183,16 @@ const StreamTab = ({
         allStreams={allStreams}
         showMatchDetails={false}
       />
-      
+
+
+      {/* Stream Links - Users can switch sources */}
       <StreamSources
         sources={match.sources}
         activeSource={activeSource}
         onSourceChange={handleSourceChange}
-        streamId={streamId}
+        streamId={getStreamId()}
         allStreams={allStreams}
-        currentStreamViewers={currentStreamViewers}
         isLive={isMatchLive()}
-        streamDiscovery={streamDiscovery}
-        onRefresh={handleRefresh}
         match={match}
         autoSelectByViewers={true}
       />
@@ -215,21 +213,13 @@ const StreamTab = ({
         <PopularMatchesList currentMatchId={match.id} />
       </div>
 
-      {!loadingStream && (
+      {/* Match time - only show if not live */}
+      {!loadingStream && !isMatchLive() && (
         <div className="flex items-center justify-center gap-4 mt-4">
-          <div className="flex items-center gap-3">
-            {isMatchLive() ? (
-              <Badge variant="live" className="flex items-center gap-1.5 px-3 py-1">
-                <span className="h-2 w-2 bg-white rounded-full animate-pulse"></span>
-                LIVE NOW
-              </Badge>
-            ) : (
-              <Badge variant="info" className="flex items-center gap-1.5 px-3 py-1 text-white">
-                <Clock size={14} />
-                Starts at {formatMatchTime(match.date)}
-              </Badge>
-            )}
-          </div>
+          <Badge variant="info" className="flex items-center gap-1.5 px-3 py-1 text-white">
+            <Clock size={14} />
+            Starts at {formatMatchTime(match.date)}
+          </Badge>
         </div>
       )}
       

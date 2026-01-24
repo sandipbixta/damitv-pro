@@ -1,1 +1,0 @@
-DELETE FROM notified_matches WHERE match_id = 'live_nba_trail-blazers-pistons-live-streaming-426812112'

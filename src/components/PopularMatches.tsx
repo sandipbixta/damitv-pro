@@ -1,10 +1,10 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Match } from '../types/sports';
 import MatchCard from './MatchCard';
 import { isTrendingMatch } from '../utils/popularLeagues';
 import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
 import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
-import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import { Flame } from 'lucide-react';
 
 interface PopularMatchesProps {
   popularMatches: Match[];
@@ -17,9 +17,6 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
   selectedSport,
   excludeMatchIds = []
 }) => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
   const [enrichedMatches, setEnrichedMatches] = useState<Match[]>([]);
   const [isEnriching, setIsEnriching] = useState(false);
 
@@ -66,7 +63,7 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
         const sorted = matchesWithViewers
           .filter(m => (m.viewerCount || 0) > 0)
           .sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0));
-        
+
         if (sorted.length > 0) {
           setEnrichedMatches(sorted);
         }
@@ -82,39 +79,12 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
     return () => clearInterval(interval);
   }, [prioritizedMatches.length]);
 
-  // Scroll handling
-  const checkScrollability = () => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      setCanScrollLeft(container.scrollLeft > 0);
-      setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
-    }
-  };
-
-  useEffect(() => {
-    checkScrollability();
-    window.addEventListener('resize', checkScrollability);
-    return () => window.removeEventListener('resize', checkScrollability);
-  }, [enrichedMatches]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      const scrollAmount = container.clientWidth * 0.8;
-      container.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-      setTimeout(checkScrollability, 300);
-    }
-  };
-
   if (enrichedMatches.length === 0) {
     return null;
   }
 
   return (
-    <div className="mb-6 group/carousel relative">
+    <div className="mb-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-3 px-1">
         <Flame className="w-5 h-5 text-primary" />
@@ -127,55 +97,17 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
         )}
       </div>
 
-      {/* Carousel Container */}
-      <div className="relative">
-        {/* Left Arrow */}
-        {canScrollLeft && (
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background p-2 rounded-full shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-opacity"
-          >
-            <ChevronLeft className="w-5 h-5 text-foreground" />
-          </button>
-        )}
-
-        {/* Right Arrow */}
-        {canScrollRight && (
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background p-2 rounded-full shadow-lg opacity-0 group-hover/carousel:opacity-100 transition-opacity"
-          >
-            <ChevronRight className="w-5 h-5 text-foreground" />
-          </button>
-        )}
-
-        {/* Left Gradient */}
-        {canScrollLeft && (
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-[5] pointer-events-none" />
-        )}
-
-        {/* Right Gradient */}
-        {canScrollRight && (
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-[5] pointer-events-none" />
-        )}
-
-        {/* Scrollable Content */}
-        <div
-          ref={scrollContainerRef}
-          onScroll={checkScrollability}
-          className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
-        >
-          {enrichedMatches.slice(0, 12).map((match, index) => (
-            <div key={`popular-${match.id}-${index}`} className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[calc((100%-48px)/5)]">
-              <MatchCard
-                match={match}
-                sportId={selectedSport || ''}
-                isPriority={true}
-                isCompact={true}
-              />
-            </div>
-          ))}
-        </div>
+      {/* Grid Layout - 2 mobile, 3 tablet, 5 PC */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        {enrichedMatches.slice(0, 10).map((match, index) => (
+          <MatchCard
+            key={`popular-${match.id}-${index}`}
+            match={match}
+            sportId={selectedSport || ''}
+            isPriority={true}
+            isCompact={true}
+          />
+        ))}
       </div>
     </div>
   );

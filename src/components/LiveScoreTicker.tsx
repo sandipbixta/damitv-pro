@@ -44,8 +44,18 @@ const LiveScoreTicker: React.FC = () => {
       const home = match.teams?.home?.name || '';
       const away = match.teams?.away?.name || '';
       const matchSlug = generateMatchSlug(home, away, match.title);
-      const homeBadge = match.teams?.home?.badge?.startsWith('http') ? match.teams.home.badge : null;
-      const awayBadge = match.teams?.away?.badge?.startsWith('http') ? match.teams.away.badge : null;
+      // Helper to get badge URL - handles both full URLs and hashes
+      const getBadgeUrl = (badge: string | undefined): string | null => {
+        if (!badge) return null;
+        if (badge.startsWith('http')) return badge;
+        // Badge is a hash from streamed.pk API
+        if (badge.length > 20 && !badge.includes('/')) {
+          return `https://streamed.pk/api/images/proxy/${badge}.webp`;
+        }
+        return null;
+      };
+      const homeBadge = getBadgeUrl(match.teams?.home?.badge);
+      const awayBadge = getBadgeUrl(match.teams?.away?.badge);
       
       return {
         id: match.id,
@@ -154,10 +164,11 @@ const LiveScoreTicker: React.FC = () => {
                 {/* Home Team */}
                 <div className="flex items-center gap-1.5">
                   {item.homeBadge && (
-                    <img 
-                      src={item.homeBadge} 
+                    <img
+                      src={item.homeBadge}
                       alt={item.homeTeam}
-                      className="w-4 h-4 object-contain"
+                      style={{ width: 'auto', height: 'auto', maxWidth: 16, maxHeight: 16 }}
+                      className="object-contain flex-shrink-0"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}
@@ -179,10 +190,11 @@ const LiveScoreTicker: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="text-foreground font-medium text-xs max-w-[80px] truncate">{item.awayTeam}</span>
                   {item.awayBadge && (
-                    <img 
-                      src={item.awayBadge} 
+                    <img
+                      src={item.awayBadge}
                       alt={item.awayTeam}
-                      className="w-4 h-4 object-contain"
+                      style={{ width: 'auto', height: 'auto', maxWidth: 16, maxHeight: 16 }}
+                      className="object-contain flex-shrink-0"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}

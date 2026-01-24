@@ -4,10 +4,10 @@ import { format } from 'date-fns';
 import { Match } from '../types/sports';
 import { isMatchLive } from '../utils/matchUtils';
 import { useMatchTeamLogos } from '../hooks/useTeamLogo';
-import { getBohoImageUrl } from '../api/sportsApi';
 import { LiveViewerCount } from './LiveViewerCount';
 import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
 import { getMatchPosterImage } from '../utils/matchImageMapping';
+import { getBohoImageUrl } from '../api/sportsApi';
 
 interface MatchCardProps {
   match: Match;
@@ -30,18 +30,15 @@ const MatchCard: React.FC<MatchCardProps> = ({
 }) => {
   const [countdown, setCountdown] = React.useState<string>('');
   const [isMatchStarting, setIsMatchStarting] = React.useState(false);
-  const [posterFailed, setPosterFailed] = React.useState(false);
 
-  // Use TheSportsDB API for team logos
-  const { homeLogo, awayLogo } = useMatchTeamLogos(
+  // Use TheSportsDB API for team logos and fanart
+  const { homeLogo, awayLogo, homeFanart, awayFanart } = useMatchTeamLogos(
     match.teams?.home,
     match.teams?.away
   );
 
-  // Reset poster error when match changes
-  React.useEffect(() => {
-    setPosterFailed(false);
-  }, [match.id, match.poster]);
+  // Get fanart for background (prefer home team)
+  const teamFanart = homeFanart || awayFanart;
 
   // Calculate countdown for upcoming matches
   React.useEffect(() => {
@@ -98,9 +95,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
     return sport.charAt(0).toUpperCase() + sport.slice(1).replace(/-/g, ' ');
   };
 
-  // Generate thumbnail
+  // Generate thumbnail - Priority: Custom Image → TheSportsDB Fanart → Streamed Poster → Team Logos → Team Initials
   const generateThumbnail = () => {
-    // First check for custom mapped poster image
+    // 1. First check for custom mapped poster image only
     const customPoster = getMatchPosterImage(match.title, match.category);
     if (customPoster) {
       return (
@@ -108,62 +105,76 @@ const MatchCard: React.FC<MatchCardProps> = ({
           <img
             src={customPoster}
             alt={match.title}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
             loading="lazy"
           />
         </div>
       );
     }
 
-    const poster = typeof match.poster === 'string' ? match.poster.trim() : '';
-
-    if (!posterFailed && poster) {
-      const posterUrl = getBohoImageUrl(poster);
-
+    // 2. If we have TheSportsDB fanart, show it (no logo overlay)
+    if (teamFanart) {
       return (
-        <div className="w-full h-full bg-card flex items-center justify-center">
+        <div className="w-full h-full">
+          <img
+            src={teamFanart}
+            alt={match.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      );
+    }
+
+    // 3. If we have a poster from the API, show it (no logo overlay)
+    const posterUrl = match.poster ? getBohoImageUrl(match.poster) : null;
+    if (posterUrl) {
+      return (
+        <div className="w-full h-full">
           <img
             src={posterUrl}
             alt={match.title}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
             loading="lazy"
-            referrerPolicy="no-referrer"
-            onError={() => {
-              setPosterFailed(true);
-            }}
           />
         </div>
       );
     }
 
-    // Fallback with team badges
-    if (homeBadge || awayBadge) {
-      return (
-        <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center gap-6">
-          {homeBadge && (
+    // 4. Show team logos/badges or initials (no fanart or poster available)
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center gap-3 px-6">
+        <div className="flex-1 flex justify-end items-center">
+          {homeBadge ? (
             <img
               src={homeBadge}
               alt={home}
-              className="w-14 h-14 object-contain"
+              style={{ maxWidth: 50, maxHeight: 70 }}
+              className="object-contain w-auto h-auto"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
+          ) : (
+            <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-base font-bold text-muted-foreground">{home.charAt(0) || 'H'}</span>
+            </div>
           )}
-          <span className="text-muted-foreground font-bold text-sm">vs</span>
-          {awayBadge && (
+        </div>
+        <span className="text-muted-foreground font-bold text-xs flex-shrink-0">vs</span>
+        <div className="flex-1 flex justify-start items-center">
+          {awayBadge ? (
             <img
               src={awayBadge}
               alt={away}
-              className="w-14 h-14 object-contain"
+              style={{ maxWidth: 50, maxHeight: 70 }}
+              className="object-contain w-auto h-auto"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
+          ) : (
+            <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-base font-bold text-muted-foreground">{away.charAt(0) || 'A'}</span>
+            </div>
           )}
         </div>
-      );
-    }
-
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center">
-        <span className="text-muted-foreground font-bold text-lg tracking-widest">DAMITV</span>
       </div>
     );
   };
@@ -182,14 +193,16 @@ const MatchCard: React.FC<MatchCardProps> = ({
   const cardContent = (
     <div className="group cursor-pointer h-full">
       <div className="relative overflow-hidden rounded-lg bg-card border border-border/40 transition-all duration-300 hover:border-primary/50 hover:bg-card/90 h-full flex flex-col">
-        {/* Thumbnail Section - Compact has bigger image */}
+        {/* Thumbnail Section */}
         <div
-          className={`relative ${isCompact ? 'h-32 sm:h-36' : 'h-36 sm:h-40'} overflow-hidden flex-shrink-0`}
+          className={`relative ${isCompact ? 'h-28 sm:h-32' : 'h-36 sm:h-40'} flex-shrink-0`}
         >
           {generateThumbnail()}
 
-          {/* Gradient overlay at bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+          {/* Gradient overlay at bottom - for custom posters and API posters */}
+          {(getMatchPosterImage(match.title, match.category) || match.poster) && (
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+          )}
 
           {/* WATCH IN / LIVE Badge - Smaller size */}
           <div className="absolute bottom-2 left-2 z-10">

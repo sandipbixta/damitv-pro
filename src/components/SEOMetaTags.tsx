@@ -208,8 +208,8 @@ const SEOMetaTags: React.FC<SEOMetaTagsProps> = ({
       <meta name="distribution" content="global" />
       
       {/* Performance hints */}
-      <link rel="dns-prefetch" href="//embed.damitv.pro" />
-      <link rel="preconnect" href="//embed.damitv.pro" />
+      <link rel="dns-prefetch" href="//embedsports.top" />
+      <link rel="preconnect" href="//embedsports.top" />
       
       {/* Structured Data */}
       {finalStructuredData && (

@@ -216,7 +216,7 @@ const Index = () => {
         <React.Suspense fallback={<div className="h-32 bg-[#242836] rounded-lg animate-pulse" />}>
           <FeaturedChannels />
         </React.Suspense>
-            
+
             <Separator className="my-8 bg-[#343a4d]" />
             
             {/* Popular by Viewers Section - Only show on home page (no sport selected or All Sports) */}

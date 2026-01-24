@@ -22,7 +22,7 @@ const PerformanceOptimizer: React.FC = () => {
 
       // Preload critical API endpoints
       const criticalEndpoints = [
-        'https://streamed.su/api'
+        'https://streamed.pk/api'
       ];
 
       criticalEndpoints.forEach(url => {

@@ -1,10 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 
-interface BannerAdProps {
+interface SidebarAdProps {
   className?: string;
 }
 
-const BannerAd: React.FC<BannerAdProps> = ({ className = '' }) => {
+/**
+ * Sidebar Skyscraper Ad (160x600)
+ * Best for sticky sidebar placement on desktop
+ */
+const SidebarAd: React.FC<SidebarAdProps> = ({ className = '' }) => {
   const adContainerRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef(false);
 
@@ -12,30 +16,26 @@ const BannerAd: React.FC<BannerAdProps> = ({ className = '' }) => {
     if (!adContainerRef.current || scriptLoadedRef.current) return;
 
     const container = adContainerRef.current;
-
-    // Create a unique container ID
-    const containerId = `banner-ad-${Date.now()}`;
+    const containerId = `sidebar-ad-${Date.now()}`;
     container.id = containerId;
 
-    // Use a small delay to ensure DOM is ready
+    // Staggered delay to avoid conflicts with other ads
     const timer = setTimeout(() => {
-      // Set global atOptions
       (window as any).atOptions = {
-        'key': '24887eba6a7c2444602020b1915f8a43',
+        'key': 'f6b9ed5242d1d0b7ebdc00c5ebba1752',
         'format': 'iframe',
-        'height': 60,
-        'width': 468,
+        'height': 600,
+        'width': 160,
         'params': {}
       };
 
-      // Create and append the invoke script
       const script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = 'https://foreseehawancestor.com/24887eba6a7c2444602020b1915f8a43/invoke.js';
+      script.src = 'https://foreseehawancestor.com/f6b9ed5242d1d0b7ebdc00c5ebba1752/invoke.js';
 
       container.appendChild(script);
       scriptLoadedRef.current = true;
-    }, 100);
+    }, 500);
 
     return () => {
       clearTimeout(timer);
@@ -43,14 +43,14 @@ const BannerAd: React.FC<BannerAdProps> = ({ className = '' }) => {
   }, []);
 
   return (
-    <div className={`w-full flex justify-center py-2 ${className}`}>
+    <div className={`flex justify-center ${className}`}>
       <div
         ref={adContainerRef}
-        className="max-w-full overflow-hidden flex justify-center items-center min-h-[60px]"
-        style={{ maxWidth: '468px', width: '100%' }}
+        className="overflow-hidden flex justify-center items-center"
+        style={{ width: '160px', minHeight: '600px' }}
       />
     </div>
   );
 };
 
-export default BannerAd;
+export default SidebarAd;

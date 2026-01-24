@@ -78,7 +78,7 @@ const HighlightCard: React.FC<{
       </div>
     </div>;
 };
-const LoadingSkeleton = () => <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+const LoadingSkeleton = () => <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
     {[...Array(6)].map((_, i) => <div key={i} className="bg-card border border-border/40 rounded-lg overflow-hidden">
         <Skeleton className="aspect-video" />
         <div className="p-3">
@@ -141,7 +141,7 @@ const LatestHighlights: React.FC = () => {
         {filteredHighlights.length === 0 ? <div className="text-center py-8 text-muted-foreground">
             No highlights available for this sport
           </div> : <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
               {filteredHighlights.slice(0, 12).map(highlight => <HighlightCard key={highlight.id} highlight={highlight} onPlay={setPlayingHighlight} />)}
             </div>
             

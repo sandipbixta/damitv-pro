@@ -24,9 +24,9 @@ import NotFoundState from '@/components/match/NotFoundState';
 import MatchCard from '@/components/MatchCard';
 import MatchAnalysis from '@/components/match/MatchAnalysis';
 import { ViewerStats } from '@/components/match/ViewerStats';
-import AdsterraSocialBar from '@/components/AdsterraSocialBar';
 import BannerAd from '@/components/BannerAd';
-import PopularMatchesSidebar from '@/components/match/PopularMatchesSidebar';
+import SidebarAd from '@/components/SidebarAd';
+import LeaderboardAd from '@/components/LeaderboardAd';
 import PopularMatchesList from '@/components/match/PopularMatchesList';
 
 
@@ -174,7 +174,6 @@ const Match = () => {
 
   return (
     <div className="min-h-screen bg-sports-dark text-sports-light">
-      <AdsterraSocialBar />
       <SEOMetaTags
         title={seoTitle}
         description={seoDescription}
@@ -274,10 +273,10 @@ const Match = () => {
           </div>
         </div>
         
-        {/* Video Player and Native Ad Sidebar Layout */}
+        {/* Video Player and Sidebar Ad Layout */}
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Video Player Section */}
-          <div className="flex-1 min-w-0 lg:w-3/4" id="stream-container" data-stream-container>
+          <div className="flex-1 min-w-0" id="stream-container" data-stream-container>
             <StreamTab
               match={match}
               stream={stream}
@@ -291,16 +290,19 @@ const Match = () => {
               onRefreshStreams={handleRefreshStreams}
             />
 
+            {/* Leaderboard Ad - Below video player on desktop */}
+            <LeaderboardAd className="mt-4" />
+
             {/* Viewer Statistics */}
             <div className="mt-6">
               <ViewerStats match={match} />
             </div>
           </div>
 
-          {/* Popular Matches Sidebar - Desktop Only */}
-          <div className="hidden lg:block lg:w-1/4 flex-shrink-0">
+          {/* Sidebar Ad - Desktop Only (160x600 Skyscraper) */}
+          <div className="hidden lg:block flex-shrink-0">
             <div className="sticky top-4">
-              <PopularMatchesSidebar currentMatchId={matchId} className="w-full" />
+              <SidebarAd />
             </div>
           </div>
         </div>
@@ -326,7 +328,18 @@ const Match = () => {
       
       <footer className="bg-sports-darker text-gray-400 py-6 mt-10">
         <div className="container mx-auto px-4 text-center">
-          <p>© 2025 DamiTV - All rights reserved</p>
+          <p className="mb-2">© 2025 DamiTV - All rights reserved</p>
+          <a
+            href="https://foreseehawancestor.com/zbt0wegpe?key=39548340a9430381e48a2856c8cf8d37"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
+          >
+            <span>Support DamiTV</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </a>
         </div>
       </footer>
     </div>

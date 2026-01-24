@@ -90,6 +90,30 @@ const StreamSources = ({
     }
   };
 
+  // Language code to full name mapping
+  const getLanguageName = (code: string): string => {
+    const languageMap: Record<string, string> = {
+      'EN': 'English',
+      'ES': 'Spanish',
+      'FR': 'French',
+      'DE': 'German',
+      'IT': 'Italian',
+      'PT': 'Portuguese',
+      'RU': 'Russian',
+      'AR': 'Arabic',
+      'ZH': 'Chinese',
+      'JA': 'Japanese',
+      'KO': 'Korean',
+      'NL': 'Dutch',
+      'PL': 'Polish',
+      'TR': 'Turkish',
+      'HI': 'Hindi',
+      'TH': 'Thai',
+      'VI': 'Vietnamese',
+    };
+    return languageMap[code?.toUpperCase()] || code || 'English';
+  };
+
   // Mark admin sources but don't hide them
   const isAdminSourceName = (name: string) => name?.toLowerCase().includes('admin');
   const visibleSources = sources.map(s => ({
@@ -100,13 +124,13 @@ const StreamSources = ({
   // Use pre-loaded streams if available, otherwise use local streams
   const effectiveStreams = Object.keys(allStreams).length > 0 ? allStreams : localStreams;
 
-  // Auto-select stream with most viewers when streams become available
+  // Auto-select first stream immediately when streams become available (no click needed)
   useEffect(() => {
-    if (!autoSelectByViewers || hasAutoSelected || activeSource) return;
-    
+    if (hasAutoSelected) return;
+
     // Collect all streams
     const allAvailable: Array<{ stream: any; source: string; id: string; viewers: number }> = [];
-    
+
     Object.entries(effectiveStreams).forEach(([key, streams]) => {
       streams.forEach((stream: any) => {
         allAvailable.push({
@@ -117,18 +141,18 @@ const StreamSources = ({
         });
       });
     });
-    
+
     if (allAvailable.length === 0) return;
-    
-    // Sort by viewer count (highest first) and auto-select
+
+    // Sort by viewer count (highest first) and auto-select immediately
     const sorted = [...allAvailable].sort((a, b) => b.viewers - a.viewers);
     const bestStream = sorted[0];
-    
-    console.log(`🎯 Auto-selecting stream with ${bestStream.viewers} viewers: ${bestStream.source}/${bestStream.id}`);
-    
+
+    console.log(`🎯 Auto-selecting stream: ${bestStream.source}/${bestStream.id}`);
+
     setHasAutoSelected(true);
     onSourceChange(bestStream.source, bestStream.id, bestStream.stream.streamNo || 1);
-  }, [effectiveStreams, autoSelectByViewers, hasAutoSelected, activeSource, onSourceChange]);
+  }, [effectiveStreams, hasAutoSelected, onSourceChange]);
 
   // LAZY LOAD: Only fetch streams when user clicks a source button (not on mount)
   const fetchStreamForSource = async (source: Source) => {
@@ -316,7 +340,9 @@ const StreamSources = ({
           {visibleSources.map((source, idx) => {
             const sourceKey = `${source.source}/${source.id}`;
             const isLoading = loadingStreams[sourceKey];
-            
+            // Show language name (English 1, English 2, etc.)
+            const displayName = `English ${idx + 1}`;
+
             return (
               <Button
                 key={sourceKey}
@@ -334,7 +360,7 @@ const StreamSources = ({
                       <Play className="w-4 h-4" />
                     </>
                   )}
-                  <span>Stream {idx + 1}</span>
+                  <span>{displayName}</span>
                 </div>
               </Button>
             );
@@ -352,11 +378,9 @@ const StreamSources = ({
             const isActive = activeSource === streamKey;
             const viewerCount = stream.viewers || 0;
             
-            // Use API-provided names with streamNo priority
-            let streamName = stream.name || 
-                            (stream.language && stream.language !== 'Original' ? `${stream.language} ${actualStreamNo}` : null) ||
-                            (stream.source && stream.source !== 'intel' ? `${stream.source.toUpperCase()} ${actualStreamNo}` : null) ||
-                            `Stream ${actualStreamNo}`;
+            // Use language name for display (English 1, Spanish 2, etc.)
+            const languageName = getLanguageName(stream.language || 'EN');
+            let streamName = stream.name || `${languageName} ${actualStreamNo}`;
             
             return (
               <Button

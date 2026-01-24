@@ -15,19 +15,20 @@ const TeamLogoDisplay: React.FC<TeamLogoDisplayProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
 
-  const sizeClasses = {
-    sm: 'w-5 h-5',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12'
+  const sizeConfig = {
+    sm: { size: 20, fontSize: '10px' },
+    md: { size: 32, fontSize: '14px' },
+    lg: { size: 48, fontSize: '18px' }
   };
 
+  const config = sizeConfig[size];
   const initial = teamName.charAt(0).toUpperCase();
 
   if (!logo || imgError) {
     return (
-      <div 
-        className={`${sizeClasses[size]} rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold ${className}`}
-        style={{ fontSize: size === 'sm' ? '10px' : size === 'md' ? '14px' : '18px' }}
+      <div
+        className={`rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold flex-shrink-0 ${className}`}
+        style={{ width: config.size, height: config.size, fontSize: config.fontSize }}
       >
         {initial}
       </div>
@@ -38,7 +39,8 @@ const TeamLogoDisplay: React.FC<TeamLogoDisplayProps> = ({
     <img
       src={logo}
       alt={`${teamName} logo`}
-      className={`${sizeClasses[size]} object-contain rounded ${className}`}
+      style={{ width: 'auto', height: 'auto', maxWidth: config.size, maxHeight: config.size }}
+      className={`object-contain flex-shrink-0 ${className}`}
       onError={() => setImgError(true)}
       loading="lazy"
     />

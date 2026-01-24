@@ -13,8 +13,8 @@ import DatePagination from '../components/DatePagination';
 import PopularGames from '../components/PopularGames';
 import { isPopularLeague } from '../utils/popularLeagues';
 import { Helmet } from 'react-helmet-async';
-
-// import Advertisement from '../components/Advertisement';
+import BannerAd from '../components/BannerAd';
+import LeaderboardAd from '../components/LeaderboardAd';
 
 const Schedule = () => {
   const { toast } = useToast();
@@ -200,13 +200,16 @@ const Schedule = () => {
         />
         
         <div className="mb-6">
-          <DatePagination 
-            currentDate={currentDate} 
-            setCurrentDate={setCurrentDate} 
-            navigateDate={navigateDate} 
+          <DatePagination
+            currentDate={currentDate}
+            setCurrentDate={setCurrentDate}
+            navigateDate={navigateDate}
           />
         </div>
-        
+
+        {/* Banner Ad - Below Date Navigation (High Visibility) */}
+        <BannerAd className="mb-6" />
+
         <div className="mb-8">
           <SportsList 
             sports={sports}
@@ -216,15 +219,13 @@ const Schedule = () => {
           />
         </div>
 
-        <PopularGames 
+        <PopularGames
           popularMatches={popularMatches}
           selectedSport={selectedSport}
         />
 
-        {/* Direct Link Advertisement removed */}
-        {/* <div className="my-6 sm:my-8">
-          <Advertisement type="direct-link" className="w-full" />
-        </div> */}
+        {/* Leaderboard Ad - After Popular Games (Natural Break) */}
+        <LeaderboardAd className="my-6" />
 
         {popularMatches.length > 0 && (
           <Separator className="my-8 bg-black dark:bg-white" />

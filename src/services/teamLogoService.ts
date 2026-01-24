@@ -93,13 +93,17 @@ class TeamLogoService {
 
   public getTeamLogo(teamName: string, teamBadge?: string): string | null {
     if (!teamName) return null;
-    
-    // First priority: Use official API badge if it's already a full URL (from TheSportsDB)
+
+    // First priority: Use official API badge if it's already a full URL
     if (teamBadge && teamBadge.startsWith('http')) {
       return teamBadge;
     }
-    
-    // Note: For non-URL badges, we rely on the useTeamLogo hook to fetch from TheSportsDB
+
+    // Second priority: If badge is a hash, construct the full URL
+    if (teamBadge && teamBadge.length > 20 && !teamBadge.includes('/')) {
+      // Badge is likely a hash from streamed.pk API
+      return `https://streamed.pk/api/images/proxy/${teamBadge}.webp`;
+    }
     
     const normalized = this.normalizeTeamName(teamName);
     

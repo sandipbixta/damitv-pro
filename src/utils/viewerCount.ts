@@ -1,41 +1,10 @@
-import { supabase } from "@/integrations/supabase/client";
+// Viewer count utilities - disabled (frontend only)
 import { Match } from '../types/sports';
 
 export const fetchMatchViewerCounts = async (matchIds: string[]): Promise<Map<string, number>> => {
-  const viewerCounts = new Map<string, number>();
-  
-  try {
-    // Simple direct fetching - no caching, no batching
-    const promises = matchIds.map(async (matchId) => {
-      try {
-        const { data: count, error: countError } = await supabase
-          .rpc('get_viewer_count', { match_id_param: matchId });
-        
-        if (!countError && count !== null && count > 0) {
-          console.log(`👁️ Match ${matchId} has ${count} viewers`);
-          viewerCounts.set(matchId, count);
-        }
-      } catch (err) {
-        console.error(`Error fetching viewer count for match ${matchId}:`, err);
-      }
-    });
-
-    await Promise.all(promises);
-  } catch (error) {
-    console.error('Error in fetchMatchViewerCounts:', error);
-  }
-
-  return viewerCounts;
+  return new Map();
 };
 
 export const enrichMatchesWithViewerCounts = async (matches: Match[]): Promise<Match[]> => {
-  if (matches.length === 0) return matches;
-
-  const matchIds = matches.map(match => match.id);
-  const viewerCounts = await fetchMatchViewerCounts(matchIds);
-
-  return matches.map(match => ({
-    ...match,
-    viewerCount: viewerCounts.get(match.id) || 0
-  }));
+  return matches;
 };

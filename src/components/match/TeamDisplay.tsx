@@ -10,27 +10,43 @@ interface TeamDisplayProps {
 }
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ name, badge, logo, isHome = false, size = 'medium' }) => {
-  // Prioritize logo (from TheSportsDB) over badge - only use badge if it's already a full URL
-  const imageUrl = logo || (badge && badge.startsWith('http') ? badge : '');
-  
+  // Prioritize logo over badge, construct URL if badge is a hash
+  const getBadgeUrl = (badgeStr: string | undefined): string => {
+    if (!badgeStr) return '';
+    if (badgeStr.startsWith('http')) return badgeStr;
+    // Badge is likely a hash from streamed.pk API
+    if (badgeStr.length > 20 && !badgeStr.includes('/')) {
+      return `https://streamed.pk/api/images/proxy/${badgeStr}.webp`;
+    }
+    return '';
+  };
+
+  const imageUrl = logo || getBadgeUrl(badge);
+
   const getSizeClasses = () => {
     switch (size) {
       case 'small':
         return {
-          container: 'w-12 h-12 sm:w-16 sm:h-16',
+          imgSize: '48px',
+          imgSizeSm: '64px',
           text: 'text-xs sm:text-sm',
+          fallbackSize: 'w-12 h-12 sm:w-16 sm:h-16',
           fallback: 'text-lg sm:text-xl'
         };
       case 'large':
         return {
-          container: 'w-20 h-20 md:w-24 md:h-24',
+          imgSize: '80px',
+          imgSizeSm: '96px',
           text: 'text-lg md:text-xl',
+          fallbackSize: 'w-20 h-20 md:w-24 md:h-24',
           fallback: 'text-2xl md:text-3xl'
         };
       default:
         return {
-          container: 'w-16 h-16',
+          imgSize: '64px',
+          imgSizeSm: '64px',
           text: 'text-sm',
+          fallbackSize: 'w-16 h-16',
           fallback: 'text-xl'
         };
     }
@@ -41,21 +57,29 @@ const TeamDisplay: React.FC<TeamDisplayProps> = ({ name, badge, logo, isHome = f
   return (
     <div className="flex flex-col items-center text-center">
       {imageUrl ? (
-        <img 
-          src={imageUrl} 
-          alt={name} 
-          className={`${classes.container} mb-1 sm:mb-2 md:mb-3 object-contain rounded-lg bg-white p-1`}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-            const fallbackDiv = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
-            if (fallbackDiv) {
-              fallbackDiv.style.display = 'flex';
-            }
-          }}
-        />
+        <div className="mb-1 sm:mb-2 md:mb-3">
+          <img
+            src={imageUrl}
+            alt={name}
+            style={{
+              width: 'auto',
+              height: 'auto',
+              maxWidth: classes.imgSize,
+              maxHeight: classes.imgSize
+            }}
+            className="object-contain sm:max-w-none sm:max-h-none"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              const fallbackDiv = (e.target as HTMLImageElement).parentElement?.nextElementSibling as HTMLElement;
+              if (fallbackDiv) {
+                fallbackDiv.style.display = 'flex';
+              }
+            }}
+          />
+        </div>
       ) : null}
-      <div 
-        className={`${classes.container} bg-[#343a4d] rounded-full flex items-center justify-center mb-1 sm:mb-2 md:mb-3 ${imageUrl ? 'hidden' : ''}`}
+      <div
+        className={`${classes.fallbackSize} bg-[#343a4d] rounded-full flex items-center justify-center mb-1 sm:mb-2 md:mb-3 ${imageUrl ? 'hidden' : ''}`}
         style={{ display: imageUrl ? 'none' : 'flex' }}
       >
         <span className={`${classes.fallback} font-bold text-white`}>{name.charAt(0)}</span>

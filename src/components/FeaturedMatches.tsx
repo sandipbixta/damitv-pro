@@ -35,14 +35,7 @@ const FeaturedMatches: React.FC<FeaturedMatchesProps> = ({
           {uniqueMatches.length} available
         </span>
       </div>
-      <div
-        className="
-          grid 
-          grid-cols-2 
-          sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 
-          gap-2 xs:gap-3 sm:gap-4
-        "
-      >
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {uniqueMatches.map((match) => (
           <ManualMatchCard
             key={match.id}

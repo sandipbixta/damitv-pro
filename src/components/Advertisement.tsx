@@ -43,21 +43,30 @@ const Advertisement: React.FC<AdvertisementProps> = ({ type, className = '' }) =
       adRef.current.appendChild(script);
       
     } else if (type === 'video') {
-      // Video ad - new ad script
+      // Video ad - use banner ad format (NOT popunder which auto-triggers)
+      // The popunder script should ONLY be triggered via triggerPopunderAd on user click
+      (window as any).atOptions = {
+        'key': '24887eba6a7c2444602020b1915f8a43',
+        'format': 'iframe',
+        'height': 250,
+        'width': 300,
+        'params': {}
+      };
+
       const script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = '//uncertainbill.com/ae/f7/eb/aef7eba12c46ca91518228f813db6ce5.js';
+      script.src = 'https://foreseehawancestor.com/24887eba6a7c2444602020b1915f8a43/invoke.js';
       script.async = true;
-      
+
       // Add error handling
       script.onerror = () => {
         console.log('Video ad script failed to load');
       };
-      
+
       script.onload = () => {
         console.log('Video ad script loaded successfully');
       };
-      
+
       adRef.current.appendChild(script);
       
     } else if (type === 'direct-link') {

@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Stream, Source } from '../types/sports';
 
-// Source priority for embed.damitv.pro compatibility
+// Source priority for streamed.pk embed compatibility
 // Higher number = higher priority (best working sources first)
 const SOURCE_PRIORITY: Record<string, number> = {
-  // Primary embed.damitv.pro compatible sources (military phonetic)
+  // Primary streamed.pk compatible sources (military phonetic)
   'alpha': 10,
   'bravo': 10,
   'charlie': 10,

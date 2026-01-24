@@ -1,9 +1,9 @@
-// Embed Domain Manager - ONLY uses embed.damitv.pro
-// No fallback - single domain for all sources
+// Embed Domain Manager - Uses stream.damitv.pro
+// Single domain for all sources
 
 export const EMBED_DOMAIN = 'https://embed.damitv.pro';
 
-// Build embed URL - always uses damitv.pro with query params
+// Build embed URL - uses stream.damitv.pro format
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -12,18 +12,37 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Use query parameter format: ?id=matchId&source=source&autoplay=1
-  const matchId = matchSlug || id;
-  return `${EMBED_DOMAIN}/?id=${matchId}&source=${source.toLowerCase()}&autoplay=1`;
+  // Format: https://stream.damitv.pro/?source={source}&id={id}
+  return `${EMBED_DOMAIN}/?source=${source.toLowerCase()}&id=${id}`;
 };
 
-// Get the embed domain - always returns damitv.pro
+// Build 90sport URL - extracts m3u8 directly
+export const build90sportUrl = (matchUrl: string): string => {
+  return `${EMBED_DOMAIN}/?90sport=${encodeURIComponent(matchUrl)}`;
+};
+
+// Fetch m3u8 URL from 90sport (returns direct m3u8 link)
+export const fetch90sportM3u8 = async (matchUrl: string): Promise<string | null> => {
+  try {
+    const res = await fetch(`${EMBED_DOMAIN}/api/90sport?url=${encodeURIComponent(matchUrl)}`);
+    const data = await res.json();
+    if (data.success && data.m3u8) {
+      return data.m3u8;
+    }
+    return null;
+  } catch (e) {
+    console.error('Failed to fetch 90sport m3u8:', e);
+    return null;
+  }
+};
+
+// Get the embed domain - always returns stream.damitv.pro
 export const getWorkingEmbedDomain = async (): Promise<string> => {
   console.log(`✅ Using embed domain: ${EMBED_DOMAIN}`);
   return EMBED_DOMAIN;
 };
 
-// Synchronous version - always returns damitv.pro
+// Synchronous version - always returns stream.damitv.pro
 export const getEmbedDomainSync = (): string => {
   return EMBED_DOMAIN;
 };
