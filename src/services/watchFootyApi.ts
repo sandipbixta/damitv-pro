@@ -236,6 +236,15 @@ const parseMatchData = (item: any): Match | null => {
       }
     }
 
+    // Source priority order - charlie and bravo have more reliable IDs
+    const SOURCE_PRIORITY: Record<string, number> = {
+      'charlie': 1,
+      'bravo': 2,
+      'delta': 3,
+      'echo': 4,
+      'alpha': 5  // alpha last - often has incomplete IDs
+    };
+
     // Build sources array
     const sources: Source[] = [];
     if (item.sources && Array.isArray(item.sources)) {
@@ -246,11 +255,17 @@ const parseMatchData = (item: any): Match | null => {
           sources.push({ source: src, id: String(item.id) });
         }
       });
+      // Sort sources by priority (charlie first, alpha last)
+      sources.sort((a, b) => {
+        const priorityA = SOURCE_PRIORITY[a.source] || 99;
+        const priorityB = SOURCE_PRIORITY[b.source] || 99;
+        return priorityA - priorityB;
+      });
     }
 
-    // If no sources but match has id, create a default source
+    // If no sources but match has id, create a default source (charlie preferred)
     if (sources.length === 0 && item.id) {
-      sources.push({ source: 'alpha', id: String(item.id) });
+      sources.push({ source: 'charlie', id: String(item.id) });
     }
 
     const sportId = mapCategoryToSportId(item.category || item.sport || '');
@@ -660,10 +675,10 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
     }
   }
 
-  // If no streams found, create fallback using match ID
+  // If no streams found, create fallback using match ID (charlie preferred)
   if (allStreams.length === 0 && match.id) {
     console.warn(`⚠️ No streams from sources, using match ID fallback: ${match.id}`);
-    const fallbackUrl = generateFallbackEmbedUrl('alpha', match.id, 1);
+    const fallbackUrl = generateFallbackEmbedUrl('charlie', match.id, 1);
 
     allStreams.push({
       id: match.id,
@@ -671,13 +686,13 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
       language: 'EN',
       hd: true,
       embedUrl: fallbackUrl,
-      source: 'alpha',
+      source: 'charlie',
       timestamp: Date.now(),
       // Don't set name - let StreamSources use source name
       isHls: false
     });
 
-    sourcesWithStreams.add('alpha');
+    sourcesWithStreams.add('charlie');
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
