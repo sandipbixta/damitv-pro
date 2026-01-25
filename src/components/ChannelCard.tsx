@@ -11,14 +11,16 @@ interface ChannelCardProps {
   logo?: string;
   onClick?: () => void;
   isActive?: boolean;
+  viewers?: number;
 }
 
-const ChannelCard: React.FC<ChannelCardProps> = ({ 
-  title, 
-  embedUrl, 
+const ChannelCard: React.FC<ChannelCardProps> = ({
+  title,
+  embedUrl,
   logo,
   onClick,
-  isActive = false
+  isActive = false,
+  viewers
 }) => {
   // Generate a logo from the title
   const generateInitials = () => {
@@ -75,7 +77,15 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
               )}
             </div>
           </div>
-          <div className="font-medium text-xs sm:text-sm text-foreground truncate">{title}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-xs sm:text-sm text-foreground truncate">{title}</div>
+            {viewers !== undefined && viewers > 0 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span>{viewers.toLocaleString()} watching</span>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
