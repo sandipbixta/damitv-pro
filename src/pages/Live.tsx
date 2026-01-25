@@ -35,7 +35,8 @@ const Live = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [activeSportFilter, setActiveSportFilter] = useState<string>("all");
   const [userSelectedMatch, setUserSelectedMatch] = useState<boolean>(false);
-  
+  const [hasAutoSelected, setHasAutoSelected] = useState<boolean>(false);
+
   // Custom hooks for data management
   const { 
     allMatches, 
@@ -74,7 +75,7 @@ const Live = () => {
   useEffect(() => {
     const matchIdFromUrl = searchParams.get('matchId');
     const sportIdFromUrl = searchParams.get('sportId');
-    
+
     if (matchIdFromUrl && allMatches.length > 0 && !userSelectedMatch) {
       const matchToSelect = allMatches.find(m => m.id === matchIdFromUrl);
       if (matchToSelect) {
@@ -84,6 +85,20 @@ const Live = () => {
       }
     }
   }, [searchParams, allMatches, userSelectedMatch]);
+
+  // Auto-select first live match when page loads (auto-play feature)
+  useEffect(() => {
+    // Skip if already auto-selected, user has selected, or URL has match params
+    if (hasAutoSelected || userSelectedMatch) return;
+    if (searchParams.get('matchId')) return;
+
+    // Wait for live matches to load
+    if (liveMatches.length > 0 && !loading) {
+      console.log('🎬 Auto-selecting first live match for auto-play');
+      setHasAutoSelected(true);
+      handleUserMatchSelect(liveMatches[0]);
+    }
+  }, [liveMatches, loading, hasAutoSelected, userSelectedMatch, searchParams]);
 
   // Update filtered matches when search query or filters change
   useEffect(() => {
