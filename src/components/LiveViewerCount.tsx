@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Match } from '@/types/sports';
-import { formatViewerCount, isMatchLive } from '@/services/viewerCountService';
-import { getRealViewerCount } from '@/services/realViewerService';
+import { fetchMatchViewerCount, formatViewerCount, isMatchLive } from '@/services/viewerCountService';
 import { cn } from '@/lib/utils';
 
 // Smooth counter animation
@@ -120,9 +119,9 @@ export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
 
   const fetchCount = useCallback(async () => {
     try {
-      const count = await getRealViewerCount(match.id);
+      const count = await fetchMatchViewerCount(match);
 
-      if (count <= 0) {
+      if (count === null || count <= 0) {
         // No valid data: don't spam retries; keep whatever we already have.
         return;
       }
@@ -208,7 +207,7 @@ export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
         className
       )}
       aria-label={`Current viewer count: ${animatedCount.toLocaleString()}`}
-      title="Live viewers on DamiTV"
+      title="Live viewer count"
     >
       <Users className={cn(iconSizes[size], 'text-sports-primary animate-pulse')} />
       <span className="transition-all duration-500">{formatViewerCount(animatedCount, rounded)}</span>

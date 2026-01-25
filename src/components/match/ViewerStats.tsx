@@ -3,8 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, TrendingUp, TrendingDown, Eye, EyeOff } from 'lucide-react';
 import { Match } from '@/types/sports';
-import { formatViewerCount, isMatchLive } from '@/services/viewerCountService';
-import { getRealViewerCount } from '@/services/realViewerService';
+import { fetchMatchViewerCount, formatViewerCount, isMatchLive } from '@/services/viewerCountService';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
@@ -32,9 +31,9 @@ export const ViewerStats: React.FC<ViewerStatsProps> = ({ match, className }) =>
 
     const fetchCount = async () => {
       try {
-        const count = await getRealViewerCount(match.id);
-        
-        if (count > 0) {
+        const count = await fetchMatchViewerCount(match);
+
+        if (count !== null && count > 0) {
           // Trigger celebration for high viewer counts with confetti
           if (count > 10000 && viewerCount !== null && count > viewerCount) {
             setShowConfetti(true);
@@ -198,7 +197,7 @@ export const ViewerStats: React.FC<ViewerStatsProps> = ({ match, className }) =>
 
         {/* Data source info */}
         <p className="text-xs text-muted-foreground">
-          Live viewers on DamiTV • Updates every 30 seconds
+          Live viewer count • Updates every 30 seconds
         </p>
       </div>
     </Card>
