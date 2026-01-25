@@ -1,8 +1,5 @@
-
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Tv } from 'lucide-react';
+import { Tv, Users } from 'lucide-react';
 import { triggerStreamChangeAd } from '@/utils/streamAdTrigger';
 
 interface ChannelCardProps {
@@ -24,7 +21,7 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
   viewers,
   nowPlaying
 }) => {
-  // Generate a logo from the title
+  // Generate initials from title
   const generateInitials = () => {
     return title
       .split(' ')
@@ -32,69 +29,87 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
       .slice(0, 2)
       .join('');
   };
-  
+
   const handleClick = () => {
-    // Use title as unique identifier for channel-based ad tracking
     triggerStreamChangeAd(title || embedUrl);
     onClick?.();
   };
-  
+
   return (
-    <Card 
-      className={`overflow-hidden cursor-pointer transition-all duration-300 rounded-2xl backdrop-blur-md shadow-lg ${
-        isActive 
-          ? 'bg-sports-primary/20 border-sports-primary/40 shadow-sports-primary/20' 
-          : 'bg-card/50 border-border hover:bg-card/80 hover:border-sports-primary/30'
-      }`}
+    <div
       onClick={handleClick}
+      className={`
+        flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px]
+        rounded-2xl overflow-hidden cursor-pointer
+        transition-all duration-300 ease-out
+        border-2 hover:scale-105 hover:shadow-xl
+        ${isActive
+          ? 'bg-primary/10 border-primary shadow-primary/20 shadow-lg'
+          : 'bg-card/80 border-border/50 hover:border-primary/50 hover:bg-card'
+        }
+      `}
     >
-      <CardContent className="p-2">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${
-            isActive ? 'ring-2 ring-sports-primary' : ''
-          } ${logo ? 'bg-background p-0.5' : (isActive ? 'bg-sports-primary' : 'bg-muted')}`}>
-            {logo ? (
-              <img 
-                src={logo} 
-                alt={title}
-                className="w-full h-full object-contain rounded-full"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
-                  if (fallback) {
-                    fallback.classList.remove('hidden');
-                    fallback.parentElement!.classList.remove('bg-background', 'p-0.5');
-                    fallback.parentElement!.classList.add(isActive ? 'bg-sports-primary' : 'bg-muted');
-                  }
-                }}
-              />
-            ) : null}
-            <div className={`w-full h-full flex items-center justify-center ${logo ? 'hidden' : ''}`}>
-              {isActive ? (
-                <Tv className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground" />
-              ) : (
-                <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex items-center justify-center text-xs font-bold text-muted-foreground">
-                  {generateInitials()}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-xs sm:text-sm text-foreground truncate">{title}</div>
-            {nowPlaying ? (
-              <div className="text-xs text-primary truncate" title={nowPlaying}>
-                {nowPlaying}
-              </div>
-            ) : viewers !== undefined && viewers > 0 ? (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <span>{viewers.toLocaleString()} watching</span>
-              </div>
-            ) : null}
+      {/* Logo Section */}
+      <div className="relative pt-4 pb-2 px-4 flex justify-center">
+        <div className={`
+          w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden
+          flex items-center justify-center
+          ${logo ? 'bg-white/10 p-2' : 'bg-muted'}
+          ${isActive ? 'ring-2 ring-primary' : ''}
+        `}>
+          {logo ? (
+            <img
+              src={logo}
+              alt={title}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                if (fallback) fallback.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <div className={`w-full h-full flex items-center justify-center ${logo ? 'hidden' : ''}`}>
+            <Tv className="w-8 h-8 text-muted-foreground" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Live indicator */}
+        {viewers !== undefined && viewers > 0 && (
+          <div className="absolute top-2 right-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
+          </div>
+        )}
+      </div>
+
+      {/* Content Section */}
+      <div className="px-3 pb-4 text-center">
+        {/* Channel Name */}
+        <h3 className="font-semibold text-sm text-foreground truncate mb-1" title={title}>
+          {title}
+        </h3>
+
+        {/* Now Playing / EPG */}
+        {nowPlaying && (
+          <p className="text-xs text-primary truncate mb-1.5" title={nowPlaying}>
+            {nowPlaying}
+          </p>
+        )}
+
+        {/* Viewers */}
+        {viewers !== undefined && viewers > 0 && (
+          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+            <Users className="w-3 h-3" />
+            <span>{viewers.toLocaleString()}</span>
+          </div>
+        )}
+
+        {/* Fallback when no EPG and no viewers */}
+        {!nowPlaying && (!viewers || viewers === 0) && (
+          <p className="text-xs text-muted-foreground">Live TV</p>
+        )}
+      </div>
+    </div>
   );
 };
 
