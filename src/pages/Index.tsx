@@ -9,7 +9,6 @@ import MatchesList from '../components/MatchesList';
 import FeaturedMatches from '../components/FeaturedMatches';
 import AllSportsLiveMatches from '../components/AllSportsLiveMatches';
 import { useSportsData } from '@/contexts/SportsDataContext';
-import { useInterstitialAd } from '../components/InterstitialAd';
 
 // Lazy load more components to reduce initial bundle
 const PopularMatches = React.lazy(() => import('../components/PopularMatches'));
@@ -39,22 +38,11 @@ const Index = () => {
   // Use shared sports data context - eliminates duplicate API calls!
   const { sports, liveMatches, loading: loadingSports } = useSportsData();
 
-  // Interstitial ad hook
-  const { triggerAd, InterstitialComponent } = useInterstitialAd();
-
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [allMatchesCache, setAllMatchesCache] = useState<{[sportId: string]: Match[]}>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [loadingMatches, setLoadingMatches] = useState(false);
-
-  // Show interstitial ad after page loads (with delay)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      triggerAd();
-    }, 2000); // Show after 2 seconds
-    return () => clearTimeout(timer);
-  }, []);
 
   // Filter visible manual matches
   const visibleManualMatches = useMemo(() => {
@@ -155,9 +143,6 @@ const Index = () => {
 
   return (
     <PageLayout searchTerm={searchTerm} onSearch={handleSearch}>
-      {/* 5-second Interstitial Ad */}
-      {InterstitialComponent}
-
       <Helmet>
         <title>Best Sports Streaming Site Alternatives | DamiTV</title>
         <meta name="description" content="Discover the best sports streaming site alternatives. Free HD streams for football, basketball & more. Top vipleague & totalsportek alternative." />

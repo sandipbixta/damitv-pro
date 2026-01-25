@@ -1,6 +1,5 @@
 import React from 'react';
 import { Tv, Users } from 'lucide-react';
-import { triggerStreamChangeAd } from '@/utils/streamAdTrigger';
 
 interface ChannelCardProps {
   title: string;
@@ -30,14 +29,9 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
       .join('');
   };
 
-  const handleClick = () => {
-    triggerStreamChangeAd(title || embedUrl);
-    onClick?.();
-  };
-
   return (
     <div
-      onClick={handleClick}
+      onClick={onClick}
       className={`
         flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px]
         rounded-2xl overflow-hidden cursor-pointer
