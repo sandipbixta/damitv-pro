@@ -13,6 +13,7 @@ import { Helmet } from 'react-helmet-async';
 import { Calendar } from 'lucide-react';
 import BannerAd from '../components/BannerAd';
 import LeaderboardAd from '../components/LeaderboardAd';
+import MediumRectangleAd from '../components/MediumRectangleAd';
 
 
 const Channels = () => {
@@ -195,7 +196,12 @@ const Channels = () => {
         <div className="mt-8">
           <NewsSection />
         </div>
-        
+
+        {/* Medium Rectangle Ad - Strategic placement */}
+        <div className="hidden md:block my-6">
+          <MediumRectangleAd />
+        </div>
+
         {/* Video Advertisement - moved to bottom */}
         <div className="mt-6">
           <Advertisement type="video" className="w-full" />

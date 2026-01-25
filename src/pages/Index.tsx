@@ -28,6 +28,7 @@ import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
 import PerplexityNews from '../components/PerplexityNews';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
+import MediumRectangleAd from '../components/MediumRectangleAd';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -216,6 +217,11 @@ const Index = () => {
         <React.Suspense fallback={<div className="h-32 bg-[#242836] rounded-lg animate-pulse" />}>
           <FeaturedChannels />
         </React.Suspense>
+
+            {/* Medium Rectangle Ad - Strategic placement between sections */}
+            <div className="hidden md:block my-6">
+              <MediumRectangleAd />
+            </div>
 
             <Separator className="my-8 bg-[#343a4d]" />
             

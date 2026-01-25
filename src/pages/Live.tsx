@@ -26,6 +26,7 @@ import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 import PopularMatches from '../components/PopularMatches';
 import BannerAd from '../components/BannerAd';
 import LeaderboardAd from '../components/LeaderboardAd';
+import MediumRectangleAd from '../components/MediumRectangleAd';
 
 const Live = () => {
   const { toast } = useToast();
@@ -415,14 +416,19 @@ const Live = () => {
       {/* Match Details - Show at bottom if a match is selected */}
       {featuredMatch && (
         <div className="mt-8">
-          <MatchDetails 
+          <MatchDetails
             match={featuredMatch}
             isLive={featuredMatch.date ? Date.now() - featuredMatch.date > -30 * 60 * 1000 && Date.now() - featuredMatch.date < 3 * 60 * 60 * 1000 : false}
             showCompact={false}
           />
         </div>
       )}
-      
+
+      {/* Medium Rectangle Ad - Strategic placement */}
+      <div className="hidden md:block my-8">
+        <MediumRectangleAd />
+      </div>
+
       {/* AI Match Previews - Internal Links for SEO */}
       <UpcomingMatchPreviews />
       

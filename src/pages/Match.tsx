@@ -27,6 +27,7 @@ import { ViewerStats } from '@/components/match/ViewerStats';
 import BannerAd from '@/components/BannerAd';
 import SidebarAd from '@/components/SidebarAd';
 import LeaderboardAd from '@/components/LeaderboardAd';
+import MediumRectangleAd from '@/components/MediumRectangleAd';
 import PopularMatchesList from '@/components/match/PopularMatchesList';
 
 
@@ -310,6 +311,11 @@ const Match = () => {
         {/* Match Analysis and Preview Content */}
         <div className="mt-8">
           <MatchAnalysis match={match} />
+        </div>
+
+        {/* Medium Rectangle Ad - Between sections on desktop */}
+        <div className="hidden md:block my-6">
+          <MediumRectangleAd />
         </div>
 
         {/* Recommended Matches */}
