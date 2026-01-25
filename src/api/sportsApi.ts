@@ -1,5 +1,5 @@
-// Sports API Service - Using WatchFooty API
-// Re-export all functions from watchFootyApi for backward compatibility
+// Sports API Service - Using Streamed.pk/su API
+// Re-export all functions from streamedApi
 
 export {
   clearStreamCache,
@@ -15,13 +15,12 @@ export {
   getBohoImageUrl,
   getTeamBadgeUrl,
   getLeagueLogoUrl,
-  BOHO_API_BASE,
-  WATCHFOOTY_API_BASE
-} from '../services/watchFootyApi';
+  STREAMED_API_BASE
+} from '../services/streamedApi';
 
 // Legacy function for backward compatibility
 export const fetchStream = async (source: string, id: string, streamNo?: number) => {
-  const { fetchSimpleStream } = await import('../services/watchFootyApi');
+  const { fetchSimpleStream } = await import('../services/streamedApi');
   const streams = await fetchSimpleStream(source, id);
 
   if (streamNo !== undefined) {
@@ -32,7 +31,7 @@ export const fetchStream = async (source: string, id: string, streamNo?: number)
   return streams;
 };
 
-// Legacy compatibility - validate stream URL
+// Validate stream URL
 export const isValidStreamUrl = (url: string): boolean => {
   if (!url || typeof url !== 'string') return false;
   try {

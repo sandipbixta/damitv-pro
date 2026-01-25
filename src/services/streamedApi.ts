@@ -315,7 +315,7 @@ const parseMatchData = (item: any): Match | null => {
 
 // Fetch all sports categories
 export const fetchSports = async (): Promise<Sport[]> => {
-  const cacheKey = 'watchfooty-sports';
+  const cacheKey = 'streamed-sports';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
@@ -375,7 +375,7 @@ export const fetchSports = async (): Promise<Sport[]> => {
 
 // Fetch all matches
 export const fetchAllMatches = async (): Promise<Match[]> => {
-  const cacheKey = 'watchfooty-matches-all';
+  const cacheKey = 'streamed-matches-all';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
@@ -408,7 +408,7 @@ export const fetchAllMatches = async (): Promise<Match[]> => {
 
 // Fetch matches by sport category
 export const fetchMatches = async (sportId: string): Promise<Match[]> => {
-  const cacheKey = `watchfooty-matches-${sportId}`;
+  const cacheKey = `streamed-matches-${sportId}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
@@ -456,7 +456,7 @@ export const fetchMatches = async (sportId: string): Promise<Match[]> => {
 
 // Fetch live matches
 export const fetchLiveMatches = async (): Promise<Match[]> => {
-  const cacheKey = 'watchfooty-matches-live';
+  const cacheKey = 'streamed-matches-live';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
@@ -510,7 +510,7 @@ export const fetchLiveMatches = async (): Promise<Match[]> => {
 
 // Fetch popular matches
 export const fetchPopularMatches = async (): Promise<Match[]> => {
-  const cacheKey = 'watchfooty-matches-popular';
+  const cacheKey = 'streamed-matches-popular';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
@@ -541,7 +541,7 @@ export const fetchPopularMatches = async (): Promise<Match[]> => {
 
 // Fetch a specific match by ID
 export const fetchMatch = async (sportId: string, matchId: string): Promise<Match> => {
-  const cacheKey = `watchfooty-match-${matchId}`;
+  const cacheKey = `streamed-match-${matchId}`;
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
@@ -602,7 +602,7 @@ const buildAdFreeEmbedUrl = (
 
 // Fetch stream for a match - uses ad-free embed player
 export const fetchSimpleStream = async (source: string, id: string, category?: string): Promise<Stream[]> => {
-  const cacheKey = `watchfooty-stream-${source}-${id}`;
+  const cacheKey = `streamed-stream-${source}-${id}`;
   const cached = getCachedData(cacheKey, STREAM_CACHE_DURATION);
   if (cached) return cached;
 
@@ -636,7 +636,34 @@ const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number):
   return buildEmbedUrl(domain, source, id, streamNo);
 };
 
-// Fetch all streams for a match
+// Fetch streams from API for a specific source
+const fetchStreamsFromApi = async (source: string, id: string): Promise<Stream[]> => {
+  try {
+    const data = await fetchFromApi(`stream/${source}/${id}`);
+
+    if (!data) return [];
+
+    // API returns array of stream objects
+    const streamsArray = Array.isArray(data) ? data : [data];
+
+    return streamsArray.map((s: any, index: number) => ({
+      id: s.id || id,
+      streamNo: s.streamNo || index + 1,
+      language: s.language || 'English',
+      hd: s.hd !== false,
+      embedUrl: s.embedUrl || generateFallbackEmbedUrl(source, id, s.streamNo || index + 1),
+      source: s.source || source,
+      timestamp: Date.now(),
+      name: s.language ? `${s.language} ${s.streamNo || index + 1}` : undefined,
+      viewers: s.viewers || 0
+    }));
+  } catch (error) {
+    console.error(`❌ Error fetching streams for ${source}/${id}:`, error);
+    return [];
+  }
+};
+
+// Fetch all streams for a match from API
 export const fetchAllMatchStreams = async (match: Match): Promise<{
   streams: Stream[];
   sourcesChecked: number;
@@ -650,49 +677,56 @@ export const fetchAllMatchStreams = async (match: Match): Promise<{
   console.log(`📡 Match sources:`, match.sources);
 
   if (match.sources && match.sources.length > 0) {
-    let streamNumber = 1;
-
-    for (const src of match.sources) {
+    // Fetch streams from API for each source in parallel
+    const streamPromises = match.sources.map(async (src) => {
       if (src.source && src.id) {
-        const embedUrl = generateFallbackEmbedUrl(src.source, src.id, streamNumber);
+        const streams = await fetchStreamsFromApi(src.source, src.id);
 
-        allStreams.push({
+        if (streams.length > 0) {
+          sourcesWithStreams.add(src.source);
+          return streams;
+        }
+
+        // Fallback: generate URL if API returns nothing
+        console.log(`⚠️ No API streams for ${src.source}/${src.id}, using fallback`);
+        sourcesWithStreams.add(src.source);
+        return [{
           id: src.id,
-          streamNo: streamNumber,
-          language: 'EN',
+          streamNo: 1,
+          language: 'English',
           hd: true,
-          embedUrl: embedUrl,
+          embedUrl: generateFallbackEmbedUrl(src.source, src.id, 1),
           source: src.source,
           timestamp: Date.now(),
-          // Don't set name - let StreamSources use source name (ALPHA, BRAVO, etc.)
-          isHls: false
-        });
-
-        sourcesWithStreams.add(src.source);
-        console.log(`✅ Stream ${streamNumber}: ${src.source}/${src.id}`);
-        streamNumber++;
+          name: `${src.source.toUpperCase()} 1`
+        }];
       }
-    }
-  }
-
-  // If no streams found, create fallback using match ID (charlie preferred)
-  if (allStreams.length === 0 && match.id) {
-    console.warn(`⚠️ No streams from sources, using match ID fallback: ${match.id}`);
-    const fallbackUrl = generateFallbackEmbedUrl('charlie', match.id, 1);
-
-    allStreams.push({
-      id: match.id,
-      streamNo: 1,
-      language: 'EN',
-      hd: true,
-      embedUrl: fallbackUrl,
-      source: 'charlie',
-      timestamp: Date.now(),
-      // Don't set name - let StreamSources use source name
-      isHls: false
+      return [];
     });
 
-    sourcesWithStreams.add('charlie');
+    const results = await Promise.all(streamPromises);
+    results.forEach(streams => allStreams.push(...streams));
+  }
+
+  // If no streams found, create fallback using match ID
+  if (allStreams.length === 0 && match.id) {
+    console.warn(`⚠️ No streams from sources, using match ID fallback: ${match.id}`);
+
+    // Try common sources
+    const fallbackSources = ['alpha', 'bravo', 'charlie'];
+    for (const source of fallbackSources) {
+      allStreams.push({
+        id: match.id,
+        streamNo: 1,
+        language: 'English',
+        hd: true,
+        embedUrl: generateFallbackEmbedUrl(source, match.id, 1),
+        source: source,
+        timestamp: Date.now(),
+        name: `${source.toUpperCase()} 1`
+      });
+      sourcesWithStreams.add(source);
+    }
   }
 
   const sourceNames = Array.from(sourcesWithStreams);
@@ -748,5 +782,4 @@ export const getLeagueLogoUrl = (leagueId: string): string => {
 };
 
 // Export API base for reference
-export const BOHO_API_BASE = STREAM_BASE;
-export const WATCHFOOTY_API_BASE = STREAM_BASE;
+export const STREAMED_API_BASE = STREAM_BASE;
