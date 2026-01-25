@@ -78,11 +78,30 @@ const CHANNEL_EPG_ID_MAP: Record<string, string> = {
   'eurosport 1': '6326',
   'eurosport 2': '6327',
 
-  // DAZN
-  'dazn 1': '448572',
+  // DAZN (International)
+  'dazn 1': '7502',
   'dazn 2': '448573',
-  'dazn f1': '448574',
-  'dazn laliga': '448575',
+  'dazn 3': '448574',
+  'dazn 4': '448575',
+  'dazn 5': '448576',
+  'dazn 6': '448577',
+  'dazn f1': '406540',
+  'dazn laliga': '409254',
+  'dazn laliga 2': '409254',
+
+  // Spanish Sports Channels
+  'laliga tv': '409254',
+  'laliga tv hypermotion': '409254',
+  'movistar laliga': '409254',
+  'movistar liga de campeones': '409255',
+  'movistar deportes': '409256',
+  'movistar deportes 1': '409256',
+  'movistar deportes 2': '409257',
+  'gol': '409258',
+  'gol tv': '409258',
+  'teledeporte': '409259',
+  'la 1': '409260',
+  'la 2': '409261',
 
   // RMC Sport (France)
   'rmc sport 1': '54815',

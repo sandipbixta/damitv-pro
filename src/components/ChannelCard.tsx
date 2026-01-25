@@ -51,12 +51,7 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
     >
       {/* Logo Section */}
       <div className="relative pt-4 pb-2 px-4 flex justify-center">
-        <div className={`
-          w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden
-          flex items-center justify-center
-          ${logo ? 'bg-white/10 p-2' : 'bg-muted'}
-          ${isActive ? 'ring-2 ring-primary' : ''}
-        `}>
+        <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
           {logo ? (
             <img
               src={logo}
@@ -70,7 +65,7 @@ const ChannelCard: React.FC<ChannelCardProps> = ({
             />
           ) : null}
           <div className={`w-full h-full flex items-center justify-center ${logo ? 'hidden' : ''}`}>
-            <Tv className="w-8 h-8 text-muted-foreground" />
+            <Tv className="w-10 h-10 text-muted-foreground" />
           </div>
         </div>
 
