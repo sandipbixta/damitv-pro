@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface BannerAdProps {
   className?: string;
@@ -7,6 +7,18 @@ interface BannerAdProps {
 const BannerAd: React.FC<BannerAdProps> = ({ className = '' }) => {
   const adContainerRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 500);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (!adContainerRef.current || scriptLoadedRef.current) return;
@@ -19,7 +31,7 @@ const BannerAd: React.FC<BannerAdProps> = ({ className = '' }) => {
 
     // Use a small delay to ensure DOM is ready
     const timer = setTimeout(() => {
-      // Set global atOptions
+      // Set global atOptions - use smaller size for mobile
       (window as any).atOptions = {
         'key': '24887eba6a7c2444602020b1915f8a43',
         'format': 'iframe',
@@ -42,12 +54,19 @@ const BannerAd: React.FC<BannerAdProps> = ({ className = '' }) => {
     };
   }, []);
 
+  // Calculate scale for mobile to fit the ad within screen
+  const scale = isMobile ? Math.min(1, (window.innerWidth - 32) / 468) : 1;
+
   return (
-    <div className={`w-full flex justify-center py-2 ${className}`}>
+    <div className={`w-full flex justify-center py-2 overflow-hidden ${className}`}>
       <div
         ref={adContainerRef}
-        className="max-w-full overflow-hidden flex justify-center items-center min-h-[60px]"
-        style={{ maxWidth: '468px', width: '100%' }}
+        className="flex justify-center items-center"
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: 'center center',
+          minHeight: `${60 * scale}px`
+        }}
       />
     </div>
   );

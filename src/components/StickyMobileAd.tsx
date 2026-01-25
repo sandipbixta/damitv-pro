@@ -13,6 +13,18 @@ const StickyMobileAd: React.FC = () => {
   const scriptLoadedRef = useRef(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [scale, setScale] = useState(1);
+
+  // Calculate scale on mount and resize
+  useEffect(() => {
+    const updateScale = () => {
+      setScale(Math.min(1, (window.innerWidth - 32) / 468));
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, []);
 
   useEffect(() => {
     // Check if user dismissed this session
@@ -74,12 +86,15 @@ const StickyMobileAd: React.FC = () => {
         <X className="w-4 h-4 text-muted-foreground" />
       </button>
 
-      {/* Ad container */}
-      <div className="flex justify-center py-2">
+      {/* Ad container - scales to fit mobile screens */}
+      <div className="flex justify-center py-2 overflow-hidden">
         <div
           ref={adContainerRef}
-          className="overflow-hidden flex justify-center items-center"
-          style={{ maxWidth: '468px', width: '100%', minHeight: '60px' }}
+          className="flex justify-center items-center"
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center'
+          }}
         />
       </div>
     </div>
