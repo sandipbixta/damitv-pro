@@ -122,7 +122,18 @@ const fetchFromApi = async (endpoint: string): Promise<any> => {
  */
 export const isMatchLive = (match: Match): boolean => {
   if (!match.date) return false;
-  return new Date(match.date).getTime() <= new Date().getTime();
+
+  const matchTime = new Date(match.date).getTime();
+  const now = Date.now();
+
+  // Match has started
+  const hasStarted = matchTime <= now;
+
+  // Match hasn't ended (assume 3 hours max duration)
+  const maxDuration = 3 * 60 * 60 * 1000; // 3 hours in ms
+  const hasEnded = now > matchTime + maxDuration;
+
+  return hasStarted && !hasEnded;
 };
 
 /**
