@@ -1,5 +1,133 @@
-
 import { XMLParser } from 'fast-xml-parser';
+
+// Channel name to epg.pw channel ID mapping for "Now Playing" feature
+const CHANNEL_EPG_ID_MAP: Record<string, string> = {
+  // Sky Sports (UK)
+  'sky sports main event': '7673',
+  'sky sports premier league': '6320',
+  'sky sports football': '6318',
+  'sky sports f1': '6317',
+  'sky sports arena': '6316',
+  'sky sports action': '6315',
+  'sky sports cricket': '6319',
+  'sky sports golf': '6321',
+  'sky sports mix': '10785',
+  'sky sports news': '12337',
+  'sky sports nfl': '6322',
+  'sky sports tennis': '381885',
+  'sky sports racing': '219098',
+
+  // ESPN (US)
+  'espn': '465198',
+  'espn 2': '465373',
+  'espn news': '465410',
+  'espn u': '465108',
+  'espn deportes': '464949',
+
+  // Fox Sports (US)
+  'fox sports': '465291',
+  'fox sports 1': '465291',
+  'fox sports 2': '465355',
+  'fox soccer plus': '465214',
+  'fox deportes': '465156',
+
+  // beIN Sports
+  'bein sports': '55773',
+  'bein sports 1': '55773',
+  'bein sports 2': '443147',
+  'bein sports 3': '54963',
+  'bein sports 4': '443239',
+  'bein sports 5': '443103',
+  'bein sports 6': '55982',
+  'bein sports 7': '55920',
+  'bein sports 8': '443213',
+  'bein sports 9': '55983',
+  'bein sports max 4': '443239',
+  'bein sports max 5': '443103',
+  'bein sports max 6': '55982',
+  'bein sports max 7': '55920',
+  'bein sports max 8': '443213',
+  'bein sports max 9': '55983',
+  'bein sports max 10': '443150',
+  'bein sports xtra': '443151',
+  'bein sports mena 1': '55773',
+  'bein sports mena 2': '443147',
+
+  // TNT Sports (UK) - formerly BT Sport
+  'tnt sports': '12233',
+  'tnt sports 1': '12233',
+  'tnt sports 2': '12235',
+  'tnt sports 3': '12268',
+  'tnt sports 4': '12050',
+
+  // CBS Sports
+  'cbs sports network': '464937',
+  'cbs sports golazo': '464937',
+
+  // Other US Sports
+  'nba tv': '465322',
+  'nfl network': '465336',
+  'nfl redzone': '465337',
+  'acc network': '464879',
+  'big ten network': '465073',
+  'golf channel': '464783',
+
+  // Eurosport
+  'euro sport 1': '6326',
+  'euro sport 2': '6327',
+  'eurosport 1': '6326',
+  'eurosport 2': '6327',
+
+  // DAZN
+  'dazn 1': '448572',
+  'dazn 2': '448573',
+  'dazn f1': '448574',
+  'dazn laliga': '448575',
+
+  // RMC Sport (France)
+  'rmc sport 1': '54815',
+  'rmc sport 2': '448570',
+
+  // Canal+ Sport
+  'canal sport': '459266',
+
+  // SuperSport (South Africa)
+  'supersport football': '7689',
+  'supersport premier league': '7690',
+  'supersport action': '7687',
+  'supersport variety 1': '7691',
+  'supersport cricket': '7688',
+  'supersport rugby': '7692',
+  'supersport golf': '7693',
+
+  // Sport TV (Portugal)
+  'sport tv 1': '7701',
+  'sport tv 2': '7702',
+  'sport tv 3': '7703',
+
+  // Other International
+  'eleven sports 1': '448575',
+  'eleven sports 2': '448576',
+  'premier sports 1': '219100',
+  'premier sports 2': '219104',
+  'viaplay sports 1': '448577',
+  'viaplay sports 2': '448578',
+  'sportsnet ontario': '465401',
+  'sportsnet east': '465400',
+  'sportsnet west': '465402',
+  'nova sports 1': '448580',
+  'nova sports premier league': '448581',
+  'polsat sport': '448582',
+  'arena sport 1': '448583',
+};
+
+// Now Playing data structure
+export interface NowPlaying {
+  title: string;
+  startTime: Date;
+  endTime: Date;
+  progress: number; // 0-100 percentage
+}
 
 interface EPGProgram {
   id: string;
@@ -244,3 +372,161 @@ class EPGService {
 
 export const epgService = new EPGService();
 export type { EPGProgram, EPGChannel };
+
+// ============================================
+// NOW PLAYING FEATURE - Uses epg.pw API
+// ============================================
+
+// Cache for Now Playing data
+const nowPlayingCache: Map<string, { data: NowPlaying | null; timestamp: number }> = new Map();
+const NOW_PLAYING_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Get epg.pw channel ID from channel name
+export function getEPGChannelId(channelName: string): string | null {
+  const normalized = channelName.toLowerCase().trim();
+
+  // Direct match
+  if (CHANNEL_EPG_ID_MAP[normalized]) {
+    return CHANNEL_EPG_ID_MAP[normalized];
+  }
+
+  // Partial match - try to find closest match
+  for (const [key, value] of Object.entries(CHANNEL_EPG_ID_MAP)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+// Check if channel has EPG support
+export function hasEPGSupport(channelName: string): boolean {
+  return getEPGChannelId(channelName) !== null;
+}
+
+// Parse EPG timestamp format: "20260125000000 +0000"
+function parseEPGTimestamp(timeStr: string): Date {
+  const match = timeStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+  if (!match) return new Date();
+
+  const [, year, month, day, hour, minute, second] = match;
+  return new Date(Date.UTC(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    parseInt(hour),
+    parseInt(minute),
+    parseInt(second)
+  ));
+}
+
+// Fetch Now Playing for a specific channel
+export async function getNowPlaying(channelName: string): Promise<NowPlaying | null> {
+  const epgId = getEPGChannelId(channelName);
+
+  if (!epgId) {
+    return null;
+  }
+
+  // Check cache
+  const cacheKey = epgId;
+  const cached = nowPlayingCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < NOW_PLAYING_CACHE_DURATION) {
+    return cached.data;
+  }
+
+  try {
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+
+    // Use CORS proxy for browser requests
+    const apiUrl = `https://epg.pw/api/epg.xml?channel_id=${epgId}&date=${dateStr}`;
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
+
+    const response = await fetch(proxyUrl, {
+      headers: { 'Accept': 'application/xml' }
+    });
+
+    if (!response.ok) {
+      console.warn(`EPG fetch failed for channel ${channelName}`);
+      nowPlayingCache.set(cacheKey, { data: null, timestamp: now });
+      return null;
+    }
+
+    const xmlText = await response.text();
+
+    // Parse XML using DOMParser
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+    const programmes = xmlDoc.querySelectorAll('programme');
+    const currentTime = new Date();
+
+    // Find current program
+    for (const prog of programmes) {
+      const startStr = prog.getAttribute('start');
+      const stopStr = prog.getAttribute('stop');
+      const titleEl = prog.querySelector('title');
+
+      if (startStr && stopStr && titleEl) {
+        const startTime = parseEPGTimestamp(startStr);
+        const endTime = parseEPGTimestamp(stopStr);
+
+        if (startTime <= currentTime && endTime > currentTime) {
+          const totalDuration = endTime.getTime() - startTime.getTime();
+          const elapsed = currentTime.getTime() - startTime.getTime();
+          const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+          const nowPlaying: NowPlaying = {
+            title: (titleEl.textContent || 'Unknown Program').replace(/^[⋗►▶]\s*/, ''),
+            startTime,
+            endTime,
+            progress
+          };
+
+          nowPlayingCache.set(cacheKey, { data: nowPlaying, timestamp: now });
+          return nowPlaying;
+        }
+      }
+    }
+
+    // No current program found
+    nowPlayingCache.set(cacheKey, { data: null, timestamp: now });
+    return null;
+  } catch (error) {
+    console.error(`EPG fetch error for ${channelName}:`, error);
+    nowPlayingCache.set(cacheKey, { data: null, timestamp: now });
+    return null;
+  }
+}
+
+// Batch fetch Now Playing for multiple channels
+export async function getMultipleNowPlaying(channelNames: string[]): Promise<Map<string, NowPlaying | null>> {
+  const results = new Map<string, NowPlaying | null>();
+
+  // Filter channels that have EPG mapping
+  const channelsWithEPG = channelNames.filter(name => hasEPGSupport(name));
+
+  // Fetch in parallel with limited concurrency
+  const batchSize = 5;
+  for (let i = 0; i < channelsWithEPG.length; i += batchSize) {
+    const batch = channelsWithEPG.slice(i, i + batchSize);
+
+    const promises = batch.map(async (name) => {
+      const nowPlaying = await getNowPlaying(name);
+      results.set(name.toLowerCase(), nowPlaying);
+    });
+
+    await Promise.all(promises);
+  }
+
+  return results;
+}
+
+// Clear Now Playing cache
+export function clearNowPlayingCache(): void {
+  nowPlayingCache.clear();
+}
