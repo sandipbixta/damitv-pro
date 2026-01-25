@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useFeaturedChannels } from '../hooks/useCDNChannels';
 import ChannelCard from './ChannelCard';
 import { ArrowRight, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -11,6 +11,7 @@ const FeaturedChannels = () => {
   const [nowPlayingData, setNowPlayingData] = useState<Record<string, string>>({});
   const [epgLoading, setEpgLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Fetch "Now Playing" data for channels that have EPG support
   useEffect(() => {
@@ -44,6 +45,29 @@ const FeaturedChannels = () => {
     const timer = setTimeout(fetchNowPlaying, 1000);
     return () => clearTimeout(timer);
   }, [featuredChannels]);
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (!scrollContainerRef.current || featuredChannels.length === 0 || isPaused) return;
+
+    const container = scrollContainerRef.current;
+    const scrollSpeed = 1; // pixels per frame
+    const scrollInterval = 30; // ms between frames
+
+    const autoScroll = setInterval(() => {
+      if (container) {
+        // Check if we've reached the end
+        if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
+          // Reset to beginning smoothly
+          container.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          container.scrollLeft += scrollSpeed;
+        }
+      }
+    }, scrollInterval);
+
+    return () => clearInterval(autoScroll);
+  }, [featuredChannels, isPaused]);
 
   // Scroll handlers
   const scroll = (direction: 'left' | 'right') => {
@@ -112,10 +136,16 @@ const FeaturedChannels = () => {
       </div>
 
       {/* Horizontal Scroll Container */}
-      <div className="relative">
+      <div
+        className="relative"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setTimeout(() => setIsPaused(false), 3000)}
+      >
         <div
           ref={scrollContainerRef}
-          className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide scroll-smooth"
+          className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
