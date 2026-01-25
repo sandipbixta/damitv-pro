@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { getNowPlaying, hasEPGSupport } from '../services/epgService';
 
 const FeaturedChannels = () => {
-  const { channels: featuredChannels, isLoading } = useFeaturedChannels(12);
+  const { channels: featuredChannels, isLoading } = useFeaturedChannels(15);
   const [nowPlayingData, setNowPlayingData] = useState<Record<string, string>>({});
   const [epgLoading, setEpgLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -46,20 +46,22 @@ const FeaturedChannels = () => {
     return () => clearTimeout(timer);
   }, [featuredChannels]);
 
-  // Auto-scroll effect
+  // Auto-scroll effect - infinite loop
   useEffect(() => {
     if (!scrollContainerRef.current || featuredChannels.length === 0 || isPaused) return;
 
     const container = scrollContainerRef.current;
-    const scrollSpeed = 1; // pixels per frame
+    const scrollSpeed = 0.5; // pixels per frame (slower)
     const scrollInterval = 30; // ms between frames
 
     const autoScroll = setInterval(() => {
       if (container) {
-        // Check if we've reached the end
-        if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
-          // Reset to beginning smoothly
-          container.scrollTo({ left: 0, behavior: 'smooth' });
+        // Get half of scroll width (since we duplicate items)
+        const halfWidth = container.scrollWidth / 2;
+
+        // When we've scrolled past the first set, jump back seamlessly
+        if (container.scrollLeft >= halfWidth) {
+          container.scrollLeft = container.scrollLeft - halfWidth;
         } else {
           container.scrollLeft += scrollSpeed;
         }
@@ -152,9 +154,10 @@ const FeaturedChannels = () => {
             WebkitOverflowScrolling: 'touch'
           }}
         >
-          {featuredChannels.map(channel => (
+          {/* Duplicate channels for infinite loop effect */}
+          {[...featuredChannels, ...featuredChannels].map((channel, index) => (
             <Link
-              key={channel.id}
+              key={`${channel.id}-${index}`}
               to={`/channel/${channel.country}/${channel.id}`}
               className="block flex-shrink-0"
             >
