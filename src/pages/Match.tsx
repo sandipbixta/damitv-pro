@@ -79,6 +79,10 @@ const Match = () => {
   }, [match, cachedMatches]);
 
   // Load match data and streams - optimized to be faster
+  // Use ref to access cachedMatches without causing re-runs
+  const cachedMatchesRef = React.useRef(cachedMatches);
+  cachedMatchesRef.current = cachedMatches;
+
   useEffect(() => {
     const loadMatchData = async () => {
       if (!sportId || !matchId) return;
@@ -86,20 +90,19 @@ const Match = () => {
       try {
         setIsLoading(true);
         console.log(`Loading match: ${sportId}/${matchId}`);
-        
+
         // First, try to find the match in cached data (instant!)
         let matchData: MatchType | null = null;
-        
-        // Check cached matches first for instant load
-        // First try exact match, then match by numeric ID suffix
-        const cachedMatch = cachedMatches.find(m => {
+
+        // Check cached matches first for instant load (use ref to avoid dependency)
+        const cachedMatch = cachedMatchesRef.current.find(m => {
           if (m.id === matchId) return true;
           // Extract trailing numeric ID from both sides and compare
           const matchNumeric = matchId.match(/-(\d+)$/)?.[1] || matchId.match(/(\d+)/)?.[0];
           const cachedNumeric = m.id.match(/-(\d+)$/)?.[1] || m.id.match(/(\d+)/)?.[0];
           return matchNumeric && cachedNumeric && matchNumeric === cachedNumeric;
         });
-        
+
         if (cachedMatch) {
           console.log('✅ Match found in cache - instant load!');
           matchData = cachedMatch;
@@ -107,7 +110,7 @@ const Match = () => {
           // Fall back to API fetch
           matchData = await fetchMatch(sportId, matchId);
         }
-        
+
         const enhancedMatch = teamLogoService.enhanceMatchWithLogos(matchData);
         setMatch(enhancedMatch);
 
@@ -116,17 +119,17 @@ const Match = () => {
 
         // Auto-scroll to video player after data loads
         setTimeout(() => {
-          const streamElement = document.querySelector('[data-stream-container]') || 
+          const streamElement = document.querySelector('[data-stream-container]') ||
                               document.querySelector('#stream-player') ||
                               document.querySelector('.stream-player');
           if (streamElement) {
-            streamElement.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'start' 
+            streamElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
             });
           }
         }, 300);
-        
+
       } catch (error) {
         console.error('Error loading match:', error);
         setMatch(null);
@@ -141,7 +144,8 @@ const Match = () => {
     };
 
     loadMatchData();
-  }, [sportId, matchId, toast, handleMatchSelect, cachedMatches]);
+  // Only re-run when matchId changes, not when cachedMatches updates
+  }, [sportId, matchId, toast, handleMatchSelect]);
 
   if (isLoading) {
     return <LoadingState />;
@@ -156,7 +160,13 @@ const Match = () => {
   const awayTeam = match.teams?.away?.name || '';
   const matchTitle = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : match.title;
   const matchSlug = generateMatchSlug(homeTeam, awayTeam, match.title);
-  
+
+  // Check if match is old (ended more than 3 days ago) - noindex old matches
+  const matchDate = new Date(match.date);
+  const now = new Date();
+  const daysSinceMatch = (now.getTime() - matchDate.getTime()) / (1000 * 60 * 60 * 24);
+  const isOldMatch = daysSinceMatch > 3;
+
   // SEO-optimized title and description
   const seoTitle = `Watch ${matchTitle} Live Stream - HD Score`;
   const seoDescription = `Watch ${matchTitle} live stream with real-time scores, stats, and HD coverage on DamiTV.`;
@@ -196,37 +206,42 @@ const Match = () => {
 
       <Helmet>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "SportsEvent",
-            "name": matchTitle,
-            "description": seoDescription,
-            "startDate": match.date ? new Date(match.date).toISOString() : new Date().toISOString(),
-            "eventStatus": "https://schema.org/EventScheduled",
-            "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
-            "location": {
-              "@type": "VirtualLocation",
-              "url": canonicalUrl
-            },
-            "image": matchPosterUrl,
-            "organizer": {
-              "@type": "Organization",
-              "name": "DamiTV",
-              "url": "https://damitv.pro"
-            },
-            "competitor": [
-              {
-                "@type": "SportsTeam",
-                "name": homeTeam
+        {/* Noindex old matches to prevent thin content indexing */}
+        {isOldMatch && <meta name="robots" content="noindex, follow" />}
+        {/* Only show schema for current/upcoming matches */}
+        {!isOldMatch && (
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SportsEvent",
+              "name": matchTitle,
+              "description": seoDescription,
+              "startDate": match.date ? new Date(match.date).toISOString() : new Date().toISOString(),
+              "eventStatus": "https://schema.org/EventScheduled",
+              "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+              "location": {
+                "@type": "VirtualLocation",
+                "url": canonicalUrl
               },
-              {
-                "@type": "SportsTeam",
-                "name": awayTeam
-              }
-            ]
-          })}
-        </script>
+              "image": matchPosterUrl,
+              "organizer": {
+                "@type": "Organization",
+                "name": "DamiTV",
+                "url": "https://damitv.pro"
+              },
+              "competitor": [
+                {
+                  "@type": "SportsTeam",
+                  "name": homeTeam
+                },
+                {
+                  "@type": "SportsTeam",
+                  "name": awayTeam
+                }
+              ]
+            })}
+          </script>
+        )}
       </Helmet>
       
       <MatchHeader 

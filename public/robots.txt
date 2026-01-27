@@ -1,40 +1,53 @@
-
 # DamiTV Robots.txt - Optimized for SEO
+
 User-agent: *
 Allow: /
 
 # High priority content - explicitly allow crawling
 Allow: /live
-Allow: /live?*
 Allow: /channels
 Allow: /schedule
-Allow: /news
-Allow: /match/*
-Allow: /manual-match/*
-Allow: /channel/*
-Allow: /watch-premier-league-free
-Allow: /nba-streaming-free
-Allow: /ufc-streaming-free
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /dmca
+
+# SEO pages
 Allow: /daddylivehd-alternatives
 Allow: /batmanstream-alternatives
 Allow: /hesgoal-alternatives
 
-# Block duplicate content and admin areas
+# Block dynamic/duplicate content
 Disallow: /api/
 Disallow: /admin/
 Disallow: /_next/
 Disallow: /static/
 Disallow: /*.json$
+
+# Block URL parameters that create duplicates
 Disallow: /*?preview=
 Disallow: /*?utm_*
 Disallow: /*?ref=*
 Disallow: /*?source=*
 Disallow: /*?fbclid=*
 Disallow: /*?gclid=*
+Disallow: /*?q=*
+Disallow: /*?search=*
 
-# Crawl rate optimization for major search engines
+# Block low-value/thin content pages
+Disallow: /match/*/0/*
+Disallow: /match/*/1/*
+Disallow: /match/*/2/*
+Disallow: /custom-match/*
+Disallow: /manual-match/*
+Disallow: /analytics
+
+# Crawl rate for major search engines
 User-agent: Googlebot
 Allow: /
+Allow: /preview/*
+Allow: /match/*
 Crawl-delay: 1
 
 User-agent: Bingbot
@@ -49,7 +62,7 @@ User-agent: DuckDuckBot
 Allow: /
 Crawl-delay: 2
 
-# Social media crawlers - allow full access
+# Social media crawlers - allow full access for sharing
 User-agent: Twitterbot
 Allow: /
 
@@ -65,7 +78,7 @@ Allow: /
 User-agent: TelegramBot
 Allow: /
 
-# Block problematic bots
+# Block problematic/aggressive bots
 User-agent: AhrefsBot
 Crawl-delay: 10
 
@@ -78,6 +91,11 @@ Disallow: /
 User-agent: dotbot
 Disallow: /
 
-# Sitemap location (critical for SEO)
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: DataForSeoBot
+Disallow: /
+
+# Sitemap location
 Sitemap: https://damitv.pro/sitemap.xml
-Sitemap: https://damitv.pro/sitemap-static.xml

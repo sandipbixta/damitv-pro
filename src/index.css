@@ -194,6 +194,20 @@
 }
 
 @layer utilities {
+  /* Scroll snap utilities */
+  .scroll-snap-x {
+    scroll-snap-type: x mandatory;
+  }
+  .scroll-snap-start {
+    scroll-snap-align: start;
+  }
+  .scroll-snap-center {
+    scroll-snap-align: center;
+  }
+  .scroll-snap-mandatory {
+    scroll-snap-type: x mandatory;
+  }
+
   /* Fade in animation for viewer counts */
   @keyframes fadeIn {
     from {

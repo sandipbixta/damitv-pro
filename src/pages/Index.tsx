@@ -28,7 +28,7 @@ import CustomMatchCards from '../components/CustomMatchCards';
 import LatestHighlights from '../components/LatestHighlights';
 import PerplexityNews from '../components/PerplexityNews';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
-import MediumRectangleAd from '../components/MediumRectangleAd';
+import HomeBanner from '../components/HomeBanner';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -145,10 +145,10 @@ const Index = () => {
   return (
     <PageLayout searchTerm={searchTerm} onSearch={handleSearch}>
       <Helmet>
-        <title>Best Sports Streaming Site Alternatives | DamiTV</title>
-        <meta name="description" content="Discover the best sports streaming site alternatives. Free HD streams for football, basketball & more. Top vipleague & totalsportek alternative." />
-        <meta name="keywords" content="best sports streaming site alternatives, vipleague alternative, totalsportek similar sites, stream2watch alternative, hesgoal alternative, free sports streaming, live sports online, streameast alternative" />
-        <link rel="canonical" href="https://www.damitv.pro/" />
+        <title>DamiTV - Free Live Football Streaming | Watch Sports Online</title>
+        <meta name="description" content="Watch free live football streams - Premier League, Champions League, La Liga. No registration needed. Stream sports online now!" />
+        <meta name="keywords" content="free live football streaming, premier league stream, champions league stream, watch sports online free, live sports streaming, DamiTV" />
+        <link rel="canonical" href="https://damitv.pro/" />
         
         {/* Organization Schema */}
         <script type="application/ld+json">
@@ -189,8 +189,10 @@ const Index = () => {
       </Helmet>
       
       <main className="py-4">
-        {/* SEO H1 - Hidden but present for SEO */}
-        <h1 className="sr-only">Top 10 Sports Streaming Site Alternatives - Free HD Streams</h1>
+        {/* SEO H1 - Visible for better SEO */}
+        <h1 className="text-2xl md:text-3xl font-bold text-center mb-4 text-white">
+          Free Live Football Streaming - Watch Sports Online
+        </h1>
 
         {/* Custom Match Cards - Above Hero Carousel */}
         <CustomMatchCards />
@@ -218,12 +220,10 @@ const Index = () => {
           <FeaturedChannels />
         </React.Suspense>
 
-            {/* Medium Rectangle Ad - Strategic placement between sections */}
-            <div className="hidden md:block my-6">
-              <MediumRectangleAd />
-            </div>
+        {/* Non-intrusive banner - dismissible, no popups */}
+        <HomeBanner />
 
-            <Separator className="my-8 bg-[#343a4d]" />
+        <Separator className="my-8 bg-[#343a4d]" />
             
             {/* Popular by Viewers Section - Only show on home page (no sport selected or All Sports) */}
             {liveMatches.length > 0 && (!selectedSport || selectedSport === 'all') && (

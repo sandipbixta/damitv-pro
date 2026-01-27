@@ -1,193 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
-  <!-- Homepage - Highest Priority -->
+  <!-- Homepage -->
   <url>
     <loc>https://damitv.pro/</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
-  <!-- Main Features - High Priority -->
+  <!-- Main Pages -->
   <url>
     <loc>https://damitv.pro/live</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
     <loc>https://damitv.pro/channels</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
     <loc>https://damitv.pro/schedule</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
     <loc>https://damitv.pro/highlights</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
     <loc>https://damitv.pro/news</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
-  </url>
-
-  <!-- Alternative Pages - High Value Keywords -->
-  <url>
-    <loc>https://damitv.pro/daddylivehd-alternatives</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/batmanstream-alternatives</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/hesgoal-alternatives</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/crackstreams-alternative</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/hesgoal</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/hesgoal-tv</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/hesgoal-live-stream</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/vipleague</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/myp2p</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/sport365-live</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/freestreams-live1</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Sport-Specific Streaming Pages - High Traffic Keywords -->
-  <url>
-    <loc>https://damitv.pro/watch-premier-league-free</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/nba-streaming-free</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/ufc-streaming-free</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/totalsportek-formula1</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/totalsportek-tennis</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- App Installation -->
-  <url>
-    <loc>https://damitv.pro/install</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <url>
-    <loc>https://damitv.pro/special-offer</loc>
-    <lastmod>2025-12-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
   </url>
 
   <!-- Information Pages -->
   <url>
     <loc>https://damitv.pro/about</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
 
   <url>
     <loc>https://damitv.pro/contact</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
@@ -195,23 +63,45 @@
   <!-- Legal Pages -->
   <url>
     <loc>https://damitv.pro/privacy</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
 
   <url>
     <loc>https://damitv.pro/terms</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-26</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
 
   <url>
     <loc>https://damitv.pro/dmca</loc>
-    <lastmod>2025-12-27</lastmod>
+    <lastmod>2026-01-27</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
+  </url>
+
+  <!-- SEO Landing Pages -->
+  <url>
+    <loc>https://damitv.pro/daddylivehd-alternatives</loc>
+    <lastmod>2026-01-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://damitv.pro/batmanstream-alternatives</loc>
+    <lastmod>2026-01-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://damitv.pro/hesgoal-alternatives</loc>
+    <lastmod>2026-01-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
   </url>
 
 </urlset>

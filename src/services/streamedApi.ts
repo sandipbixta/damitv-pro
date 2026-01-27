@@ -4,8 +4,7 @@ import { getEmbedDomainSync, buildEmbedUrl } from '../utils/embedDomains';
 
 // API endpoints to try (direct calls)
 const API_BASES = [
-  'https://streamed.pk/api',
-  'https://streamed.su/api'
+  'https://streamed.pk/api'
 ];
 
 // CORS proxy fallbacks (used if direct calls fail)
@@ -275,15 +274,23 @@ const parseMatchData = (item: any): Match | null => {
       ? (item.poster.startsWith('http') ? item.poster : `${STREAM_BASE}${item.poster.startsWith('/') ? '' : '/'}${item.poster}`)
       : '';
 
-    // Build team badge URLs - use /api/images/proxy/ path with .webp extension
+    // Build team badge URLs - use /api/images/badge/ path with .webp extension
     const homeBadgeRaw = item.teams?.home?.badge || '';
     const homeBadge = homeBadgeRaw
-      ? (homeBadgeRaw.startsWith('http') ? homeBadgeRaw : `${STREAM_BASE}/api/images/proxy/${homeBadgeRaw}.webp`)
+      ? (homeBadgeRaw.startsWith('http://') || homeBadgeRaw.startsWith('https://')
+          ? homeBadgeRaw
+          : homeBadgeRaw.startsWith('/')
+            ? `${STREAM_BASE}${homeBadgeRaw}`
+            : `${STREAM_BASE}/api/images/badge/${homeBadgeRaw}.webp`)
       : '';
 
     const awayBadgeRaw = item.teams?.away?.badge || '';
     const awayBadge = awayBadgeRaw
-      ? (awayBadgeRaw.startsWith('http') ? awayBadgeRaw : `${STREAM_BASE}/api/images/proxy/${awayBadgeRaw}.webp`)
+      ? (awayBadgeRaw.startsWith('http://') || awayBadgeRaw.startsWith('https://')
+          ? awayBadgeRaw
+          : awayBadgeRaw.startsWith('/')
+            ? `${STREAM_BASE}${awayBadgeRaw}`
+            : `${STREAM_BASE}/api/images/badge/${awayBadgeRaw}.webp`)
       : '';
 
     return {
@@ -766,19 +773,23 @@ export const getBohoImageUrl = (path: string): string => {
 // Get team badge URL
 export const getTeamBadgeUrl = (badge: string): string => {
   if (!badge) return '';
-  if (badge.startsWith('http')) return badge;
-  // Add .webp extension if not present
-  const ext = badge.includes('.') ? '' : '.webp';
-  return `${STREAM_BASE}/api/images/proxy/${badge}${ext}`;
+  // If it's already a full URL, return as-is
+  if (badge.startsWith('http://') || badge.startsWith('https://')) return badge;
+  // If it's a relative path starting with /, prepend the base URL
+  if (badge.startsWith('/')) return `${STREAM_BASE}${badge}`;
+  // Otherwise, it's a badge ID - use the badge image endpoint
+  return `${STREAM_BASE}/api/images/badge/${badge}.webp`;
 };
 
 // Get league logo URL
 export const getLeagueLogoUrl = (leagueId: string): string => {
   if (!leagueId) return '';
-  if (leagueId.startsWith('http')) return leagueId;
-  // Add .webp extension if not present
-  const ext = leagueId.includes('.') ? '' : '.webp';
-  return `${STREAM_BASE}/api/images/proxy/${leagueId}${ext}`;
+  // If it's already a full URL, return as-is
+  if (leagueId.startsWith('http://') || leagueId.startsWith('https://')) return leagueId;
+  // If it's a relative path starting with /, prepend the base URL
+  if (leagueId.startsWith('/')) return `${STREAM_BASE}${leagueId}`;
+  // Otherwise, it's a league ID - use the badge image endpoint
+  return `${STREAM_BASE}/api/images/badge/${leagueId}.webp`;
 };
 
 // Export API base for reference

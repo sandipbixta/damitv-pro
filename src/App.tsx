@@ -49,10 +49,9 @@ import News from "./pages/News";
 import Article from "./pages/Article";
 import MatchDetail from "./pages/MatchDetail";
 import Dashboard from "./pages/Dashboard";
+import MatchPreview from "./pages/MatchPreview";
 
 import TelegramFAB from "./components/TelegramFAB";
-import StickyMobileAd from "./components/StickyMobileAd";
-import AdsterraSocialBar from "./components/AdsterraSocialBar";
 
 // Optimized query client configuration
 const queryClient = new QueryClient({
@@ -75,8 +74,6 @@ const App: React.FC = () => {
           <MonetizationTracker>
             <TooltipProvider>
               <TelegramFAB />
-              <StickyMobileAd />
-              <AdsterraSocialBar />
               <Toaster />
               <Sonner />
             <Routes>
@@ -199,6 +196,11 @@ const App: React.FC = () => {
               <Route path="/m/:matchName" element={
                 <SEOPageTracker contentType="match">
                   <MatchDetail />
+                </SEOPageTracker>
+              } />
+              <Route path="/preview/:slug" element={
+                <SEOPageTracker contentType="match">
+                  <MatchPreview />
                 </SEOPageTracker>
               } />
               <Route path="/dashboard" element={

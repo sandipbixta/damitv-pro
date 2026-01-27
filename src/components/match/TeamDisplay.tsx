@@ -10,15 +10,22 @@ interface TeamDisplayProps {
 }
 
 const TeamDisplay: React.FC<TeamDisplayProps> = ({ name, badge, logo, isHome = false, size = 'medium' }) => {
-  // Prioritize logo over badge, construct URL if badge is a hash
+  // Prioritize logo over badge, construct URL from streamed.pk
   const getBadgeUrl = (badgeStr: string | undefined): string => {
     if (!badgeStr) return '';
-    if (badgeStr.startsWith('http')) return badgeStr;
-    // Badge is likely a hash from streamed.pk API
-    if (badgeStr.length > 20 && !badgeStr.includes('/')) {
-      return `https://streamed.pk/api/images/proxy/${badgeStr}.webp`;
+
+    // If it's already a full URL, return as-is
+    if (badgeStr.startsWith('http://') || badgeStr.startsWith('https://')) {
+      return badgeStr;
     }
-    return '';
+
+    // If it's a relative path starting with /, prepend the base URL
+    if (badgeStr.startsWith('/')) {
+      return `https://streamed.pk${badgeStr}`;
+    }
+
+    // Otherwise, it's a badge ID - use the badge image endpoint
+    return `https://streamed.pk/api/images/badge/${badgeStr}.webp`;
   };
 
   const imageUrl = logo || getBadgeUrl(badge);

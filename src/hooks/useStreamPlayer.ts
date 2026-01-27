@@ -1,8 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Match, Stream, Source } from '../types/sports';
 import { fetchAllMatchStreams } from '../api/sportsApi';
 import { trackMatchSelect, trackSourceChange } from '@/utils/videoAnalytics';
 import { getEmbedDomainSync, buildEmbedUrl } from '@/utils/embedDomains';
+
+// Helper to check if streams are the same (avoid unnecessary updates)
+const isSameStream = (a: Stream | null, b: Stream | null): boolean => {
+  if (!a || !b) return a === b;
+  return a.id === b.id && a.source === b.source && a.streamNo === b.streamNo && a.embedUrl === b.embedUrl;
+};
 
 export const useStreamPlayer = () => {
   const [featuredMatch, setFeaturedMatch] = useState<Match | null>(null);
@@ -46,15 +52,19 @@ export const useStreamPlayer = () => {
       
       setAllStreams(streamsData);
       
-      // Auto-select first stream immediately
+      // Auto-select first stream immediately (only if different from current)
       if (result.streams.length > 0) {
         const firstStream = result.streams[0];
-        setCurrentStream({
-          ...firstStream,
-          timestamp: Date.now()
+        setCurrentStream(prev => {
+          // Only update if stream is actually different
+          if (isSameStream(prev, firstStream)) {
+            console.log(`⏭️ Same stream, skipping update to prevent reload`);
+            return prev;
+          }
+          console.log(`✅ Instant stream ready: ${firstStream.source}`);
+          return firstStream;
         });
         setActiveSource(`${firstStream.source}/${firstStream.id}/${firstStream.streamNo || 1}`);
-        console.log(`✅ Instant stream ready: ${firstStream.source}`);
       }
       
       console.log(`🎬 ${result.streams.length} streams ready instantly`);
@@ -69,24 +79,30 @@ export const useStreamPlayer = () => {
   // Instant stream selection (no API calls needed)
   const fetchStreamData = useCallback(async (source: Source, streamNo?: number) => {
     console.log(`🎯 Selecting stream: ${source.source}/${source.id}${streamNo ? `/${streamNo}` : ''}`);
-    
+
     // Build ad-free embed URL using domain manager
     const domain = getEmbedDomainSync();
     const embedUrl = buildEmbedUrl(domain, source.source, source.id, streamNo || 1);
-    
-    const stream: Stream = {
+
+    const newStream: Stream = {
       id: source.id,
       streamNo: streamNo || 1,
       language: 'EN',
       hd: true,
       embedUrl: embedUrl,
-      source: source.source,
-      timestamp: Date.now()
+      source: source.source
     };
-    
-    setCurrentStream(stream);
+
+    // Only update if the stream is actually different
+    setCurrentStream(prev => {
+      if (isSameStream(prev, newStream)) {
+        console.log(`⏭️ Same stream requested, no reload needed`);
+        return prev;
+      }
+      console.log(`✅ Stream ready: ${embedUrl}`);
+      return newStream;
+    });
     setActiveSource(`${source.source}/${source.id}/${streamNo || 1}`);
-    console.log(`✅ Stream ready: ${embedUrl}`);
   }, []);
 
   // Match selection - instant, no loading delay

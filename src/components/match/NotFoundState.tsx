@@ -1,11 +1,15 @@
-
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 const NotFoundState = () => {
   return (
     <div className="min-h-screen bg-sports-dark text-sports-light">
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+        <title>Match Not Found | DamiTV</title>
+      </Helmet>
       <div className="container mx-auto px-4 py-16">
         <Card className="bg-sports-card border-sports">
           <CardContent className="p-8 text-center">

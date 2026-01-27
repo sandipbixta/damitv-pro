@@ -5,14 +5,22 @@ import { fetchTeamData, TeamData } from '@/services/theSportsDbApi';
 // Local cache to avoid re-fetching during component re-renders
 const localCache = new Map<string, TeamData | null>();
 
-// Helper to get badge URL from streamed.pk hash
+// Helper to get badge URL from streamed.pk
 const getBadgeUrl = (badge: string | undefined): string | null => {
   if (!badge) return null;
-  if (badge.startsWith('http')) return badge;
-  if (badge.length > 20 && !badge.includes('/')) {
-    return `https://streamed.pk/api/images/proxy/${badge}.webp`;
+
+  // If it's already a full URL, return as-is
+  if (badge.startsWith('http://') || badge.startsWith('https://')) {
+    return badge;
   }
-  return null;
+
+  // If it's a relative path starting with /, prepend the base URL
+  if (badge.startsWith('/')) {
+    return `https://streamed.pk${badge}`;
+  }
+
+  // Otherwise, it's a badge ID - use the badge image endpoint
+  return `https://streamed.pk/api/images/badge/${badge}.webp`;
 };
 
 export const useTeamLogo = (

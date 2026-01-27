@@ -99,10 +99,14 @@ class TeamLogoService {
       return teamBadge;
     }
 
-    // Second priority: If badge is a hash, construct the full URL
-    if (teamBadge && teamBadge.length > 20 && !teamBadge.includes('/')) {
-      // Badge is likely a hash from streamed.pk API
-      return `https://streamed.pk/api/images/proxy/${teamBadge}.webp`;
+    // Second priority: Handle badge from streamed.pk API
+    if (teamBadge) {
+      // If it's a relative path starting with /, prepend the base URL
+      if (teamBadge.startsWith('/')) {
+        return `https://streamed.pk${teamBadge}`;
+      }
+      // If it's a badge ID (hash), use the badge image endpoint
+      return `https://streamed.pk/api/images/badge/${teamBadge}.webp`;
     }
     
     const normalized = this.normalizeTeamName(teamName);

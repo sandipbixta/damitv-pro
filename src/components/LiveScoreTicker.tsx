@@ -44,15 +44,15 @@ const LiveScoreTicker: React.FC = () => {
       const home = match.teams?.home?.name || '';
       const away = match.teams?.away?.name || '';
       const matchSlug = generateMatchSlug(home, away, match.title);
-      // Helper to get badge URL - handles both full URLs and hashes
+      // Helper to get badge URL - handles full URLs, relative paths, and badge IDs
       const getBadgeUrl = (badge: string | undefined): string | null => {
         if (!badge) return null;
-        if (badge.startsWith('http')) return badge;
-        // Badge is a hash from streamed.pk API
-        if (badge.length > 20 && !badge.includes('/')) {
-          return `https://streamed.pk/api/images/proxy/${badge}.webp`;
-        }
-        return null;
+        // If it's already a full URL, return as-is
+        if (badge.startsWith('http://') || badge.startsWith('https://')) return badge;
+        // If it's a relative path starting with /, prepend the base URL
+        if (badge.startsWith('/')) return `https://streamed.pk${badge}`;
+        // Otherwise, it's a badge ID - use the badge image endpoint
+        return `https://streamed.pk/api/images/badge/${badge}.webp`;
       };
       const homeBadge = getBadgeUrl(match.teams?.home?.badge);
       const awayBadge = getBadgeUrl(match.teams?.away?.badge);

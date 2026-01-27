@@ -1,27 +1,7 @@
 import { Match } from '@/types/sports';
 
-// Track which endpoints work (smart selection)
-// We keep a structured config (not string templates) to avoid invalid cached URLs.
-type WorkingEndpoint =
-  | { kind: 'direct'; baseUrl: string }
-  | { kind: 'proxy'; proxyBase: string; baseUrl: string }
-  | null;
-
-let workingEndpoint: WorkingEndpoint = null;
-let lastEndpointCheck = 0;
-const ENDPOINT_CHECK_INTERVAL = 60 * 1000; // Re-check every 60 seconds
-
-// API endpoints to try (direct calls - no edge function)
-const API_BASES = [
-  'https://streamed.pk/api',
-  'https://streamed.su/api'
-];
-
-// CORS proxy fallbacks
-const CORS_PROXIES = [
-  'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.io/?'
-];
+// Use our own proxy server (hosted on VPS) - no CORS issues
+const VIEWER_PROXY_URL = 'https://damitv.pro/api/viewers/streamed';
 
 // Cache for viewer counts to minimize API calls (5 minute cache)
 interface ViewerCountCache {
@@ -32,8 +12,8 @@ interface ViewerCountCache {
 const viewerCountCache = new Map<string, ViewerCountCache>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Fast timeout for API calls (2 seconds instead of browser default ~30s)
-const FETCH_TIMEOUT = 2000;
+// Fast timeout for API calls (5 seconds)
+const FETCH_TIMEOUT = 5000;
 
 const fetchWithTimeout = async (url: string, timeout: number): Promise<Response> => {
   const controller = new AbortController();
@@ -52,69 +32,22 @@ const fetchWithTimeout = async (url: string, timeout: number): Promise<Response>
   }
 };
 
-const buildWorkingUrl = (endpoint: string, cfg: Exclude<WorkingEndpoint, null>) => {
-  if (cfg.kind === 'direct') {
-    return `${cfg.baseUrl}/${endpoint}`;
-  }
-  const targetUrl = `${cfg.baseUrl}/${endpoint}`;
-  return `${cfg.proxyBase}${encodeURIComponent(targetUrl)}`;
-};
+// Fetch viewer count from our proxy server (no CORS issues)
+const fetchViewersFromProxy = async (source: string, id: string): Promise<number | null> => {
+  try {
+    const url = `${VIEWER_PROXY_URL}?source=${encodeURIComponent(source)}&id=${encodeURIComponent(id)}`;
+    const response = await fetchWithTimeout(url, FETCH_TIMEOUT);
 
-// Direct API fetch with smart endpoint selection and fast timeout
-const fetchFromApi = async (endpoint: string): Promise<any> => {
-  const now = Date.now();
-
-  // If we have a working endpoint and it's recent, use it directly
-  if (workingEndpoint && now - lastEndpointCheck < ENDPOINT_CHECK_INTERVAL) {
-    try {
-      const url = buildWorkingUrl(endpoint, workingEndpoint);
-      const response = await fetchWithTimeout(url, FETCH_TIMEOUT);
-      if (response.ok) {
-        return await response.json();
+    if (response.ok) {
+      const data = await response.json();
+      if (data && typeof data.viewers === 'number') {
+        return data.viewers;
       }
-    } catch {
-      // Working endpoint failed, reset and try all
-      workingEndpoint = null;
     }
+    return null;
+  } catch {
+    return null;
   }
-
-  // Try direct calls first (fast timeout)
-  for (const baseUrl of API_BASES) {
-    try {
-      const url = `${baseUrl}/${endpoint}`;
-      const response = await fetchWithTimeout(url, FETCH_TIMEOUT);
-
-      if (response.ok) {
-        // Remember this endpoint works
-        workingEndpoint = { kind: 'direct', baseUrl };
-        lastEndpointCheck = now;
-        return await response.json();
-      }
-    } catch {
-      // Silent fail, try next
-    }
-  }
-
-  // Try ONE CORS proxy only (fastest one)
-  const proxyBase = CORS_PROXIES[0];
-  for (const baseUrl of API_BASES) {
-    try {
-      const targetUrl = `${baseUrl}/${endpoint}`;
-      const proxyUrl = `${proxyBase}${encodeURIComponent(targetUrl)}`;
-
-      const response = await fetchWithTimeout(proxyUrl, FETCH_TIMEOUT);
-
-      if (response.ok) {
-        workingEndpoint = { kind: 'proxy', proxyBase, baseUrl };
-        lastEndpointCheck = now;
-        return await response.json();
-      }
-    } catch {
-      // Silent fail
-    }
-  }
-
-  return null;
 };
 
 /**
@@ -147,37 +80,26 @@ const validateViewerCount = (viewers: any): number | null => {
 };
 
 /**
- * Fetch viewer count from stream API for a specific source (fast, with timeout)
+ * Fetch viewer count from stream API for a specific source
+ * Uses our own proxy server to avoid CORS issues
  */
 export const fetchViewerCountFromSource = async (
   source: string,
   id: string
 ): Promise<number | null> => {
   try {
-    const data = await fetchFromApi(`stream/${source}/${id}`);
-
-    if (!data) {
-      return null;
-    }
-    
-    // Check if viewers field exists and is valid
-    if (data && typeof data.viewers === 'number') {
-      return validateViewerCount(data.viewers);
-    }
-    
-    // If it's an array, check the first stream
-    if (Array.isArray(data) && data.length > 0 && typeof data[0].viewers === 'number') {
-      return validateViewerCount(data[0].viewers);
-    }
-
-    return null;
+    const viewers = await fetchViewersFromProxy(source, id);
+    return validateViewerCount(viewers);
   } catch {
     return null;
   }
 };
 
+// Preferred sources for viewer counts (these have accurate data)
+const PREFERRED_SOURCES = ['admin', 'alpha'];
+
 /**
- * Fetch viewer count for a match (tries first source only for speed)
+ * Fetch viewer count for a match (prioritizes admin/alpha sources)
  */
 export const fetchMatchViewerCount = async (match: Match): Promise<number | null> => {
   // Only fetch for live matches
@@ -192,15 +114,16 @@ export const fetchMatchViewerCount = async (match: Match): Promise<number | null
     return cached.count;
   }
 
-  // Only try FIRST source for speed (not all sources)
   if (!match.sources || match.sources.length === 0) {
     return null;
   }
 
   try {
-    // Just fetch from the first source (fastest approach)
-    const firstSource = match.sources[0];
-    const viewerCount = await fetchViewerCountFromSource(firstSource.source, firstSource.id);
+    // Prioritize admin/alpha sources (they have accurate viewer counts)
+    const preferredSource = match.sources.find(s => PREFERRED_SOURCES.includes(s.source));
+    const sourceToUse = preferredSource || match.sources[0];
+
+    const viewerCount = await fetchViewerCountFromSource(sourceToUse.source, sourceToUse.id);
     
     if (viewerCount !== null && viewerCount > 0) {
       // Cache the result
