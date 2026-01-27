@@ -60,14 +60,23 @@ const BannerAd: React.FC<BannerAdProps> = ({ className = '' }) => {
   return (
     <div className={`w-full flex justify-center py-2 overflow-hidden ${className}`}>
       <div
-        ref={adContainerRef}
-        className="flex justify-center items-center"
+        className="overflow-hidden flex justify-center items-center"
         style={{
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
-          minHeight: `${60 * scale}px`
+          maxWidth: '100%',
+          width: isMobile ? `${468 * scale}px` : '468px'
         }}
-      />
+      >
+        <div
+          ref={adContainerRef}
+          className="flex justify-center items-center"
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center',
+            minHeight: `${60 * scale}px`,
+            width: '468px'
+          }}
+        />
+      </div>
     </div>
   );
 };

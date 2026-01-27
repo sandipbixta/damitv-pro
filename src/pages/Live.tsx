@@ -27,6 +27,9 @@ import PopularMatches from '../components/PopularMatches';
 import BannerAd from '../components/BannerAd';
 import LeaderboardAd from '../components/LeaderboardAd';
 import MediumRectangleAd from '../components/MediumRectangleAd';
+import AdsterraSocialBar from '../components/AdsterraSocialBar';
+import PopunderAd from '../components/PopunderAd';
+import NativeBannerAd from '../components/NativeBannerAd';
 
 const Live = () => {
   const { toast } = useToast();
@@ -150,6 +153,8 @@ const Live = () => {
 
   return (
     <PageLayout>
+      <AdsterraSocialBar />
+      <PopunderAd />
       <Helmet>
         <title>Live Sports Streaming Free - Watch Football Online | DamiTV</title>
         <meta name="description" content="Watch live football, basketball, tennis and more sports free. HD streaming with multiple sources. No registration needed." />
@@ -431,7 +436,10 @@ const Live = () => {
 
       {/* AI Match Previews - Internal Links for SEO */}
       <UpcomingMatchPreviews />
-      
+
+      {/* Native Banner Ad - High engagement placement */}
+      <NativeBannerAd className="my-6" />
+
       {/* SEO Content Section */}
       <section className="mt-12 mb-8">
         <div className="prose prose-invert max-w-none">

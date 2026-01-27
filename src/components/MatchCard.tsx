@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Match } from '../types/sports';
 import { isMatchLive } from '../utils/matchUtils';
 import { useMatchTeamLogos } from '../hooks/useTeamLogo';
+import { useLiveScore } from '../hooks/useLiveScore';
 import { LiveViewerCount } from './LiveViewerCount';
 import { generateMatchSlug, extractNumericId } from '../utils/matchSlug';
 import { getMatchPosterImage } from '../utils/matchImageMapping';
@@ -39,6 +40,21 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
   // Get fanart for background (prefer home team)
   const teamFanart = homeFanart || awayFanart;
+
+  const homeBadge = homeLogo || '';
+  const awayBadge = awayLogo || '';
+  const home = match.teams?.home?.name || '';
+  const away = match.teams?.away?.name || '';
+  const hasStream = match.sources?.length > 0;
+  const isLive = isMatchLive(match);
+
+  // Get live score from TheSportsDB
+  const liveScore = useLiveScore(
+    home,
+    away,
+    match.category || sportId,
+    isLive
+  );
 
   // Calculate countdown for upcoming matches
   React.useEffect(() => {
@@ -81,13 +97,6 @@ const MatchCard: React.FC<MatchCardProps> = ({
     const date = new Date(timestamp);
     return format(date, "EEE, do MMM, h:mm a");
   };
-
-  const homeBadge = homeLogo || '';
-  const awayBadge = awayLogo || '';
-  const home = match.teams?.home?.name || '';
-  const away = match.teams?.away?.name || '';
-  const hasStream = match.sources?.length > 0;
-  const isLive = isMatchLive(match);
 
   // Get sport name from category or sportId
   const getSportName = () => {
@@ -179,14 +188,19 @@ const MatchCard: React.FC<MatchCardProps> = ({
     );
   };
 
-  // Team row component - simplified without logos
-  const TeamRow = ({ name }: { name: string }) => (
-    <div className="flex items-center">
+  // Team row component with score
+  const TeamRow = ({ name, score, isHome }: { name: string; score?: string | null; isHome: boolean }) => (
+    <div className="flex items-center justify-between">
       <span
-        className={`text-foreground font-bold truncate ${isCompact ? 'text-xs sm:text-sm' : 'text-sm'}`}
+        className={`text-foreground font-bold truncate flex-1 ${isCompact ? 'text-xs sm:text-sm' : 'text-sm'}`}
       >
         {name}
       </span>
+      {isLive && score !== null && score !== undefined && (
+        <span className={`font-bold text-primary ml-2 ${isCompact ? 'text-sm' : 'text-base'}`}>
+          {score}
+        </span>
+      )}
     </div>
   );
 
@@ -209,7 +223,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
             {isLive || isMatchStarting ? (
               <div className="bg-destructive text-destructive-foreground text-[10px] sm:text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
-                LIVE
+                {liveScore.matchTime ? `${liveScore.matchTime}'` : 'LIVE'}
               </div>
             ) : countdown ? (
               <div className="bg-primary text-primary-foreground text-[10px] sm:text-[9px] font-bold uppercase px-2 py-1 rounded tracking-wide italic">
@@ -218,7 +232,6 @@ const MatchCard: React.FC<MatchCardProps> = ({
             ) : null}
           </div>
 
-          {/* Remove viewer count from thumbnail - moved to bottom */}
         </div>
 
         {/* Info Section - Compact has smaller text area */}
@@ -228,11 +241,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
             {getSportName()} {match.title && !home && !away && `• ${match.title}`}
           </p>
 
-          {/* Teams */}
+          {/* Teams with Scores */}
           {home && away ? (
             <div className={`flex flex-col ${isCompact ? 'gap-1.5 sm:gap-2' : 'gap-2'}`}>
-              <TeamRow name={home} />
-              <TeamRow name={away} />
+              <TeamRow name={home} score={liveScore.homeScore} isHome={true} />
+              <TeamRow name={away} score={liveScore.awayScore} isHome={false} />
             </div>
           ) : (
             <h3 className="font-bold text-foreground text-sm line-clamp-2">

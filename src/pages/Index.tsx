@@ -29,6 +29,9 @@ import LatestHighlights from '../components/LatestHighlights';
 import PerplexityNews from '../components/PerplexityNews';
 import UpcomingMatchPreviews from '../components/UpcomingMatchPreviews';
 import HomeBanner from '../components/HomeBanner';
+import AdsterraSocialBar from '../components/AdsterraSocialBar';
+import PopunderAd from '../components/PopunderAd';
+import NativeBannerAd from '../components/NativeBannerAd';
 
 // Lazy load heavy components
 const FeaturedChannels = React.lazy(() => import('../components/FeaturedChannels'));
@@ -144,6 +147,8 @@ const Index = () => {
 
   return (
     <PageLayout searchTerm={searchTerm} onSearch={handleSearch}>
+      <AdsterraSocialBar />
+      <PopunderAd />
       <Helmet>
         <title>DamiTV - Free Live Football Streaming | Watch Sports Online</title>
         <meta name="description" content="Watch free live football streams - Premier League, Champions League, La Liga. No registration needed. Stream sports online now!" />
@@ -279,7 +284,10 @@ const Index = () => {
             
             {/* AI Match Previews - Internal Links for SEO */}
             <UpcomingMatchPreviews />
-            
+
+            {/* Native Banner Ad - High engagement */}
+            <NativeBannerAd className="my-6" />
+
             {/* Latest Highlights Section */}
             <LatestHighlights />
             

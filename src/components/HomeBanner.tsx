@@ -54,8 +54,11 @@ const HomeBanner: React.FC = () => {
     mobileAdRef.current.appendChild(mobileScript);
   }, [isMobile]);
 
+  // Calculate scale for mobile to fit within screen width
+  const mobileScale = isMobile ? Math.min(1, (window.innerWidth - 32) / 320) : 1;
+
   return (
-    <div className="my-6 flex justify-center">
+    <div className="my-6 flex justify-center overflow-hidden">
       {/* Desktop Leaderboard: 728x90 */}
       <div className="hidden md:flex justify-center">
         <div
@@ -65,12 +68,19 @@ const HomeBanner: React.FC = () => {
         />
       </div>
 
-      {/* Mobile Banner: 320x50 - Adsterra */}
-      <div className="flex md:hidden justify-center w-full">
+      {/* Mobile Banner: 320x50 - Adsterra - Scaled to fit */}
+      <div className="flex md:hidden justify-center w-full overflow-hidden">
         <div
           ref={mobileAdRef}
           className="relative overflow-hidden rounded-lg"
-          style={{ width: 320, height: 50, minHeight: 50 }}
+          style={{
+            width: 320,
+            height: 50,
+            minHeight: 50,
+            transform: `scale(${mobileScale})`,
+            transformOrigin: 'center center',
+            maxWidth: '100%'
+          }}
         />
       </div>
     </div>

@@ -29,6 +29,9 @@ import SidebarAd from '@/components/SidebarAd';
 import LeaderboardAd from '@/components/LeaderboardAd';
 import MediumRectangleAd from '@/components/MediumRectangleAd';
 import PopularMatchesList from '@/components/match/PopularMatchesList';
+import AdsterraSocialBar from '@/components/AdsterraSocialBar';
+import PopunderAd from '@/components/PopunderAd';
+import NativeBannerAd from '@/components/NativeBannerAd';
 
 
 const Match = () => {
@@ -185,6 +188,8 @@ const Match = () => {
 
   return (
     <div className="min-h-screen bg-sports-dark text-sports-light">
+      <AdsterraSocialBar />
+      <PopunderAd />
       <SEOMetaTags
         title={seoTitle}
         description={seoDescription}
@@ -344,9 +349,10 @@ const Match = () => {
             </div>
           </div>
         )}
-        {/* Native Ad removed from mobile - Adsterra invoke.js causes auto-popup on mobile */}
+        {/* Native Banner Ad - High engagement placement */}
+        <NativeBannerAd className="mt-8" />
       </div>
-      
+
       <footer className="bg-sports-darker text-gray-400 py-6 mt-10">
         <div className="container mx-auto px-4 text-center">
           <p className="mb-2">© 2025 DamiTV - All rights reserved</p>

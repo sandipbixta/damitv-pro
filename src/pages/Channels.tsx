@@ -14,6 +14,9 @@ import { Calendar } from 'lucide-react';
 import BannerAd from '../components/BannerAd';
 import LeaderboardAd from '../components/LeaderboardAd';
 import MediumRectangleAd from '../components/MediumRectangleAd';
+import AdsterraSocialBar from '../components/AdsterraSocialBar';
+import PopunderAd from '../components/PopunderAd';
+import NativeBannerAd from '../components/NativeBannerAd';
 
 
 const Channels = () => {
@@ -27,6 +30,8 @@ const Channels = () => {
   
   return (
     <PageLayout>
+      <AdsterraSocialBar />
+      <PopunderAd />
       <Helmet>
         <title>Live TV Sports Channels Free - 70+ Channels | DamiTV</title>
         <meta name="description" content="Watch 70+ free sports TV channels online. International channels for football, basketball, tennis and more. HD streaming, no registration." />
@@ -143,8 +148,7 @@ const Channels = () => {
         </script>
       </Helmet>
       
-      {/* Popunder Ad removed */}
-      
+            
       <div className="mb-6 sm:mb-8">
         <header className="mb-6">
           <div className="flex justify-between items-center mb-3">
@@ -211,7 +215,10 @@ const Channels = () => {
         <div className="mt-6">
           <Advertisement type="sidebar" className="w-full" />
         </div>
-        
+
+        {/* Native Banner Ad - High engagement placement */}
+        <NativeBannerAd className="my-6" />
+
         {/* SEO Content Section */}
         <section className="my-12">
           <div className="prose prose-invert max-w-none">
