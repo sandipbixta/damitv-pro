@@ -151,6 +151,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
     }
 
     // 4. Show team logos/badges or initials (no fanart or poster available)
+    // NOTE: Only show "vs" here - scores are displayed in TeamRow below, not on poster
     return (
       <div className="w-full h-full bg-gradient-to-br from-card via-muted to-card flex items-center justify-center gap-3 px-6">
         <div className="flex-1 flex justify-end items-center">
@@ -168,6 +169,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
             </div>
           )}
         </div>
+        {/* Always show "vs" - never show scores on poster thumbnail */}
         <span className="text-muted-foreground font-bold text-xs flex-shrink-0">vs</span>
         <div className="flex-1 flex justify-start items-center">
           {awayBadge ? (
