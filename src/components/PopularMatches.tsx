@@ -31,17 +31,16 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
     [cleanMatches.length, JSON.stringify(cleanMatches.map(m => m.id))]
   );
 
-  // Get ALL live matches for viewer count enrichment - no pre-filtering
+  // Get live matches - popular ones first, then all others
   const prioritizedMatches = useMemo(() => {
     const liveMatches = consolidatedMatches.filter(m => isMatchLive(m));
-    // Sort by popular flag first, then by having a poster, but send ALL for viewer enrichment
     return liveMatches
       .sort((a, b) => {
         const aScore = (a.popular ? 1 : 0);
         const bScore = (b.popular ? 1 : 0);
         return bScore - aScore;
       })
-      .slice(0, 30); // Send more matches for enrichment
+      .slice(0, 20);
   }, [consolidatedMatches]);
 
   // Enrich with viewer counts in BACKGROUND
@@ -58,13 +57,9 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
       setIsEnriching(true);
       try {
         const matchesWithViewers = await enrichMatchesWithViewers(prioritizedMatches);
-        const sorted = matchesWithViewers
-          .filter(m => (m.viewerCount || 0) > 0)
-          .sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0));
-
-        if (sorted.length > 0) {
-          setEnrichedMatches(sorted);
-        }
+        // Sort by viewer count - matches with viewers first, then the rest
+        const sorted = [...matchesWithViewers].sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0));
+        setEnrichedMatches(sorted);
       } catch (error) {
         console.error('Error enriching popular matches:', error);
       } finally {

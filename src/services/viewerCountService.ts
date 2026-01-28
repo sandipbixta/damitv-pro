@@ -173,9 +173,9 @@ export const fetchBatchViewerCounts = async (
     return viewerCounts;
   }
   
-  // Limit to 10 concurrent requests to avoid overwhelming APIs
-  const concurrentLimit = 10;
-  const limitedMatches = uncachedMatches.slice(0, Math.min(uncachedMatches.length, 30));
+  // Limit to 8 concurrent requests to avoid overwhelming APIs
+  const concurrentLimit = 8;
+  const limitedMatches = uncachedMatches.slice(0, Math.min(uncachedMatches.length, 20));
   
   // Process in small batches
   for (let i = 0; i < limitedMatches.length; i += concurrentLimit) {
