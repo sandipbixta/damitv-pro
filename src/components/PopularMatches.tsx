@@ -43,33 +43,50 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
       .slice(0, 20);
   }, [consolidatedMatches]);
 
-  // Enrich with viewer counts in BACKGROUND
+  // Show matches immediately, enrich with viewer counts in background
   useEffect(() => {
     if (prioritizedMatches.length === 0) {
       setEnrichedMatches([]);
       return;
     }
 
-    // Show prioritized matches immediately
-    setEnrichedMatches(prioritizedMatches);
+    // Show all matches immediately - never clear them
+    setEnrichedMatches(prev => prev.length === 0 ? prioritizedMatches : prev);
+
+    let cancelled = false;
 
     const enrichInBackground = async () => {
       setIsEnriching(true);
       try {
         const matchesWithViewers = await enrichMatchesWithViewers(prioritizedMatches);
-        // Sort by viewer count - matches with viewers first, then the rest
-        const sorted = [...matchesWithViewers].sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0));
-        setEnrichedMatches(sorted);
+        if (cancelled) return;
+
+        // Merge viewer counts into the full list - never remove matches
+        const withViewers = matchesWithViewers.filter(m => (m.viewerCount || 0) > 0);
+        const withoutViewers = matchesWithViewers.filter(m => !(m.viewerCount || 0));
+
+        // Viewer matches first (sorted by count), then the rest
+        const merged = [
+          ...withViewers.sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0)),
+          ...withoutViewers
+        ];
+        if (!cancelled) {
+          setEnrichedMatches(merged);
+        }
       } catch (error) {
         console.error('Error enriching popular matches:', error);
+        // On error, keep showing current matches - don't clear
       } finally {
-        setIsEnriching(false);
+        if (!cancelled) setIsEnriching(false);
       }
     };
 
     enrichInBackground();
     const interval = setInterval(enrichInBackground, 120000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [prioritizedMatches.length]);
 
   if (enrichedMatches.length === 0) {
