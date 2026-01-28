@@ -3,17 +3,30 @@ import React, { useEffect, useRef, useState } from 'react';
 /**
  * Leaderboard Ad Banner - Adsterra
  * Desktop: 728x90 (Leaderboard)
- * Mobile: 320x50 (Mobile Banner)
+ * Mobile: 320x50 (Mobile Banner) - scaled to fit
  */
 const HomeBanner: React.FC = () => {
   const desktopAdRef = useRef<HTMLDivElement>(null);
   const mobileAdRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileScale, setMobileScale] = useState(1);
   const scriptLoadedRef = useRef({ desktop: false, mobile: false });
 
-  // Detect mobile on mount
+  // Detect mobile and calculate scale on mount and resize
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
+    const updateMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        // Scale to fit within viewport with padding
+        const scale = Math.min(1, (window.innerWidth - 32) / 320);
+        setMobileScale(scale);
+      }
+    };
+
+    updateMobile();
+    window.addEventListener('resize', updateMobile);
+    return () => window.removeEventListener('resize', updateMobile);
   }, []);
 
   // Load desktop ad
@@ -54,9 +67,6 @@ const HomeBanner: React.FC = () => {
     mobileAdRef.current.appendChild(mobileScript);
   }, [isMobile]);
 
-  // Calculate scale for mobile to fit within screen width
-  const mobileScale = isMobile ? Math.min(1, (window.innerWidth - 32) / 320) : 1;
-
   return (
     <div className="my-6 flex justify-center overflow-hidden">
       {/* Desktop Leaderboard: 728x90 */}
@@ -71,17 +81,26 @@ const HomeBanner: React.FC = () => {
       {/* Mobile Banner: 320x50 - Adsterra - Scaled to fit */}
       <div className="flex md:hidden justify-center w-full overflow-hidden">
         <div
-          ref={mobileAdRef}
-          className="relative overflow-hidden rounded-lg"
+          className="overflow-hidden flex justify-center items-center"
           style={{
-            width: 320,
-            height: 50,
-            minHeight: 50,
-            transform: `scale(${mobileScale})`,
-            transformOrigin: 'center center',
-            maxWidth: '100%'
+            maxWidth: '100%',
+            width: `${320 * mobileScale}px`,
+            height: `${50 * mobileScale}px`
           }}
-        />
+        >
+          <div
+            ref={mobileAdRef}
+            className="relative overflow-hidden rounded-lg"
+            style={{
+              width: 320,
+              height: 50,
+              minWidth: 320,
+              minHeight: 50,
+              transform: `scale(${mobileScale})`,
+              transformOrigin: 'center center'
+            }}
+          />
+        </div>
       </div>
     </div>
   );
