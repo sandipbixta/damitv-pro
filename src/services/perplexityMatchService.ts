@@ -252,6 +252,8 @@ export const fetchLineupsFromPerplexity = async (
   homeTeam: string,
   awayTeam: string
 ): Promise<PerplexityMatchData['lineups'] | null> => {
+  if (!PERPLEXITY_API_KEY) return null;
+
   const prompt = `Get the starting lineups for today's match: ${homeTeam} vs ${awayTeam}.
 
 Return ONLY a valid JSON object (no markdown, no explanation):
