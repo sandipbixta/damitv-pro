@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Match } from '../types/sports';
 import MatchCard from './MatchCard';
-import { isTrendingMatch } from '../utils/popularLeagues';
 import { consolidateMatches, filterCleanMatches } from '../utils/matchUtils';
 import { enrichMatchesWithViewers, isMatchLive } from '../services/viewerCountService';
 import { Flame } from 'lucide-react';
@@ -32,18 +31,17 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
     [cleanMatches.length, JSON.stringify(cleanMatches.map(m => m.id))]
   );
 
-  // Get prioritized matches IMMEDIATELY (no async) for instant display
+  // Get ALL live matches for viewer count enrichment - no pre-filtering
   const prioritizedMatches = useMemo(() => {
     const liveMatches = consolidatedMatches.filter(m => isMatchLive(m));
+    // Sort by popular flag first, then by having a poster, but send ALL for viewer enrichment
     return liveMatches
-      .map(match => {
-        const trendingInfo = isTrendingMatch(match.title);
-        const priorityScore = (match.popular ? 100 : 0) + trendingInfo.score * 10 + (match.poster ? 50 : 0);
-        return { match, priorityScore };
+      .sort((a, b) => {
+        const aScore = (a.popular ? 1 : 0);
+        const bScore = (b.popular ? 1 : 0);
+        return bScore - aScore;
       })
-      .sort((a, b) => b.priorityScore - a.priorityScore)
-      .slice(0, 15)
-      .map(item => item.match);
+      .slice(0, 30); // Send more matches for enrichment
   }, [consolidatedMatches]);
 
   // Enrich with viewer counts in BACKGROUND
@@ -59,7 +57,7 @@ const PopularMatches: React.FC<PopularMatchesProps> = ({
     const enrichInBackground = async () => {
       setIsEnriching(true);
       try {
-        const matchesWithViewers = await enrichMatchesWithViewers(prioritizedMatches.slice(0, 12));
+        const matchesWithViewers = await enrichMatchesWithViewers(prioritizedMatches);
         const sorted = matchesWithViewers
           .filter(m => (m.viewerCount || 0) > 0)
           .sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0));
