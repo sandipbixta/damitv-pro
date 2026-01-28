@@ -658,7 +658,8 @@ const fetchStreamsFromApi = async (source: string, id: string): Promise<Stream[]
       streamNo: s.streamNo || index + 1,
       language: s.language || 'English',
       hd: s.hd !== false,
-      embedUrl: s.embedUrl || generateFallbackEmbedUrl(source, id, s.streamNo || index + 1),
+      // Always use our embed.damitv.pro player instead of third-party embed URLs
+      embedUrl: generateFallbackEmbedUrl(s.source || source, s.id || id, s.streamNo || index + 1),
       source: s.source || source,
       timestamp: Date.now(),
       name: s.language ? `${s.language} ${s.streamNo || index + 1}` : undefined,
