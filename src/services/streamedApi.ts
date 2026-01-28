@@ -637,7 +637,7 @@ export const fetchSimpleStream = async (source: string, id: string, category?: s
   }
 };
 
-// Generate fallback embed URL - uses bohodev.com
+// Generate fallback embed URL - uses embed.damitv.pro
 const generateFallbackEmbedUrl = (source: string, id: string, streamNo: number): string => {
   const domain = getEmbedDomainSync();
   return buildEmbedUrl(domain, source, id, streamNo);

@@ -1,9 +1,9 @@
-// Embed Domain Manager - Uses bohodev.com
+// Embed Domain Manager - Uses embed.damitv.pro
 // Single domain for all sources
 
-export const EMBED_DOMAIN = 'https://bohodev.com';
+export const EMBED_DOMAIN = 'https://embed.damitv.pro';
 
-// Build embed URL - uses bohodev.com/stream/ format
+// Build embed URL - uses embed.damitv.pro format
 export const buildEmbedUrl = (
   domain: string,
   source: string,
@@ -12,8 +12,8 @@ export const buildEmbedUrl = (
   matchSlug?: string,
   matchTimestamp?: number
 ): string => {
-  // Format: https://bohodev.com/stream/?id={id}&source={source}
-  return `${EMBED_DOMAIN}/stream/?id=${id}&source=${source.toLowerCase()}`;
+  // Format: https://embed.damitv.pro/?source={source}&id={id}
+  return `${EMBED_DOMAIN}/?source=${source.toLowerCase()}&id=${id}`;
 };
 
 // Build 90sport URL - extracts m3u8 directly
@@ -36,13 +36,13 @@ export const fetch90sportM3u8 = async (matchUrl: string): Promise<string | null>
   }
 };
 
-// Get the embed domain - always returns bohodev.com
+// Get the embed domain - always returns embed.damitv.pro
 export const getWorkingEmbedDomain = async (): Promise<string> => {
   console.log(`✅ Using embed domain: ${EMBED_DOMAIN}`);
   return EMBED_DOMAIN;
 };
 
-// Synchronous version - always returns bohodev.com
+// Synchronous version - always returns embed.damitv.pro
 export const getEmbedDomainSync = (): string => {
   return EMBED_DOMAIN;
 };

@@ -1,4 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import {
+  fetchMatchDataFromPerplexity,
+  fetchH2HFromPerplexity,
+  fetchLineupsFromPerplexity,
+  PerplexityMatchData,
+} from '@/services/perplexityMatchService';
 
 const API_KEY = '751945';
 const BASE_URL = 'https://www.thesportsdb.com/api';
@@ -411,6 +417,103 @@ export const useSportsDBMatch = (options: UseSportsDBMatchOptions) => {
     };
   }, []);
 
+  // Convert Perplexity data to our format
+  const convertPerplexityData = useCallback((pData: PerplexityMatchData, homeTeam: string, awayTeam: string): SportsDBMatch => {
+    return {
+      id: `perplexity-${homeTeam}-${awayTeam}`,
+      homeTeam,
+      awayTeam,
+      homeScore: pData.score.home,
+      awayScore: pData.score.away,
+      status: pData.status,
+      progress: pData.matchTime,
+      isLive: pData.status === 'live',
+      venue: pData.venue || '',
+      date: '',
+      time: '',
+      league: '',
+      leagueBadge: '',
+      season: '',
+      round: '',
+      homeTeamBadge: '',
+      awayTeamBadge: '',
+      homeFormation: pData.lineups?.homeFormation || '',
+      awayFormation: pData.lineups?.awayFormation || '',
+      homeGoalDetails: '',
+      awayGoalDetails: '',
+      homeRedCards: pData.statistics.redCards?.home || 0,
+      awayRedCards: pData.statistics.redCards?.away || 0,
+      homeYellowCards: pData.statistics.yellowCards?.home || 0,
+      awayYellowCards: pData.statistics.yellowCards?.away || 0,
+      homeShots: pData.statistics.shots?.home || 0,
+      awayShots: pData.statistics.shots?.away || 0,
+      homeShotsOnTarget: pData.statistics.shotsOnTarget?.home || 0,
+      awayShotsOnTarget: pData.statistics.shotsOnTarget?.away || 0,
+      homePossession: pData.statistics.possession?.home || 0,
+      awayPossession: pData.statistics.possession?.away || 0,
+      homeCorners: pData.statistics.corners?.home || 0,
+      awayCorners: pData.statistics.corners?.away || 0,
+      homeFouls: pData.statistics.fouls?.home || 0,
+      awayFouls: pData.statistics.fouls?.away || 0,
+      homeOffsides: pData.statistics.offsides?.home || 0,
+      awayOffsides: pData.statistics.offsides?.away || 0,
+      referee: pData.referee || '',
+      thumbnail: '',
+      video: '',
+    };
+  }, []);
+
+  // Convert Perplexity lineups to our format
+  const convertPerplexityLineups = useCallback((pLineups: NonNullable<PerplexityMatchData['lineups']>): MatchLineups => {
+    return {
+      home: pLineups.home.map((p) => ({
+        name: p.name,
+        position: p.position,
+        positionShort: p.position.substring(0, 3).toUpperCase(),
+        number: p.number,
+        isSub: false,
+        formation: pLineups.homeFormation || '',
+        cutout: '',
+      })),
+      away: pLineups.away.map((p) => ({
+        name: p.name,
+        position: p.position,
+        positionShort: p.position.substring(0, 3).toUpperCase(),
+        number: p.number,
+        isSub: false,
+        formation: pLineups.awayFormation || '',
+        cutout: '',
+      })),
+    };
+  }, []);
+
+  // Convert Perplexity events to timeline
+  const convertPerplexityEvents = useCallback((events: PerplexityMatchData['events'], homeTeam: string, awayTeam: string): TimelineEvent[] => {
+    return events.map((event, index) => ({
+      id: `perplexity-event-${index}`,
+      time: event.time,
+      type: event.type === 'goal' ? 'Goal' : event.type === 'yellow_card' ? 'Yellow Card' : event.type === 'red_card' ? 'Red Card' : 'Substitution',
+      player: event.player,
+      team: event.team === 'home' ? homeTeam : awayTeam,
+      isHome: event.team === 'home',
+      assist: event.assist || '',
+      comment: '',
+    }));
+  }, []);
+
+  // Convert Perplexity H2H to our format
+  const convertPerplexityH2H = useCallback((h2hData: PerplexityMatchData['h2h']): H2HMatch[] => {
+    return h2hData.map((match, index) => ({
+      id: `perplexity-h2h-${index}`,
+      date: match.date,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      homeScore: match.homeScore,
+      awayScore: match.awayScore,
+      league: match.competition,
+    }));
+  }, []);
+
   // Main fetch function
   const refetch = useCallback(async () => {
     if (!searchTeams) return;
@@ -419,7 +522,7 @@ export const useSportsDBMatch = (options: UseSportsDBMatchOptions) => {
     setError(null);
 
     try {
-      // First try to find in live scores
+      // First try TheSportsDB live scores
       const liveEvent = await findLiveEvent();
 
       if (liveEvent) {
@@ -440,10 +543,56 @@ export const useSportsDBMatch = (options: UseSportsDBMatchOptions) => {
         setStatistics(statsData);
         setH2h(h2hData);
         setLastUpdated(new Date());
+
+        console.log('✅ Match data loaded from TheSportsDB');
       } else {
-        // Try to fetch H2H even without live event
-        const h2hData = await fetchH2H(searchTeams.homeTeam, searchTeams.awayTeam);
-        setH2h(h2hData);
+        // TheSportsDB doesn't have the match - use Perplexity AI
+        console.log('🔄 TheSportsDB has no data, trying Perplexity AI...');
+
+        const perplexityData = await fetchMatchDataFromPerplexity(
+          searchTeams.homeTeam,
+          searchTeams.awayTeam
+        );
+
+        if (perplexityData) {
+          // Convert and set match data
+          const matchData = convertPerplexityData(perplexityData, searchTeams.homeTeam, searchTeams.awayTeam);
+          setMatch(matchData);
+
+          // Set lineups if available
+          if (perplexityData.lineups) {
+            setLineups(convertPerplexityLineups(perplexityData.lineups));
+          }
+
+          // Set timeline events if available
+          if (perplexityData.events && perplexityData.events.length > 0) {
+            setTimeline(convertPerplexityEvents(perplexityData.events, searchTeams.homeTeam, searchTeams.awayTeam));
+          }
+
+          // Set H2H if available
+          if (perplexityData.h2h && perplexityData.h2h.length > 0) {
+            setH2h(convertPerplexityH2H(perplexityData.h2h));
+          } else {
+            // Try to fetch H2H separately
+            const h2hData = await fetchH2HFromPerplexity(searchTeams.homeTeam, searchTeams.awayTeam);
+            if (h2hData) {
+              setH2h(convertPerplexityH2H(h2hData));
+            }
+          }
+
+          console.log('✅ Match data loaded from Perplexity AI');
+        } else {
+          // Try to at least get H2H from Perplexity
+          const h2hData = await fetchH2HFromPerplexity(searchTeams.homeTeam, searchTeams.awayTeam);
+          if (h2hData) {
+            setH2h(convertPerplexityH2H(h2hData));
+          } else {
+            // Last resort - try TheSportsDB H2H
+            const sportsDbH2h = await fetchH2H(searchTeams.homeTeam, searchTeams.awayTeam);
+            setH2h(sportsDbH2h);
+          }
+        }
+
         setLastUpdated(new Date());
       }
     } catch (e: any) {
@@ -452,7 +601,19 @@ export const useSportsDBMatch = (options: UseSportsDBMatchOptions) => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTeams, findLiveEvent, parseMatchData, fetchLineups, fetchTimeline, fetchStatistics, fetchH2H]);
+  }, [
+    searchTeams,
+    findLiveEvent,
+    parseMatchData,
+    fetchLineups,
+    fetchTimeline,
+    fetchStatistics,
+    fetchH2H,
+    convertPerplexityData,
+    convertPerplexityLineups,
+    convertPerplexityEvents,
+    convertPerplexityH2H,
+  ]);
 
   // Initial fetch and auto-refresh
   useEffect(() => {
