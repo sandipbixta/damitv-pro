@@ -116,7 +116,7 @@ const fetchLiveScoresForSport = async (sport: string): Promise<LiveScoreEvent[]>
       `https://www.thesportsdb.com/api/v2/json/livescore/${sport}`,
       {
         headers: {
-          'X-API-KEY': API_KEY
+          'X_API_KEY': API_KEY
         }
       }
     );

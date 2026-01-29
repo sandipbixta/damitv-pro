@@ -6,7 +6,6 @@ import StreamPlayer from '@/components/StreamPlayer';
 import StreamSources from './StreamSources';
 import PopularMatchesList from './PopularMatchesList';
 import MatchCard from '@/components/MatchCard';
-import MatchDetails from '@/components/MatchDetails';
 import BannerAd from '@/components/BannerAd';
 import { Match as MatchType, Stream } from '@/types/sports';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -184,18 +183,19 @@ const StreamTab = ({
         showMatchDetails={false}
       />
 
-
-      {/* Stream Links - Users can switch sources */}
-      <StreamSources
-        sources={match.sources}
-        activeSource={activeSource}
-        onSourceChange={handleSourceChange}
-        streamId={getStreamId()}
-        allStreams={allStreams}
-        isLive={isMatchLive()}
-        match={match}
-        autoSelectByViewers={true}
-      />
+      {/* Stream source buttons - sits right below the player with small gap */}
+      <div className="mt-2">
+        <StreamSources
+          sources={match.sources}
+          activeSource={activeSource}
+          onSourceChange={handleSourceChange}
+          streamId={getStreamId()}
+          allStreams={allStreams}
+          isLive={isMatchLive()}
+          match={match}
+          autoSelectByViewers={true}
+        />
+      </div>
       
       {/* Banner Ad - Desktop: below stream links, Mobile: before Popular Now */}
       {!isMobile && (
@@ -255,14 +255,7 @@ const StreamTab = ({
         </div>
       )}
       
-      {/* Match Details at Bottom */}
-      <div className="mt-8 px-4">
-        <MatchDetails 
-          match={match}
-          isLive={isMatchLive()}
-          showCompact={false}
-        />
-      </div>
+      {/* Match details now shown in MatchAnalysis tabbed UI */}
       
     </div>
   );
